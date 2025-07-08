@@ -149,7 +149,7 @@ class _ConcertListScreenState extends State<ConcertListScreen> {
           IconButton(
             icon: Icon(Icons.search, color: AppColors.textPrimary),
             onPressed: () {
-              // TODO 검색 기능
+              // 검색 기능
             },
           ),
         ],
@@ -375,7 +375,6 @@ class _ConcertListScreenState extends State<ConcertListScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 제목과 아티스트
                   Text(
                     concert['title'],
                     style: TextStyle(
@@ -398,7 +397,6 @@ class _ConcertListScreenState extends State<ConcertListScreen> {
 
                   SizedBox(height: 12),
 
-                  // 공연 정보
                   _buildInfoRow(
                     Icons.calendar_today,
                     '${concert['date']} ${concert['time']}',

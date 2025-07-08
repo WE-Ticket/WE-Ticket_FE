@@ -22,17 +22,18 @@ class ConcertDetailScreen extends StatelessWidget {
               icon: Icon(Icons.arrow_back, color: AppColors.white),
               onPressed: () => Navigator.pop(context),
             ),
+            //TODO 어디까지가 MVP로 보일 수 있는가에 대한 고민
             actions: [
               IconButton(
                 icon: Icon(Icons.share, color: AppColors.white),
                 onPressed: () {
-                  // TODO 공유 기능
+                  // 공유 기능
                 },
               ),
               IconButton(
                 icon: Icon(Icons.favorite_border, color: AppColors.white),
                 onPressed: () {
-                  // TODO 찜하기 기능
+                  // 찜하기 기능
                 },
               ),
             ],
@@ -71,20 +72,17 @@ class ConcertDetailScreen extends StatelessWidget {
             ),
           ),
 
-          // 컨텐츠 영역
           SliverToBoxAdapter(
             child: Container(
               color: AppColors.surface,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 기본 정보
                   Padding(
                     padding: EdgeInsets.all(20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // 상태 배지들
                         Row(
                           children: [
                             _buildStatusBadge(concert['status']),
@@ -114,7 +112,6 @@ class ConcertDetailScreen extends StatelessWidget {
 
                         SizedBox(height: 16),
 
-                        // 제목과 아티스트
                         Text(
                           concert['title'],
                           style: TextStyle(
@@ -135,12 +132,10 @@ class ConcertDetailScreen extends StatelessWidget {
 
                         SizedBox(height: 20),
 
-                        // 상세 정보
                         _buildDetailInfoCard(),
 
                         SizedBox(height: 20),
 
-                        // 태그들
                         Text(
                           '태그',
                           style: TextStyle(
@@ -175,7 +170,7 @@ class ConcertDetailScreen extends StatelessWidget {
                           }).toList(),
                         ),
 
-                        SizedBox(height: 100), // 하단 버튼 공간 확보
+                        SizedBox(height: 100),
                       ],
                     ),
                   ),
@@ -203,7 +198,6 @@ class ConcertDetailScreen extends StatelessWidget {
         child: SafeArea(
           child: Row(
             children: [
-              // 가격 정보
               Expanded(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -238,11 +232,6 @@ class ConcertDetailScreen extends StatelessWidget {
                       ? () {
                           // TODO 예매하기 페이지로 이동
                           _showBookingDialog(context);
-                        }
-                      : concert['status'] == 'coming_soon'
-                      ? () {
-                          // TODO 오픈 알림 신청
-                          _showNotificationDialog(context);
                         }
                       : null,
                   style: ElevatedButton.styleFrom(
@@ -380,7 +369,7 @@ class ConcertDetailScreen extends StatelessWidget {
       case 'soldout':
         return '매진';
       case 'coming_soon':
-        return '오픈 알림 신청';
+        return '오픈 예정';
       default:
         return '예매하기';
     }
@@ -403,32 +392,6 @@ class ConcertDetailScreen extends StatelessWidget {
               // TODO 실제 예매 페이지로 이동
             },
             child: Text('예매하기'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showNotificationDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('오픈 알림 신청'),
-        content: Text('${concert['title']} 예매 오픈 시 알림을 받으시겠습니까?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('취소'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // TODO 알림 신청 로직
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text('오픈 알림이 신청되었습니다.')));
-            },
-            child: Text('신청하기'),
           ),
         ],
       ),
