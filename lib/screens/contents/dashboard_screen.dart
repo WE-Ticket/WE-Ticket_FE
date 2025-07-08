@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:we_ticket/screens/contents/concert_list_screen.dart';
+import 'package:we_ticket/screens/contents/concert_detail_screen.dart';
 import 'dart:async';
 import '../../utils/app_colors.dart';
 
@@ -60,6 +61,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
       'image':
           'https://cdn2.smentertainment.com/wp-content/uploads/2025/04/%EC%B9%B4%EC%9D%B4-%EC%86%94%EB%A1%9C-%EC%BD%98%EC%84%9C%ED%8A%B8-%ED%88%AC%EC%96%B4-KAION-%ED%8F%AC%EC%8A%A4%ED%84%B0-%EC%9D%B4%EB%AF%B8%EC%A7%80-1.jpg',
     },
+    {
+      'title': 'SEVENTEEN CONCERT',
+      'date': '2025.08.10',
+      'venue': 'KSPO DOME',
+      'image': 'https://newsimg.sedaily.com/2024/08/14/2DD0HP41GF_1.jpg',
+    },
+    {
+      'title': '2025 RIIZE CONCERT TOUR',
+      'date': '2025.07.04',
+      'venue': 'KSPO DOME',
+      'image':
+          'https://talkimg.imbc.com/TVianUpload/tvian/TViews/image/2025/05/22/0be8f4e2-5e79-4a67-b80c-b14654cf908c.jpg',
+    },
+    {
+      'title': 'ATEEZ CONCERT 2025',
+      'date': '2025.08.15',
+      'venue': '인스파이어 아레나',
+      'image':
+          'https://tkfile.yes24.com/upload2/PerfBlog/202505/20250527/20250527-53911.jpg',
+    },
+    {
+      'title': '키스오프라이프 콘서트',
+      'date': '2025.09.20',
+      'venue': '서울월드컵경기장',
+      'image':
+          'https://ticketimage.interpark.com/Play/image/large/24/24013254_p.gif',
+    },
   ];
 
   @override
@@ -86,6 +114,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
         );
       }
     });
+  }
+
+  // FIXME API 연동 후 삭제
+  String _getArtistFromTitle(String title) {
+    if (title.contains('RIIZE')) return 'RIIZE';
+    if (title.contains('ATEEZ')) return 'ATEEZ';
+    if (title.contains('키스오프라이프')) return 'Kiss Of Life';
+    return '아티스트';
+  }
+
+  // FIXME API 연동 후 삭제
+  String _getLocationFromVenue(String venue) {
+    if (venue.contains('KSPO') || venue.contains('잠실') || venue.contains('올림픽'))
+      return '서울';
+    if (venue.contains('인스파이어')) return '인천';
+    if (venue.contains('서울월드컵')) return '서울';
+    return '서울';
   }
 
   @override
@@ -134,7 +179,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
               SizedBox(height: 20),
 
-              // 빠른 액세스 메뉴
+              // 빠른 액세스 메뉴 (내 티켓, 양도 마켓)
               _buildQuickAccess(),
 
               SizedBox(height: 20),
@@ -164,108 +209,135 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 _timer?.cancel();
                 _startAutoSlide();
               },
-
               itemCount: _featuredConcerts.length,
               itemBuilder: (context, index) {
                 final concert = _featuredConcerts[index];
-                return Container(
-                  margin: EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.shadowDark,
-                        spreadRadius: 1,
-                        blurRadius: 8,
-                        offset: Offset(0, 4),
+                return GestureDetector(
+                  onTap: () {
+                    // FIXME API 연동 후 수정
+                    final detailConcert = {
+                      'id': 'featured_${index}',
+                      'title': concert['title']!,
+                      'artist': _getArtistFromTitle(concert['title']!),
+                      'date': concert['date']!,
+                      'time': '20:00', // 기본값
+                      'venue': concert['venue']!,
+                      'location': _getLocationFromVenue(concert['venue']!),
+                      'image': concert['image']!,
+                      'price': '99,000원부터', // 기본값
+                      'category': 'K-POP',
+                      'status': 'available',
+                      'isHot': true,
+                      'tags': ['HOT', '추천'],
+                    };
+
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            ConcertDetailScreen(concert: detailConcert),
                       ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Stack(
-                      children: [
-                        // 배경 이미지
-                        Container(
-                          width: double.infinity,
-                          height: double.infinity,
-                          child: Image.network(
-                            concert['image']!,
-                            fit: BoxFit.cover,
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return Container(
-                                color: AppColors.gray300,
-                                child: Center(
-                                  child: CircularProgressIndicator(
-                                    color: AppColors.primary,
-                                    value:
-                                        loadingProgress.expectedTotalBytes !=
-                                            null
-                                        ? loadingProgress
-                                                  .cumulativeBytesLoaded /
+                    );
+                  },
+                  child: Container(
+                    margin: EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.shadowDark,
+                          spreadRadius: 1,
+                          blurRadius: 8,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Stack(
+                        children: [
+                          Container(
+                            width: double.infinity,
+                            height: double.infinity,
+                            child: Image.network(
+                              concert['image']!,
+                              fit: BoxFit.cover,
+                              loadingBuilder:
+                                  (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return Container(
+                                      color: AppColors.gray300,
+                                      child: Center(
+                                        child: CircularProgressIndicator(
+                                          color: AppColors.primary,
+                                          value:
                                               loadingProgress
-                                                  .expectedTotalBytes!
-                                        : null,
+                                                      .expectedTotalBytes !=
+                                                  null
+                                              ? loadingProgress
+                                                        .cumulativeBytesLoaded /
+                                                    loadingProgress
+                                                        .expectedTotalBytes!
+                                              : null,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: AppColors.gray300,
+                                  child: Icon(
+                                    Icons.broken_image,
+                                    size: 50,
+                                    color: AppColors.gray600,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          // 그라데이션 오버레이
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.transparent,
+                                  AppColors.black.withOpacity(0.7),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 20,
+                            left: 20,
+                            right: 20,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  concert['title']!,
+                                  style: TextStyle(
+                                    color: AppColors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  '${concert['date']} | ${concert['venue']}',
+                                  style: TextStyle(
+                                    color: AppColors.white.withOpacity(0.7),
+                                    fontSize: 14,
                                   ),
                                 ),
-                              );
-                            },
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                color: AppColors.gray300,
-                                child: Icon(
-                                  Icons.broken_image,
-                                  size: 50,
-                                  color: AppColors.gray600,
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        // 그라데이션 오버레이
-                        Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.transparent,
-                                AppColors.black.withOpacity(0.7),
                               ],
                             ),
                           ),
-                        ),
-                        // 텍스트 정보
-                        Positioned(
-                          bottom: 20,
-                          left: 20,
-                          right: 20,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                concert['title']!,
-                                style: TextStyle(
-                                  color: AppColors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                '${concert['date']} | ${concert['venue']}',
-                                style: TextStyle(
-                                  color: AppColors.white.withOpacity(0.7),
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 );
@@ -273,7 +345,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
           SizedBox(height: 10),
-          // 페이지 인디케이터
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(
@@ -414,83 +485,110 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildConcertCard(Map<String, String> concert) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 12),
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadowMedium,
-            spreadRadius: 1,
-            blurRadius: 4,
-            offset: Offset(0, 2),
+    return GestureDetector(
+      onTap: () {
+        // 카드 데이터를 상세 화면 형식에 맞게 변환
+        final detailConcert = {
+          'id': 'upcoming_${concert['title']}',
+          'title': concert['title']!,
+          'artist': _getArtistFromTitle(concert['title']!),
+          'date': concert['date']!,
+          'time': '19:30', // 기본값
+          'venue': concert['venue']!,
+          'location': _getLocationFromVenue(concert['venue']!),
+          'image': concert['image']!,
+          'price': '88,000원부터', // 기본값
+          'category': 'K-POP',
+          'status': 'available',
+          'isHot': false,
+          'tags': ['예매 가능'],
+        };
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ConcertDetailScreen(concert: detailConcert),
           ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(8)),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                concert['image']!,
-                fit: BoxFit.cover,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Container(
-                    color: AppColors.gray300,
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.primary,
-                        strokeWidth: 2,
+        );
+      },
+      child: Container(
+        margin: EdgeInsets.only(bottom: 12),
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.shadowMedium,
+              spreadRadius: 1,
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(8)),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  concert['image']!,
+                  fit: BoxFit.cover,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Container(
+                      color: AppColors.gray300,
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.primary,
+                          strokeWidth: 2,
+                        ),
                       ),
-                    ),
-                  );
-                },
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    color: AppColors.primary.withOpacity(0.1),
-                    child: Icon(
-                      Icons.music_note,
-                      color: AppColors.primary,
-                      size: 30,
-                    ),
-                  );
-                },
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: AppColors.primary.withOpacity(0.1),
+                      child: Icon(
+                        Icons.music_note,
+                        color: AppColors.primary,
+                        size: 30,
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
-          ),
-          SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  concert['title']!,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+            SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    concert['title']!,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  '${concert['date']} | ${concert['venue']}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
+                  SizedBox(height: 4),
+                  Text(
+                    '${concert['date']} | ${concert['venue']}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.gray400),
-        ],
+            Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.gray400),
+          ],
+        ),
       ),
     );
   }
