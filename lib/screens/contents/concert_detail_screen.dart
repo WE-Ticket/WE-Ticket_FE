@@ -170,7 +170,12 @@ class ConcertDetailScreen extends StatelessWidget {
                           }).toList(),
                         ),
 
-                        SizedBox(height: 100),
+                        SizedBox(height: 20),
+
+                        // 공연 상세 정보 섹션
+                        _buildConcertDetailsSection(),
+
+                        SizedBox(height: 120), // 하단 버튼 공간 확보
                       ],
                     ),
                   ),
@@ -199,30 +204,34 @@ class ConcertDetailScreen extends StatelessWidget {
           child: Row(
             children: [
               Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '가격',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    _showTransferMarketDialog(context);
+                  },
+                  icon: Icon(
+                    Icons.storefront,
+                    size: 20,
+                    color: AppColors.primary,
+                  ),
+                  label: Text(
+                    '양도 마켓',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
                     ),
-                    Text(
-                      concert['price'],
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
-                      ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: AppColors.primary),
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                  ],
+                  ),
                 ),
               ),
 
-              SizedBox(width: 16),
+              SizedBox(width: 12),
 
               // 예매 버튼
               Expanded(
@@ -230,7 +239,6 @@ class ConcertDetailScreen extends StatelessWidget {
                 child: ElevatedButton(
                   onPressed: concert['status'] == 'available'
                       ? () {
-                          // TODO 예매하기 페이지로 이동
                           _showBookingDialog(context);
                         }
                       : null,
@@ -267,6 +275,10 @@ class ConcertDetailScreen extends StatelessWidget {
       case 'coming_soon':
         backgroundColor = AppColors.warning;
         text = '오픈 예정';
+        break;
+      case 'closed':
+        backgroundColor = AppColors.gray500;
+        text = '판매 마감';
         break;
       default:
         backgroundColor = AppColors.success;
@@ -353,6 +365,53 @@ class ConcertDetailScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildConcertDetailsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '공연 상세 정보',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        SizedBox(height: 12),
+
+        Container(
+          width: double.infinity,
+          height: 200,
+          decoration: BoxDecoration(
+            color: AppColors.gray100,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.gray200),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.image_outlined, size: 48, color: AppColors.gray400),
+              SizedBox(height: 8),
+              Text(
+                '공연 상세 포스터',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.gray500,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                '(기획사 제공 이미지)',
+                style: TextStyle(fontSize: 12, color: AppColors.gray400),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Color _getButtonColor(String status) {
     switch (status) {
       case 'soldout':
@@ -370,6 +429,8 @@ class ConcertDetailScreen extends StatelessWidget {
         return '매진';
       case 'coming_soon':
         return '오픈 예정';
+      case 'closed':
+        return '판매 마감';
       default:
         return '예매하기';
     }
@@ -392,6 +453,32 @@ class ConcertDetailScreen extends StatelessWidget {
               // TODO 실제 예매 페이지로 이동
             },
             child: Text('예매하기'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showTransferMarketDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('양도 마켓'),
+        content: Text('${concert['title']} 양도 티켓을 확인하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('취소'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // TODO 양도 마켓 페이지로 이동
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text('양도 마켓으로 이동합니다.')));
+            },
+            child: Text('확인'),
           ),
         ],
       ),
