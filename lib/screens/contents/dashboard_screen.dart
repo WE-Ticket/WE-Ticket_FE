@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:we_ticket/screens/contents/concert_list_screen.dart';
 import 'package:we_ticket/screens/contents/concert_detail_screen.dart';
+import 'package:we_ticket/screens/mypage/my_page_screen.dart';
+import 'package:we_ticket/utils/auth_guard.dart';
 import 'dart:async';
 import '../../utils/app_colors.dart';
+import '../auth/login_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   @override
@@ -145,7 +148,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
           IconButton(
             icon: Icon(Icons.person_outline, color: AppColors.textPrimary),
             onPressed: () {
-              // TODO 마이페이지로 이동
+              AuthGuard.requireAuth(
+                context,
+                onAuthenticated: () {
+                  // 마이페이지로 이동
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const MyPageScreen()),
+                  );
+                },
+                message: '마이페이지 이용을 위해 로그인이 필요합니다.',
+              );
             },
           ),
         ],
@@ -365,7 +378,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Icons.confirmation_number,
               AppColors.success,
               () {
-                // TODO 내 티켓 화면으로 이동
+                AuthGuard.requireAuth(
+                  context,
+                  onAuthenticated: () {
+                    // TODO 내 티켓 화면으로 이동
+                    print('내 티켓 화면으로 이동');
+                  },
+                  message: '해당 서비스는 로그인이 필요합니다.',
+                );
               },
             ),
           ),
@@ -373,10 +393,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Expanded(
             child: _buildQuickAccessCard(
               '양도 마켓',
-              Icons.swap_horiz,
+              Icons.storefront,
               AppColors.error,
               () {
-                // 양도 마켓으로 이동
+                // TODO 양도 마켓으로 이동
               },
             ),
           ),
