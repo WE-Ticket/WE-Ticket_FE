@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:we_ticket/screens/contents/concert_list_screen.dart';
 import 'package:we_ticket/screens/contents/concert_detail_screen.dart';
+import 'package:we_ticket/screens/mypage/my_page_screen.dart';
+import 'package:we_ticket/utils/auth_guard.dart';
 import 'dart:async';
 import '../../utils/app_colors.dart';
+import '../auth/login_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   @override
@@ -62,12 +65,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'https://cdn2.smentertainment.com/wp-content/uploads/2025/04/%EC%B9%B4%EC%9D%B4-%EC%86%94%EB%A1%9C-%EC%BD%98%EC%84%9C%ED%8A%B8-%ED%88%AC%EC%96%B4-KAION-%ED%8F%AC%EC%8A%A4%ED%84%B0-%EC%9D%B4%EB%AF%B8%EC%A7%80-1.jpg',
     },
     {
-      'title': 'SEVENTEEN CONCERT',
-      'date': '2025.08.10',
-      'venue': 'KSPO DOME',
-      'image': 'https://newsimg.sedaily.com/2024/08/14/2DD0HP41GF_1.jpg',
-    },
-    {
       'title': '2025 RIIZE CONCERT TOUR',
       'date': '2025.07.04',
       'venue': 'KSPO DOME',
@@ -80,13 +77,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       'venue': '인스파이어 아레나',
       'image':
           'https://tkfile.yes24.com/upload2/PerfBlog/202505/20250527/20250527-53911.jpg',
-    },
-    {
-      'title': '키스오프라이프 콘서트',
-      'date': '2025.09.20',
-      'venue': '서울월드컵경기장',
-      'image':
-          'https://ticketimage.interpark.com/Play/image/large/24/24013254_p.gif',
     },
   ];
 
@@ -158,7 +148,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
           IconButton(
             icon: Icon(Icons.person_outline, color: AppColors.textPrimary),
             onPressed: () {
-              // TODO 마이페이지로 이동
+              AuthGuard.requireAuth(
+                context,
+                onAuthenticated: () {
+                  // 마이페이지로 이동
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const MyPageScreen()),
+                  );
+                },
+                message: '마이페이지 이용을 위해 로그인이 필요합니다.',
+              );
             },
           ),
         ],
@@ -378,7 +378,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Icons.confirmation_number,
               AppColors.success,
               () {
-                // TODO 내 티켓 화면으로 이동
+                AuthGuard.requireAuth(
+                  context,
+                  onAuthenticated: () {
+                    // TODO 내 티켓 화면으로 이동
+                    print('내 티켓 화면으로 이동');
+                  },
+                  message: '해당 서비스는 로그인이 필요합니다.',
+                );
               },
             ),
           ),
@@ -386,10 +393,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Expanded(
             child: _buildQuickAccessCard(
               '양도 마켓',
-              Icons.swap_horiz,
+              Icons.storefront,
               AppColors.error,
               () {
-                // 양도 마켓으로 이동
+                // TODO 양도 마켓으로 이동
               },
             ),
           ),
