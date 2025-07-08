@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:we_ticket/screens/mypage/my_tickets_screen.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/app_colors.dart';
 
@@ -53,7 +54,7 @@ class MyPageScreen extends StatelessWidget {
 
                   SizedBox(height: 24),
 
-                  _buildMenuCardsSection(),
+                  _buildMenuCardsSection(context),
 
                   SizedBox(height: 24),
 
@@ -161,7 +162,7 @@ class MyPageScreen extends StatelessWidget {
   }
 
   // 메뉴 카드 그리드
-  Widget _buildMenuCardsSection() {
+  Widget _buildMenuCardsSection(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -197,7 +198,10 @@ class MyPageScreen extends StatelessWidget {
                 subtitle: '보유 개수',
                 color: AppColors.info,
                 onTap: () {
-                  // TODO: 내 티켓 관리 화면으로 이동
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => MyTicketsScreen()),
+                  );
                 },
               ),
             ),

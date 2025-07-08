@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:we_ticket/screens/contents/concert_list_screen.dart';
 import 'package:we_ticket/screens/contents/concert_detail_screen.dart';
 import 'package:we_ticket/screens/mypage/my_page_screen.dart';
+import 'package:we_ticket/screens/mypage/my_tickets_screen.dart';
 import 'package:we_ticket/utils/auth_guard.dart';
 import 'dart:async';
 import '../../utils/app_colors.dart';
@@ -381,8 +382,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 AuthGuard.requireAuth(
                   context,
                   onAuthenticated: () {
-                    // TODO 내 티켓 화면으로 이동
-                    print('내 티켓 화면으로 이동');
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const MyTicketsScreen(),
+                      ),
+                    );
                   },
                   message: '해당 서비스는 로그인이 필요합니다.',
                 );
