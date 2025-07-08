@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/app_colors.dart';
+import 'signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   final VoidCallback? onLoginSuccess;
@@ -17,6 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _idController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _rememberMe = false;
 
   @override
   void dispose() {
@@ -46,10 +48,10 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: EdgeInsets.all(20),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               SizedBox(height: 20),
 
@@ -57,23 +59,38 @@ class _LoginScreenState extends State<LoginScreen> {
 
               SizedBox(height: 40),
 
-              // 로그인 폼
-              Expanded(
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      _buildIdField(),
-                      SizedBox(height: 16),
-                      _buildPasswordField(),
-                      SizedBox(height: 24),
-                      _buildLoginButton(),
-                      SizedBox(height: 16),
-                      _buildDemoAccountsInfo(),
-                    ],
-                  ),
+              Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    _buildIdField(),
+                    SizedBox(height: 16),
+                    _buildPasswordField(),
+                    SizedBox(height: 12),
+                    _buildRememberMeAndFindPassword(),
+                    SizedBox(height: 24),
+                    _buildLoginButton(),
+                  ],
                 ),
               ),
+
+              SizedBox(height: 20),
+
+              _buildDivider(),
+
+              SizedBox(height: 20),
+
+              //소셜 로그인
+              _buildSocialLogin(),
+
+              SizedBox(height: 24),
+
+              _buildSignupLink(),
+
+              SizedBox(height: 20),
+
+              // 프론트 개발용 더미 데이터
+              _buildDemoAccountsInfo(),
             ],
           ),
         ),
@@ -83,30 +100,33 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _buildWelcomeSection() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.confirmation_number, color: AppColors.primary, size: 32),
-            SizedBox(width: 12),
+            Icon(Icons.confirmation_number, size: 45, color: AppColors.primary),
+            SizedBox(width: 10),
             Text(
               'WE-Ticket',
               style: TextStyle(
-                fontSize: 28,
+                fontSize: 32,
                 fontWeight: FontWeight.bold,
                 color: AppColors.primary,
               ),
             ),
           ],
         ),
-        SizedBox(height: 16),
+
+        SizedBox(height: 8),
+
         Text(
-          '로그인이 필요한 서비스 입니다.',
+          '암표 근절을 위한 NFT 티켓팅 플랫폼',
           style: TextStyle(
-            fontSize: 16,
+            fontSize: 14,
             color: AppColors.textSecondary,
             height: 1.5,
           ),
+          textAlign: TextAlign.center,
         ),
       ],
     );
@@ -118,16 +138,24 @@ class _LoginScreenState extends State<LoginScreen> {
       decoration: InputDecoration(
         labelText: '아이디',
         hintText: '아이디를 입력하세요',
-        prefixIcon: Icon(Icons.person_outline),
+        prefixIcon: Icon(Icons.person_outline, color: AppColors.primary),
         filled: true,
         fillColor: AppColors.surface,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
+          borderSide: BorderSide(color: AppColors.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: AppColors.border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: AppColors.primary, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: AppColors.error, width: 2),
         ),
       ),
       validator: (value) {
@@ -146,10 +174,11 @@ class _LoginScreenState extends State<LoginScreen> {
       decoration: InputDecoration(
         labelText: '비밀번호',
         hintText: '비밀번호를 입력하세요',
-        prefixIcon: Icon(Icons.lock_outline),
+        prefixIcon: Icon(Icons.lock_outline, color: AppColors.primary),
         suffixIcon: IconButton(
           icon: Icon(
-            _obscurePassword ? Icons.visibility : Icons.visibility_off,
+            _obscurePassword ? Icons.visibility_off : Icons.visibility,
+            color: AppColors.textSecondary,
           ),
           onPressed: () {
             setState(() {
@@ -161,11 +190,19 @@ class _LoginScreenState extends State<LoginScreen> {
         fillColor: AppColors.surface,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
+          borderSide: BorderSide(color: AppColors.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: AppColors.border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: AppColors.primary, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: AppColors.error, width: 2),
         ),
       ),
       validator: (value) {
@@ -174,6 +211,61 @@ class _LoginScreenState extends State<LoginScreen> {
         }
         return null;
       },
+    );
+  }
+
+  Widget _buildRememberMeAndFindPassword() {
+    return Row(
+      children: [
+        // 로그인 상태 유지
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              _rememberMe = !_rememberMe;
+            });
+          },
+          child: Row(
+            children: [
+              Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: _rememberMe ? AppColors.primary : AppColors.surface,
+                  border: Border.all(
+                    color: _rememberMe ? AppColors.primary : AppColors.border,
+                  ),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: _rememberMe
+                    ? Icon(Icons.check, size: 14, color: AppColors.white)
+                    : null,
+              ),
+              SizedBox(width: 8),
+              Text(
+                '로그인 상태 유지',
+                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+              ),
+            ],
+          ),
+        ),
+
+        Spacer(),
+
+        // 아이디/비밀번호 찾기
+        TextButton(
+          onPressed: () {
+            //TODO
+          },
+          child: Text(
+            '아이디/비밀번호 찾기',
+            style: TextStyle(
+              fontSize: 14,
+              color: AppColors.primary,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -191,6 +283,8 @@ class _LoginScreenState extends State<LoginScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
+              elevation: 2,
+              shadowColor: AppColors.primary.withOpacity(0.3),
             ),
             child: authProvider.isLoading
                 ? SizedBox(
@@ -211,6 +305,138 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  Widget _buildDivider() {
+    return Row(
+      children: [
+        Expanded(child: Divider(color: AppColors.border, thickness: 1)),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            '또는',
+            style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+          ),
+        ),
+        Expanded(child: Divider(color: AppColors.border, thickness: 1)),
+      ],
+    );
+  }
+
+  Widget _buildSocialLogin() {
+    return Column(
+      children: [
+        Text(
+          '소셜 계정으로 간편 로그인',
+          style: TextStyle(
+            fontSize: 14,
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+
+        SizedBox(height: 16),
+
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            // Google 로그인
+            _buildSocialButton(
+              'Google',
+              Colors.white,
+              AppColors.textPrimary,
+              () => _handleSocialLogin('Google'),
+            ),
+
+            // Kakao 로그인
+            _buildSocialButton(
+              'Kakao',
+              Color(0xFFFFE812),
+              AppColors.textPrimary,
+              () => _handleSocialLogin('Kakao'),
+            ),
+
+            // Apple 로그인
+            _buildSocialButton(
+              'Apple',
+              AppColors.black,
+              AppColors.white,
+              () => _handleSocialLogin('Apple'),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSocialButton(
+    String name,
+    Color backgroundColor,
+    Color textColor,
+    VoidCallback onPressed,
+  ) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        width: 80,
+        height: 40,
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.shadowLight,
+              spreadRadius: 1,
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              name,
+              style: TextStyle(
+                fontSize: 11,
+                color: textColor,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSignupLink() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          '아직 계정이 없으신가요? ',
+          style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+        ),
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => SignupScreen()),
+            );
+          },
+          child: Text(
+            '회원가입',
+            style: TextStyle(
+              fontSize: 14,
+              color: AppColors.primary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  //FIXME 삭제
   Widget _buildDemoAccountsInfo() {
     return Container(
       padding: EdgeInsets.all(16),
@@ -224,10 +450,10 @@ class _LoginScreenState extends State<LoginScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.info_outline, color: AppColors.primary, size: 20),
+              Icon(Icons.developer_mode, color: AppColors.warning, size: 20),
               SizedBox(width: 8),
               Text(
-                '테스트 계정',
+                '개발용 테스트 더미  계정',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -245,6 +471,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  //FIXME 추후 삭제
   Widget _buildDemoAccount(String id, String password) {
     return GestureDetector(
       onTap: () {
@@ -254,11 +481,12 @@ class _LoginScreenState extends State<LoginScreen> {
         });
       },
       child: Container(
-        margin: EdgeInsets.only(top: 4),
-        padding: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+        margin: EdgeInsets.only(top: 6),
+        padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.border),
         ),
         child: Row(
           children: [
@@ -266,13 +494,12 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Text(
                 '$id / $password',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   color: AppColors.textSecondary,
                   fontFamily: 'monospace',
                 ),
               ),
             ),
-            Icon(Icons.touch_app, size: 16, color: AppColors.gray400),
           ],
         ),
       ),
@@ -294,24 +521,21 @@ class _LoginScreenState extends State<LoginScreen> {
       // 로그인 성공
       if (widget.onLoginSuccess != null) {
         widget.onLoginSuccess!();
-      } else {
-        Navigator.pop(context);
       }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${authProvider.user?.name}님, 환영합니다!'),
-          backgroundColor: AppColors.success,
-        ),
-      );
+      Navigator.pop(context);
     } else {
       // 로그인 실패
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('아이디 또는 비밀번호가 올바르지 않습니다.'),
           backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
         ),
       );
     }
+  }
+
+  void _handleSocialLogin(String provider) {
+    // TODO: 실제 소셜 로그인 구현
   }
 }
