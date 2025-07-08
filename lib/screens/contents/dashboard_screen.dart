@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:we_ticket/screens/contents/concert_list_screen.dart';
 import 'dart:async';
 import '../../utils/app_colors.dart';
 
@@ -385,7 +386,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               TextButton(
                 onPressed: () {
-                  // 전체보기 화면으로 이동
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ConcertListScreen(),
+                    ),
+                  );
                 },
                 child: Text('전체보기', style: TextStyle(color: AppColors.primary)),
               ),
