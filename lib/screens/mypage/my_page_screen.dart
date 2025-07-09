@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:we_ticket/screens/mypage/my_tickets_screen.dart';
+import 'package:we_ticket/screens/mypage/purchase_history_screen.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/app_colors.dart';
 
@@ -219,7 +220,12 @@ class MyPageScreen extends StatelessWidget {
                 subtitle: '전체 이력',
                 color: AppColors.warning,
                 onTap: () {
-                  // TODO: 구매 이력 화면으로 이동
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PurchaseHistoryScreen(),
+                    ),
+                  );
                 },
               ),
             ),

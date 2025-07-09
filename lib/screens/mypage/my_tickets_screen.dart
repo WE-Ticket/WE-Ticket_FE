@@ -12,7 +12,7 @@ class MyTicketsScreen extends StatefulWidget {
 class _MyTicketsScreenState extends State<MyTicketsScreen> {
   String _selectedFilter = '전체 보유';
 
-  final List<String> _filterOptions = ['전체 보유', '입장 예정', '양도 등록 중'];
+  final List<String> _filterOptions = ['전체 보유', '입장 예정', '양도 등록 중', '사용 완료'];
 
   // FIXME: 더미 데이터 - 실제로는 API에서 가져올 예정
   final List<Map<String, dynamic>> _activeTickets = [
@@ -26,7 +26,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
       'seat': 'S석 1층 A구역 3열 15번',
       'poster':
           'https://talkimg.imbc.com/TVianUpload/tvian/TViews/image/2025/05/22/0be8f4e2-5e79-4a67-b80c-b14654cf908c.jpg',
-      'status': 'upcoming', // upcoming, transferring
+      'status': 'upcoming', // upcoming, transferring, used
       'dday': 15,
       'price': '154,000원',
     },
@@ -44,9 +44,21 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
       'dday': 36,
       'price': '88,000원',
     },
+    {
+      'id': 'ticket_3',
+      'title': 'SEVENTEEN CONCERT',
+      'artist': 'SEVENTEEN',
+      'date': '2025.05.10',
+      'time': '18:00',
+      'venue': 'KSPO DOME',
+      'seat': 'R석 2층 C구역 10열 20번',
+      'poster': 'https://newsimg.sedaily.com/2024/08/14/2DD0HP41GF_1.jpg',
+      'status': 'used',
+      'dday': -60, // 과거 공연
+      'price': '132,000원',
+      'usedDate': '2025.05.10',
+    },
   ];
-
-  // final List<Map<String, dynamic>> _activeTickets = [];
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +82,6 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
       ),
       body: Column(
         children: [
-          // 필터 탭
           _buildFilterTabs(),
 
           // 티켓 카드 리스트
@@ -120,7 +131,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
                   child: Text(
                     filter,
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 13,
                       color: isSelected
                           ? AppColors.primary
                           : AppColors.textSecondary,
@@ -148,7 +159,11 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
         return _activeTickets
             .where((ticket) => ticket['status'] == 'transferring')
             .toList();
-      default:
+      case '사용 완료':
+        return _activeTickets
+            .where((ticket) => ticket['status'] == 'used')
+            .toList();
+      default: // 전체 보유
         return _activeTickets;
     }
   }
@@ -264,21 +279,19 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
 
                 Column(
                   children: [
+                    _buildStatusBadge(ticket['status']),
+                    SizedBox(height: 8),
                     Container(
                       padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: ticket['status'] == 'upcoming'
-                            ? AppColors.success.withOpacity(0.1)
-                            : AppColors.warning.withOpacity(0.1),
+                        color: _getDdayColor(ticket['dday']).withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        'D-${ticket['dday']}',
+                        _getDdayText(ticket['dday'], ticket['status']),
                         style: TextStyle(
                           fontSize: 12,
-                          color: ticket['status'] == 'upcoming'
-                              ? AppColors.success
-                              : AppColors.warning,
+                          color: _getDdayColor(ticket['dday']),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -329,6 +342,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
 
                 SizedBox(height: 12),
 
+                // 상태별 액션 버튼
                 Row(
                   children: [
                     Expanded(
@@ -346,32 +360,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
 
                     SizedBox(width: 8),
 
-                    if (ticket['status'] == 'upcoming')
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () => _handleTransfer(ticket),
-                          icon: Icon(Icons.swap_horiz, size: 16),
-                          label: Text('양도하기', style: TextStyle(fontSize: 12)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.warning,
-                            foregroundColor: AppColors.white,
-                            padding: EdgeInsets.symmetric(vertical: 8),
-                          ),
-                        ),
-                      )
-                    else
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () => _handleTransferManage(ticket),
-                          icon: Icon(Icons.settings, size: 16),
-                          label: Text('양도 관리', style: TextStyle(fontSize: 12)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.error,
-                            foregroundColor: AppColors.white,
-                            padding: EdgeInsets.symmetric(vertical: 8),
-                          ),
-                        ),
-                      ),
+                    Expanded(child: _buildSecondaryActionButton(ticket)),
                   ],
                 ),
               ],
@@ -380,6 +369,99 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildSecondaryActionButton(Map<String, dynamic> ticket) {
+    switch (ticket['status']) {
+      case 'upcoming':
+        return ElevatedButton.icon(
+          onPressed: () => _handleTransfer(ticket),
+          icon: Icon(Icons.swap_horiz, size: 16),
+          label: Text('양도하기', style: TextStyle(fontSize: 12)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.warning,
+            foregroundColor: AppColors.white,
+            padding: EdgeInsets.symmetric(vertical: 8),
+          ),
+        );
+      case 'transferring':
+        return ElevatedButton.icon(
+          onPressed: () => _handleTransferManage(ticket),
+          icon: Icon(Icons.settings, size: 16),
+          label: Text('양도 관리', style: TextStyle(fontSize: 12)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.error,
+            foregroundColor: AppColors.white,
+            padding: EdgeInsets.symmetric(vertical: 8),
+          ),
+        );
+      case 'used':
+        return ElevatedButton.icon(
+          onPressed: () => _showUsedTicketInfo(ticket),
+          icon: Icon(Icons.history, size: 16),
+          label: Text('입장 기록', style: TextStyle(fontSize: 12)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.secondary,
+            foregroundColor: AppColors.white,
+            padding: EdgeInsets.symmetric(vertical: 8),
+          ),
+        );
+      default:
+        return SizedBox.shrink();
+    }
+  }
+
+  Widget _buildStatusBadge(String status) {
+    Color backgroundColor;
+    String text;
+
+    switch (status) {
+      case 'upcoming':
+        backgroundColor = AppColors.success;
+        text = '입장 예정';
+        break;
+      case 'transferring':
+        backgroundColor = AppColors.warning;
+        text = '양도 중';
+        break;
+      case 'used':
+        backgroundColor = AppColors.primary;
+        text = '사용 완료';
+        break;
+      default:
+        backgroundColor = AppColors.gray400;
+        text = '알 수 없음';
+    }
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: AppColors.white,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Color _getDdayColor(int dday) {
+    if (dday < 0) return AppColors.secondary; // 과거
+    if (dday <= 7) return AppColors.error; // 임박
+    if (dday <= 30) return AppColors.warning; // 한 달 이내
+    return AppColors.success; // 여유
+  }
+
+  String _getDdayText(int dday, String status) {
+    if (status == 'used') return '사용 완료';
+    if (dday < 0) return '종료';
+    if (dday == 0) return 'D-Day';
+    return 'D-$dday';
   }
 
   Widget _buildEmptyFilter() {
@@ -438,7 +520,6 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
   }
 
   void _handleTransfer(Map<String, dynamic> ticket) {
-    // TODO: 05_01_NFC인증활성화로 이동 (입장하기)
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -469,5 +550,72 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text('${ticket['title']} 양도 관리')));
+  }
+
+  void _showUsedTicketInfo(Map<String, dynamic> ticket) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              margin: EdgeInsets.only(bottom: 16),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.gray300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Text(
+              '입장 완료 기록',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            SizedBox(height: 16),
+            Row(
+              children: [
+                Icon(Icons.check_circle, color: AppColors.success, size: 24),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        ticket['title'],
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        '입장일: ${ticket['usedDate'] ?? ticket['date']}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
   }
 }
