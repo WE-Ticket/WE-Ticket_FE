@@ -38,8 +38,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
       'price': 154000,
       'paymentMethod': '카카오페이',
       'type': 'purchase',
-      'status':
-          'payment_completed', // payment_pending, payment_completed, used, transferred
+      'status': 'payment_completed',
       'orderNumber': 'ORD202506201430001',
     },
 
@@ -130,7 +129,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
       'refundAmount': 198000,
       'paymentMethod': '신용카드',
       'type': 'cancel',
-      'status': 'refund_completed', // refund_pending, refund_completed
+      'status': 'refund_completed',
       'orderNumber': 'ORD202506011100005',
       'cancelReason': '개인 사정',
     },
