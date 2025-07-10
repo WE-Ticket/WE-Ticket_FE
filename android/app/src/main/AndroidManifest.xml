@@ -42,7 +42,11 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="weticket" />
+                <data android:scheme="https" />
+                <data android:scheme="kakaotalk" />
             </intent-filter>
+            
+            
         </activity>
         
         <!-- FileProvider 설정 -->

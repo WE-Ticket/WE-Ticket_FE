@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'dart:convert';
 
 class OmniOneCXAuthScreen extends StatefulWidget {
@@ -30,20 +31,35 @@ class _OmniOneCXAuthScreenState extends State<OmniOneCXAuthScreen> {
             // 진행률 업데이트 (선택사항)
           },
           onPageStarted: (String url) {
+            print('🔄 페이지 시작: $url');
             setState(() {
               _isLoading = true;
             });
           },
           onPageFinished: (String url) {
+            print('✅ 페이지 완료: $url');
             setState(() {
               _isLoading = false;
             });
             _injectOmniOneScript();
           },
           onWebResourceError: (WebResourceError error) {
+            print('❌ 웹 리소스 오류: ${error.description}');
             setState(() {
               _authStatus = '페이지 로드 오류: ${error.description}';
             });
+          },
+          // 🚀 핵심: 앱 스킴 처리
+          onNavigationRequest: (NavigationRequest request) {
+            print('🔗 네비게이션 요청: ${request.url}');
+
+            // 앱 스킴 감지 및 처리
+            if (_shouldLaunchExternalApp(request.url)) {
+              _launchExternalApp(request.url);
+              return NavigationDecision.prevent; // WebView에서 로드 방지
+            }
+
+            return NavigationDecision.navigate; // 일반 웹 페이지는 로드
           },
         ),
       )
@@ -55,6 +71,130 @@ class _OmniOneCXAuthScreenState extends State<OmniOneCXAuthScreen> {
       );
 
     _loadAuthPage();
+  }
+
+  // 🎯 외부 앱 실행이 필요한 URL인지 확인
+  bool _shouldLaunchExternalApp(String url) {
+    final appSchemes = [
+      'tauthlink://', // 통합인증 앱
+      'ktauthexternalcall://', // KT 인증
+      'upluscorporation://', // LG U+ 인증
+      'naversearchapp://', // 네이버 앱
+      'kakaotalk://', // 카카오톡
+      'nhappvardsstoken://', // NH 앱카드
+      'cloudpay://', // 클라우드페이 앱
+      'smartwall://', // 스마트월 앱
+      'citispay://', // 시티페이 앱
+      'payco://', // 페이코 앱
+      'lguthepay://', // LGU+ 페이
+      'hdcardappcardansimclick://', // HD카드 앱
+      'smhyundaiansimclick://', // 현대카드 앱
+      'shinhan-sr-ansimclick://', // 신한카드 앱
+      'smshinhanansimclick://', // 신한카드 앱
+      'kb-acp://', // KB 앱
+      'mpocket.online.ansimclick://', // 삼성카드 앱
+      'wooripay://', // 우리페이 앱
+      'nhappcardansimclick://', // NH카드 앱
+      'hanawalletmembers://', // 하나카드 앱
+      'shinsegaeeasypayment://', // 신세계 앱
+      'intent://', // Android Intent
+      // 추가 스킴들
+    ];
+
+    // URL이 앱 스킴으로 시작하는지 확인
+    return appSchemes.any((scheme) => url.startsWith(scheme));
+  }
+
+  // 🚀 외부 앱 실행
+  Future<void> _launchExternalApp(String url) async {
+    try {
+      print('📱 외부 앱 실행 시도: $url');
+
+      setState(() {
+        _authStatus = '📱 인증 앱 실행 중...';
+      });
+
+      final Uri uri = Uri.parse(url);
+
+      if (await canLaunchUrl(uri)) {
+        final launched = await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication, // 외부 앱에서 실행
+        );
+
+        if (launched) {
+          print('✅ 외부 앱 실행 성공');
+          setState(() {
+            _authStatus = '✅ 인증 앱에서 인증을 진행하세요';
+          });
+
+          // 앱이 다시 돌아왔을 때를 위한 타이머 설정
+          _startReturnWaitTimer();
+        } else {
+          print('❌ 외부 앱 실행 실패');
+          _handleAppLaunchFailure(url);
+        }
+      } else {
+        print('❌ 외부 앱을 실행할 수 없음');
+        _handleAppLaunchFailure(url);
+      }
+    } catch (e) {
+      print('💥 외부 앱 실행 중 예외: $e');
+      _handleAppLaunchFailure(url);
+    }
+  }
+
+  // 앱 실행 실패 처리
+  void _handleAppLaunchFailure(String url) {
+    setState(() {
+      _authStatus = '❌ 인증 앱 실행 실패';
+    });
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('인증 앱 실행 실패'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('인증 앱을 실행할 수 없습니다.'),
+            SizedBox(height: 8),
+            Text('확인사항:', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text('• 해당 인증 앱이 설치되어 있는지 확인'),
+            Text('• 앱 스킴: ${url.split('://')[0]}://'),
+            SizedBox(height: 8),
+            Text('다른 인증 방법을 시도하거나 해당 앱을 설치해 주세요.'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('확인'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 앱에서 돌아오는 것을 기다리는 타이머
+  void _startReturnWaitTimer() {
+    Future.delayed(Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() {
+          _authStatus = '🔄 인증 완료를 기다리는 중...';
+        });
+      }
+    });
+
+    // 30초 후 타임아웃 처리
+    Future.delayed(Duration(seconds: 30), () {
+      if (mounted && _authStatus.contains('기다리는 중')) {
+        setState(() {
+          _authStatus = '⏰ 인증 시간 초과 - 다시 시도해 주세요';
+        });
+      }
+    });
   }
 
   @override
@@ -100,6 +240,7 @@ class _OmniOneCXAuthScreenState extends State<OmniOneCXAuthScreen> {
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
+                  textAlign: TextAlign.center,
                 ),
                 if (_isTestMode)
                   Container(
@@ -144,6 +285,8 @@ class _OmniOneCXAuthScreenState extends State<OmniOneCXAuthScreen> {
               ],
             ),
           ),
+
+          SizedBox(height: 30),
 
           // 테스트 버튼 영역 (테스트 모드일 때만 표시)
           if (_isTestMode)
@@ -295,7 +438,7 @@ class _OmniOneCXAuthScreenState extends State<OmniOneCXAuthScreen> {
             provider: "coidentitydocument_v1.5",
             contentInfo: {
               signType: "ENT_MID",
-              isBirth: "true",        // 생년월일 정보 포함
+              isBirth: true,        // 생년월일 정보 포함
               isGender: false,      // 성별 정보 미포함  
               isAddr: false,        // 주소 정보 미포함
               isPhone: true         // 휴대폰 번호 정보 포함
@@ -310,36 +453,23 @@ class _OmniOneCXAuthScreenState extends State<OmniOneCXAuthScreen> {
               signType: "ENT_MID"
             },
             compareCI: false,
-            isBirth: "true",          // 최상위 레벨에 설정
+            isBirth: true,          // 최상위 레벨에 설정
             isGender: false,
             isAddr: false,
             isPhone: true
           };
           
-          // 방법 3: 가장 상세한 설정
           var authData3 = {
-            provider: "coidentitydocument_v1.5",
-            token: null,  // 실제로는 토큰 생성 API에서 받아온 값
-            txId: null,   // 실제로는 토큰 생성 API에서 받아온 값
             contentInfo: {
-              signType: "ENT_MID",
-              isBirth: "true",
-              isGender: false,
-              isAddr: false,
-              isPhone: true,
-              requestType: "WEB2APP"
+              signType: "ENT_SIMPLE_AUTH"
             },
             compareCI: false,
-            extraParams: {
-              isBirth: "true",
-              isGender: false,
-              isAddr: false,
-              isPhone: true
-            }
+            isBirth: true,          // 최상위 레벨에 설정
+           
           };
           
           // 우선 방법 1로 시도
-          var finalAuthData = authData1;
+          var finalAuthData = authData3;
           
           console.log('🔍 인증 요청 데이터 (방법 1):', JSON.stringify(finalAuthData, null, 2));
           
@@ -581,9 +711,9 @@ class _OmniOneCXAuthScreenState extends State<OmniOneCXAuthScreen> {
     final mockData = {
       'token': 'mock_jwt_token_12345',
       'userInfo': {
-        'name': '홍길동',
-        'birthDate': '1990-01-01',
-        'phoneNumber': '010-1234-5678',
+        'name': '정혜교',
+        'birthDate': '2001-01-15',
+        'phoneNumber': '010-2911-3952',
         'ci': 'mock_ci_value',
       },
       'timestamp': DateTime.now().millisecondsSinceEpoch,
