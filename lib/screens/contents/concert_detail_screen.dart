@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:we_ticket/screens/ticketing/schedul_selection_screen.dart.dart';
 import '../../utils/app_colors.dart';
 
 class ConcertDetailScreen extends StatelessWidget {
@@ -239,7 +240,13 @@ class ConcertDetailScreen extends StatelessWidget {
                 child: ElevatedButton(
                   onPressed: concert['status'] == 'available'
                       ? () {
-                          _showBookingDialog(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  ScheduleSelectionScreen(concertInfo: concert),
+                            ),
+                          );
                         }
                       : null,
                   style: ElevatedButton.styleFrom(
@@ -434,29 +441,6 @@ class ConcertDetailScreen extends StatelessWidget {
       default:
         return '예매하기';
     }
-  }
-
-  void _showBookingDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('예매하기'),
-        content: Text('${concert['title']} 예매 페이지로 이동하시겠습니까?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('취소'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // TODO 실제 예매 페이지로 이동
-            },
-            child: Text('예매하기'),
-          ),
-        ],
-      ),
-    );
   }
 
   void _showTransferMarketDialog(BuildContext context) {
