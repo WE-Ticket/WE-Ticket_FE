@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:we_ticket/screens/ticketing/seat_selection_screen.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/app_colors.dart';
 
@@ -426,14 +427,6 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
     );
   }
 
-  // 헬퍼 메서드들
-  String _formatNumber(int number) {
-    return number.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]},',
-    );
-  }
-
   String _formatPrice(int price) {
     return price.toString().replaceAllMapped(
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
@@ -445,7 +438,6 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
     final authProvider = context.read<AuthProvider>();
 
     if (authProvider.user == null) {
-      // 본인 인증 안내 다이얼로그
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -473,7 +465,6 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
   }
 
   void _goToSeatSelection() {
-    // TODO: 03_02_좌석선택 화면으로 이동
     final selectedSchedule = _allSchedules.firstWhere(
       (schedule) => schedule['showId'] == _selectedShowTime,
     );
@@ -483,16 +474,11 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
       'selectedSchedule': selectedSchedule,
     };
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('좌석 선택 화면으로 이동합니다'),
-        backgroundColor: AppColors.success,
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SeatSelectionScreen(data: selectionData),
       ),
     );
-
-    // Navigator.push(
-    //   context,
-    //   MaterialPageRoute(builder: (_) => SeatSelectionScreen(data: selectionData)),
-    // );
   }
 }
