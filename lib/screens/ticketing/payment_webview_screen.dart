@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:we_ticket/screens/ticketing/nft_issuance_screen.dart';
 import '../../utils/app_colors.dart';
 
 class PaymentWebViewScreen extends StatefulWidget {
@@ -58,7 +59,6 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
   }
 
   String _generatePaymentHTML() {
-    // 안전한 데이터 추출
     final name = widget.paymentData['name'] ?? '공연 티켓';
     final amount = widget.paymentData['amount'] ?? 0;
     final merchantUid = widget.paymentData['merchant_uid'] ?? 'unknown';
@@ -69,7 +69,7 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>[테스트 화면] 결제하기</title>
+        <title>결제하기</title>
         <style>
             body {
                 font-family: -apple-system, BlinkMacSystemFont, sans-serif;
@@ -122,7 +122,6 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
         </style>
     </head>
     <body>
-    <h1>[Test 화면] HTML 웹뷰 화면 </h1>
         <div class="payment-container">
             <h2>결제 정보</h2>
             <div class="payment-info">
@@ -214,7 +213,44 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
       'error_msg': params['error_msg'],
     };
 
-    Navigator.pop(context, result);
+    if (result['success'] == true) {
+      // 결제 성공 - NFT 발행 화면으로 이동
+      _navigateToNFTIssuance();
+    } else {
+      // 결제 실패
+      Navigator.pop(context, result);
+    }
+  }
+
+  void _navigateToNFTIssuance() {
+    // 결제 성공 토스트 표시
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.check_circle, color: AppColors.white, size: 20),
+            SizedBox(width: 12),
+            Text(
+              '결제가 완료되었습니다! NFT 티켓을 발행합니다.',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+        backgroundColor: AppColors.success,
+        duration: Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+
+    // 1초 후 NFT 발행 화면으로 이동
+    Future.delayed(Duration(seconds: 1), () {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => NFTIssuanceScreen(paymentData: widget.paymentData),
+        ),
+      );
+    });
   }
 
   @override

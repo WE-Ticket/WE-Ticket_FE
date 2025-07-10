@@ -781,13 +781,6 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
       'price': zoneData['price'],
     };
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('결제 화면으로 이동합니다'),
-        backgroundColor: AppColors.success,
-      ),
-    );
-
     Navigator.push(
       context,
       MaterialPageRoute(
