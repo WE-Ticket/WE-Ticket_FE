@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:we_ticket/screens/ticketing/payment_webview_screen.dart';
 import '../../utils/app_colors.dart';
 
 class SeatSelectionScreen extends StatefulWidget {
@@ -787,10 +788,11 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
       ),
     );
 
-    // TODO: 결제 화면으로 이동
-    // Navigator.push(
-    //   context,
-    //   MaterialPageRoute(builder: (_) => PaymentScreen(data: paymentData)),
-    // );
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PaymentWebViewScreen(paymentData: paymentData),
+      ),
+    );
   }
 }

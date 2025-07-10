@@ -45,5 +45,91 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	
+	<!-- 결제를 위한 추가 설정들 -->
+	
+	<!-- 커스텀 URL 스킴 설정 (결제 앱에서 복귀용) -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>weticket.payment</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>weticket</string>
+			</array>
+		</dict>
+	</array>
+	
+	<!-- 외부 앱 실행 허용 설정 (결제 앱들) -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<!-- 카드사 앱들 -->
+		<string>kbbank</string>
+		<string>ispmobile</string>
+		<string>nhallonepayansimclick</string>
+		<string>nhallonepayansimpasscode</string>
+		<string>lguthepay</string>
+		<string>lottesmartpay</string>
+		<string>lotteappcard</string>
+		<string>cloudpay</string>
+		<string>smshinhanansimclick</string>
+		<string>shinhan-sr-ansimclick</string>
+		<string>smshinhanansimpasscode</string>
+		<string>shinsegaeeasypayment</string>
+		<string>citispay</string>
+		<string>citicardappkr</string>
+		<string>citimobileapp</string>
+		
+		<!-- 간편결제 앱들 -->
+		<string>payco</string>
+		<string>kakaotalk</string>
+		<string>toss</string>
+		
+		<!-- 은행 앱들 -->
+		<string>kbmobileapp</string>
+		<string>newsmartpib</string>
+		<string>smartkb</string>
+		<string>wooribank</string>
+		<string>ubmobile</string>
+		<string>shinhanmobile</string>
+		<string>shnmobile</string>
+		<string>hanabankmobile</string>
+		<string>citibankkorea</string>
+		<string>scmobile</string>
+		<string>ibkmobile</string>
+		<string>nonghyupmobile</string>
+		<string>mg</string>
+		<string>smartbusan</string>
+		<string>smartkyongnam</string>
+		<string>kbank</string>
+		<string>tossbank</string>
+	</array>
+	
+	<!-- 네트워크 보안 설정 (결제 통신용) -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>service.iamport.kr</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSExceptionMinimumTLSVersion</key>
+				<string>TLSv1.0</string>
+			</dict>
+		</dict>
+	</dict>
+	
+	<!-- 카메라 권한 (신분증 촬영용, 필요 시) -->
+	<key>NSCameraUsageDescription</key>
+	<string>신분증 인증을 위해 카메라 접근이 필요합니다.</string>
+	
+	<!-- Face ID 사용 권한 (생체 인증용, 필요 시) -->
+	<key>NSFaceIDUsageDescription</key>
+	<string>안전한 결제를 위해 Face ID 인증이 필요합니다.</string>
+	
 </dict>
 </plist>
