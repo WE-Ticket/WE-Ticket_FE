@@ -3,10 +3,10 @@ import 'package:we_ticket/screens/contents/concert_list_screen.dart';
 import 'package:we_ticket/screens/contents/concert_detail_screen.dart';
 import 'package:we_ticket/screens/mypage/my_page_screen.dart';
 import 'package:we_ticket/screens/mypage/my_tickets_screen.dart';
+import 'package:we_ticket/screens/transfer/transfer_market_screen.dart';
 import 'package:we_ticket/utils/auth_guard.dart';
 import 'dart:async';
 import '../../utils/app_colors.dart';
-import '../auth/login_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   @override
@@ -401,7 +401,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Icons.storefront,
               AppColors.error,
               () {
-                // TODO 양도 마켓으로 이동
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => TransferMarketScreen()),
+                );
               },
             ),
           ),
