@@ -9,7 +9,7 @@ class MyAuthScreen extends StatefulWidget {
 
 class _MyAuthScreenState extends State<MyAuthScreen> {
   // FIXME 현재 사용자의 인증 레벨 (실제로는 서버에서 받아올 데이터)
-  int currentAuthLevel = 3; // 0: 미인증, 1: 일반 인증, 2: 안전 인증, 3: 완전 인증
+  int currentAuthLevel = 0; // 0: 미인증, 1: 일반 인증, 2: 안전 인증, 3: 완전 인증
   String userName = "정혜교";
   DateTime? lastVerified;
 
@@ -197,6 +197,134 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
     );
   }
 
+  // 인증 업그레이드 옵션
+  Widget _buildUpgradeOptions() {
+    if (currentAuthLevel >= 3) {
+      return Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.success.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.success.withOpacity(0.3)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.verified, color: AppColors.success, size: 32),
+            SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '완전 인증 회원 완료',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.success,
+                    ),
+                  ),
+                  Text(
+                    '모든 WE-Ticket 서비스를 자유롭게 이용하실 수 있습니다',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '인증 업그레이드',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        SizedBox(height: 12),
+        _buildSingleUpgradeCard(),
+      ],
+    );
+  }
+
+  // 단일 업그레이드 카드
+  Widget _buildSingleUpgradeCard() {
+    String title = _getUpgradeCardTitle();
+    String description = _getUpgradeCardDescription();
+    IconData icon = _getUpgradeCardIcon();
+    Color color = _getUpgradeCardColor();
+    VoidCallback onTap = _getUpgradeCardAction();
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.3)),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.shadowLight,
+              spreadRadius: 1,
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 24),
+            ),
+            SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    description,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(width: 4),
+            Icon(Icons.arrow_forward_ios, color: color, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
   // 인증 레벨 가이드
   Widget _buildAuthLevelGuide() {
     return Container(
@@ -205,14 +333,6 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        // boxShadow: [
-        //   BoxShadow(
-        //     color: AppColors.shadowLight,
-        //     spreadRadius: 1,
-        //     blurRadius: 4,
-        //     offset: Offset(0, 2),
-        //   ),
-        // ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -236,7 +356,7 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
           _buildAuthLevelItem(
             2,
             '모바일 신분증 인증 회원',
-            '모바일신분증으로 강화된 보안과 NFC 간편입장',
+            '모바일신분증으로 강화된 보안과 3초 간편입장',
             AppColors.primary,
           ),
           SizedBox(height: 12),
@@ -350,150 +470,6 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
     );
   }
 
-  // 인증 업그레이드 옵션
-  Widget _buildUpgradeOptions() {
-    if (currentAuthLevel >= 3) {
-      return Container(
-        width: double.infinity,
-        padding: EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: AppColors.success.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.success.withOpacity(0.3)),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.verified, color: AppColors.success, size: 32),
-            SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '완전 인증 회원 완료',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.success,
-                    ),
-                  ),
-                  Text(
-                    '모든 WE-Ticket 서비스를 자유롭게 이용하실 수 있습니다',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '인증 업그레이드',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        SizedBox(height: 12),
-        if (currentAuthLevel < 2)
-          _buildUpgradeCard(
-            title: '모바일 신분증 인증 회원 되기',
-            description: '모바일신분증으로 인증하고 3초 간편입장을 경험하세요',
-            icon: Icons.credit_card,
-            color: AppColors.primary,
-            onTap: () => _navigateToMobileIdAuth(),
-          ),
-        if (currentAuthLevel >= 2 && currentAuthLevel < 3) ...[
-          SizedBox(height: 12),
-          _buildUpgradeCard(
-            title: '완전 인증 회원 되기',
-            description: '추가 인증으로 양도 거래를 통한 더 즐거운 공연을 누리세요',
-            icon: Icons.diamond,
-            color: AppColors.success,
-            onTap: () => _navigateToEnhancedAuth(),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildUpgradeCard({
-    required String title,
-    required String description,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.3)),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.shadowLight,
-              spreadRadius: 1,
-              blurRadius: 4,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: color, size: 24),
-            ),
-            SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    description,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(width: 4),
-            Icon(Icons.arrow_forward_ios, color: color, size: 20),
-          ],
-        ),
-      ),
-    );
-  }
-
   // 혜택 안내 섹션
   Widget _buildBenefitsSection() {
     return Container(
@@ -602,6 +578,71 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
     );
   }
 
+  String _getUpgradeCardTitle() {
+    switch (currentAuthLevel) {
+      case 0:
+        return '본인 인증하러 가기';
+      case 1:
+        return '모바일 신분증 인증 회원 되기';
+      case 2:
+        return '완전 인증 회원 되기';
+      default:
+        return '';
+    }
+  }
+
+  String _getUpgradeCardDescription() {
+    switch (currentAuthLevel) {
+      case 0:
+        return '간편인증 또는 모바일 신분증으로 안전하게 인증하세요';
+      case 1:
+        return '모바일신분증으로 인증하고 3초 간편입장을 경험하세요';
+      case 2:
+        return '추가 인증으로 양도 거래를 통한 더 즐거운 공연을 누리세요';
+      default:
+        return '';
+    }
+  }
+
+  IconData _getUpgradeCardIcon() {
+    switch (currentAuthLevel) {
+      case 0:
+        return Icons.security;
+      case 1:
+        return Icons.credit_card;
+      case 2:
+        return Icons.diamond;
+      default:
+        return Icons.help;
+    }
+  }
+
+  Color _getUpgradeCardColor() {
+    switch (currentAuthLevel) {
+      case 0:
+        return AppColors.primary;
+      case 1:
+        return AppColors.primary;
+      case 2:
+        return AppColors.success;
+      default:
+        return AppColors.gray500;
+    }
+  }
+
+  VoidCallback _getUpgradeCardAction() {
+    switch (currentAuthLevel) {
+      case 0:
+        return _navigateToAuth;
+      case 1:
+        return _navigateToMobileIdAuth;
+      case 2:
+        return _navigateToEnhancedAuth;
+      default:
+        return () {};
+    }
+  }
+
   // 인증 레벨별 텍스트, 색상, 아이콘 반환 함수들
   String _getAuthLevelText(int level) {
     switch (level) {
@@ -664,14 +705,26 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
   }
 
   // 네비게이션 함수들
+  void _navigateToAuth() {
+    // 미인증자용 - OmniOne CX에서 인증 방법 선택
+    // Navigator.push(
+    //   context,
+    //   MaterialPageRoute(
+    //     builder: (context) =>
+    //         OmniOneCXAuthScreen(currentAuthLevel: currentAuthLevel),
+    //   ),
+    // );
+  }
+
   void _navigateToMobileIdAuth() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        //FIXME
-        builder: (context) => OmniOneCXAuthScreen(),
-      ),
-    );
+    // 일반 인증자용 - 모바일 신분증 인증만
+    // Navigator.push(
+    //   context,
+    //   MaterialPageRoute(
+    //     builder: (context) =>
+    //         OmniOneCXAuthScreen(currentAuthLevel: currentAuthLevel),
+    //   ),
+    // );
   }
 
   void _navigateToEnhancedAuth() {
