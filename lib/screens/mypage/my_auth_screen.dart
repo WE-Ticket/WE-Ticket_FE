@@ -707,24 +707,24 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
   // 네비게이션 함수들
   void _navigateToAuth() {
     // 미인증자용 - OmniOne CX에서 인증 방법 선택
-    // Navigator.push(
-    //   context,
-    //   MaterialPageRoute(
-    //     builder: (context) =>
-    //         OmniOneCXAuthScreen(currentAuthLevel: currentAuthLevel),
-    //   ),
-    // );
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            OmniOneCXAuthScreen(currentAuthLevel: currentAuthLevel),
+      ),
+    );
   }
 
   void _navigateToMobileIdAuth() {
     // 일반 인증자용 - 모바일 신분증 인증만
-    // Navigator.push(
-    //   context,
-    //   MaterialPageRoute(
-    //     builder: (context) =>
-    //         OmniOneCXAuthScreen(currentAuthLevel: currentAuthLevel),
-    //   ),
-    // );
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            OmniOneCXAuthScreen(currentAuthLevel: currentAuthLevel),
+      ),
+    );
   }
 
   void _navigateToEnhancedAuth() {
