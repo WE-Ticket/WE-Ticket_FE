@@ -42,7 +42,8 @@ dependencies:
   # iamport_flutter: ^0.10.21 # 아임포트 결제 SDK
 
   url_launcher: ^6.2.1 # 외부 링크 열기
-  webview_flutter: ^4.4.2 # 웹뷰 (아임포트 대신 PG사 결제 페이지용)
+  webview_flutter: ^4.2.4
+  http: ^1.1.0
 
 dev_dependencies:
   flutter_test:

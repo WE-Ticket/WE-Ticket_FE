@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:we_ticket/screens/mypage/my_auth_screen.dart';
 import 'package:we_ticket/screens/mypage/my_tickets_screen.dart';
 import 'package:we_ticket/screens/mypage/purchase_history_screen.dart';
 import '../../providers/auth_provider.dart';
@@ -187,7 +188,10 @@ class MyPageScreen extends StatelessWidget {
                 subtitle: '더 강화된 본인인증으로 어쩌구',
                 color: AppColors.primary,
                 onTap: () {
-                  // TODO: 본인 인증 관리 화면으로 이동
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => MyAuthScreen()),
+                  );
                 },
               ),
             ),
