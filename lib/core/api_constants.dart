@@ -14,9 +14,9 @@ class ApiConstants {
       '/tickets/performances/{performance_id}/schedule/';
   static const String sessionSeats =
       '/tickets/performance/{performance_id}/session/{performance_session_id}/seats/';
-  //TODO 배포 후 연결
-  // static const String seatLayout = '/tickets/performance/{performance_id}/session/{performance_session_id}/zone/{seat_zone}';
-  // static const String createTicket = '/tickets/create';
+  static const String seatLayout =
+      '/tickets/performance/{performance_id}/session/{performance_session_id}/zone/{seat_zone}';
+  static const String createTicket = '/tickets/create';
 
   // User
   static const String login = '/users/login/';

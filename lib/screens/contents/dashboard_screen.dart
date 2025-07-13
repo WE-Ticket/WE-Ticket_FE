@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:we_ticket/screens/api_test.dart';
 import 'package:we_ticket/screens/contents/concert_list_screen.dart';
 import 'package:we_ticket/screens/contents/concert_detail_screen.dart';
 import 'package:we_ticket/screens/mypage/my_page_screen.dart';
@@ -404,9 +403,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               () {
                 Navigator.push(
                   context,
-                  //FIXME
-                  // MaterialPageRoute(builder: (_) => TransferMarketScreen()),
-                  MaterialPageRoute(builder: (_) => ApiTestScreen()),
+                  MaterialPageRoute(builder: (_) => TransferMarketScreen()),
                 );
               },
             ),
