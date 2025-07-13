@@ -1,5 +1,4 @@
 /// JSON 파싱 유틸리티
-
 /// API 응답에서 null이나 타입 불일치를 안전하게 처리하기 위한 헬퍼 메서드들
 class JsonParserUtils {
   static int parseInt(dynamic value, {int defaultValue = 0}) {
@@ -124,5 +123,187 @@ class JsonParserUtils {
     final value = map[key];
     if (value is T) return value;
     return defaultValue;
+  }
+
+  // ==================== ID 파싱 관련 추가 메서드들 ====================
+
+  /// ID 값을 안전하게 int로 파싱 (복합 문자열 지원)
+  ///
+  /// 지원하는 형태:
+  /// - int: 1, 2, 3...
+  /// - String (숫자): "1", "2", "3"...
+  /// - String (접두사 포함): "upcoming_1", "hot_2", "performance_123"...
+  ///
+  /// [extractNumber] true면 문자열에서 숫자 부분만 추출
+  static int parseId(
+    dynamic value, {
+    int defaultValue = 0,
+    bool extractNumber = true,
+  }) {
+    if (value == null) return defaultValue;
+
+    // 이미 int인 경우
+    if (value is int) {
+      return value > 0 ? value : defaultValue;
+    }
+
+    // String인 경우
+    if (value is String) {
+      // 1. 전체가 숫자인지 확인
+      final directParse = int.tryParse(value);
+      if (directParse != null) {
+        return directParse > 0 ? directParse : defaultValue;
+      }
+
+      // 2. extractNumber가 true면 문자열에서 숫자 부분 추출
+      if (extractNumber) {
+        final numberMatch = RegExp(r'\d+').firstMatch(value);
+        if (numberMatch != null) {
+          final extractedNumber = int.tryParse(numberMatch.group(0)!);
+          if (extractedNumber != null && extractedNumber > 0) {
+            return extractedNumber;
+          }
+        }
+      }
+    }
+
+    return defaultValue;
+  }
+
+  /// 공연 데이터에서 ID 추출 (여러 필드 시도)
+  static int? extractPerformanceId(Map<String, dynamic>? data) {
+    if (data == null) return null;
+
+    // 우선순위대로 ID 필드 확인
+    final candidates = [
+      'performance_id',
+      'performanceId',
+      'id',
+      'showId',
+      'show_id',
+    ];
+
+    for (final key in candidates) {
+      if (data.containsKey(key)) {
+        final id = parseId(data[key], extractNumber: true);
+        if (id > 0) {
+          return id;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /// 세션 데이터에서 ID 추출
+  static int? extractSessionId(Map<String, dynamic>? data) {
+    if (data == null) return null;
+
+    final candidates = [
+      'performance_session_id',
+      'performanceSessionId',
+      'session_id',
+      'sessionId',
+      'id',
+    ];
+
+    for (final key in candidates) {
+      if (data.containsKey(key)) {
+        final id = parseId(data[key], extractNumber: true);
+        if (id > 0) {
+          return id;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /// 사용자 데이터에서 ID 추출
+  static int? extractUserId(Map<String, dynamic>? data) {
+    if (data == null) return null;
+
+    final candidates = ['user_id', 'userId', 'id'];
+
+    for (final key in candidates) {
+      if (data.containsKey(key)) {
+        final id = parseId(data[key], extractNumber: true);
+        if (id > 0) {
+          return id;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /// ID 유효성 검사
+  static bool isValidId(dynamic value) {
+    final parsed = parseId(value, extractNumber: true);
+    return parsed > 0;
+  }
+
+  /// API URL에서 ID 추출 (예: "/api/performances/123/schedule" -> 123)
+  static int? extractIdFromUrl(String url) {
+    final match = RegExp(r'/(\d+)/').firstMatch(url);
+    if (match != null) {
+      return int.tryParse(match.group(1)!);
+    }
+    return null;
+  }
+
+  /// 디버깅을 위한 ID 파싱 과정 출력
+  static int? parseIdWithDebug(
+    dynamic value, {
+    String? context,
+    bool extractNumber = true,
+  }) {
+    final contextStr = context != null ? '[$context]' : '';
+    print('🔍$contextStr ID 파싱 시작: $value (${value.runtimeType})');
+
+    final result = parseId(value, extractNumber: extractNumber);
+
+    if (result > 0) {
+      print('✅$contextStr ID 파싱 성공: $value -> $result');
+    } else {
+      print('❌$contextStr ID 파싱 실패: $value -> 기본값 사용');
+    }
+
+    return result > 0 ? result : null;
+  }
+
+  /// 공연 ID 추출 (디버깅 포함)
+  static int? extractPerformanceIdWithDebug(Map<String, dynamic>? data) {
+    if (data == null) {
+      print('❌ 공연 ID 추출 실패: 데이터가 null입니다');
+      return null;
+    }
+
+    print('🔍 공연 ID 추출 시작');
+    print('📋 사용 가능한 필드들: ${data.keys.toList()}');
+
+    final candidates = [
+      'performance_id',
+      'performanceId',
+      'id',
+      'showId',
+      'show_id',
+    ];
+
+    for (final key in candidates) {
+      if (data.containsKey(key)) {
+        final rawValue = data[key];
+        final id = parseId(rawValue, extractNumber: true);
+        print('🔍 필드 "$key": $rawValue -> $id');
+
+        if (id > 0) {
+          print('✅ 공연 ID 추출 성공: $key = $rawValue -> $id');
+          return id;
+        }
+      }
+    }
+
+    print('❌ 공연 ID 추출 실패: 유효한 ID 필드를 찾을 수 없음');
+    return null;
   }
 }

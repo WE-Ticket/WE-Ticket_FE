@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:we_ticket/screens/contents/concert_list_screen.dart';
 import 'package:we_ticket/screens/contents/concert_detail_screen.dart';
 import 'package:we_ticket/screens/mypage/my_page_screen.dart';
 import 'package:we_ticket/screens/mypage/my_tickets_screen.dart';
 import 'package:we_ticket/screens/transfer/transfer_market_screen.dart';
 import 'package:we_ticket/utils/auth_guard.dart';
+import 'package:we_ticket/providers/api_provider.dart';
+import 'package:we_ticket/models/performance_models.dart';
 import 'dart:async';
 import '../../utils/app_colors.dart';
 
@@ -18,73 +21,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _currentSlide = 0;
   Timer? _timer;
 
-  // FIXME 더미 데이터 -> API
-  final List<Map<String, String>> _featuredConcerts = [
-    {
-      'title': '2025 RIIZE CONCERT TOUR',
-      'date': '2025.07.04',
-      'venue': 'KSPO DOME',
-      'image':
-          'https://talkimg.imbc.com/TVianUpload/tvian/TViews/image/2025/05/22/0be8f4e2-5e79-4a67-b80c-b14654cf908c.jpg',
-    },
-    {
-      'title': 'ATEEZ CONCERT 2025',
-      'date': '2025.08.15',
-      'venue': '인스파이어 아레나',
-      'image':
-          'https://tkfile.yes24.com/upload2/PerfBlog/202505/20250527/20250527-53911.jpg',
-    },
-    {
-      'title': '키스오프라이프 콘서트',
-      'date': '2025.09.20',
-      'venue': '서울월드컵경기장',
-      'image':
-          'https://ticketimage.interpark.com/Play/image/large/24/24013254_p.gif',
-    },
-  ];
-
-  //FIXME 더미 데이터 -> API
-  final List<Map<String, String>> _upcomingConcerts = [
-    {
-      'title': 'NewJeans Fan Meeting',
-      'date': '2025.07.25',
-      'venue': '올림픽공원',
-      'image':
-          'https://img4.yna.co.kr/etc/inner/KR/2024/06/25/AKR20240625045000005_01_i_P4.jpg',
-    },
-    {
-      'title': 'SEVENTEEN CONCERT',
-      'date': '2025.08.10',
-      'venue': 'KSPO DOME',
-      'image': 'https://newsimg.sedaily.com/2024/08/14/2DD0HP41GF_1.jpg',
-    },
-    {
-      'title': 'KAI ON',
-      'date': '2025.08.30',
-      'venue': '잠실실내체육관',
-      'image':
-          'https://cdn2.smentertainment.com/wp-content/uploads/2025/04/%EC%B9%B4%EC%9D%B4-%EC%86%94%EB%A1%9C-%EC%BD%98%EC%84%9C%ED%8A%B8-%ED%88%AC%EC%96%B4-KAION-%ED%8F%AC%EC%8A%A4%ED%84%B0-%EC%9D%B4%EB%AF%B8%EC%A7%80-1.jpg',
-    },
-    {
-      'title': '2025 RIIZE CONCERT TOUR',
-      'date': '2025.07.04',
-      'venue': 'KSPO DOME',
-      'image':
-          'https://talkimg.imbc.com/TVianUpload/tvian/TViews/image/2025/05/22/0be8f4e2-5e79-4a67-b80c-b14654cf908c.jpg',
-    },
-    {
-      'title': 'ATEEZ CONCERT 2025',
-      'date': '2025.08.15',
-      'venue': '인스파이어 아레나',
-      'image':
-          'https://tkfile.yes24.com/upload2/PerfBlog/202505/20250527/20250527-53911.jpg',
-    },
-  ];
-
   @override
   void initState() {
     super.initState();
-    _startAutoSlide();
+    // API 데이터 로드
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ApiProvider>().loadDashboardData();
+    });
   }
 
   @override
@@ -94,20 +37,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.dispose();
   }
 
-  void _startAutoSlide() {
-    _timer = Timer.periodic(Duration(seconds: 3), (timer) {
-      if (_pageController.hasClients) {
-        int nextPage = (_currentSlide + 1) % _featuredConcerts.length;
-        _pageController.animateToPage(
-          nextPage,
-          duration: Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-        );
-      }
-    });
+  void _startAutoSlide(int itemCount) {
+    _timer?.cancel();
+    if (itemCount > 1) {
+      _timer = Timer.periodic(Duration(seconds: 3), (timer) {
+        if (_pageController.hasClients && mounted) {
+          int nextPage = (_currentSlide + 1) % itemCount;
+          _pageController.animateToPage(
+            nextPage,
+            duration: Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
+        }
+      });
+    }
   }
 
-  // FIXME API 연동 후 삭제
+  // API 연동 후 삭제 예정 - 기존 호환성을 위해 유지
   String _getArtistFromTitle(String title) {
     if (title.contains('RIIZE')) return 'RIIZE';
     if (title.contains('ATEEZ')) return 'ATEEZ';
@@ -115,7 +61,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return '아티스트';
   }
 
-  // FIXME API 연동 후 삭제
+  // API 연동 후 삭제 예정 - 기존 호환성을 위해 유지
   String _getLocationFromVenue(String venue) {
     if (venue.contains('KSPO') || venue.contains('잠실') || venue.contains('올림픽'))
       return '서울';
@@ -126,75 +72,257 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.surface,
-        elevation: 0,
-        title: Row(
+    return Consumer<ApiProvider>(
+      builder: (context, apiProvider, child) {
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          appBar: AppBar(
+            backgroundColor: AppColors.surface,
+            elevation: 0,
+            title: Row(
+              children: [
+                Icon(
+                  Icons.confirmation_number,
+                  color: AppColors.primary,
+                  size: 28,
+                ),
+                SizedBox(width: 8),
+                Text(
+                  'WE-Ticket',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              IconButton(
+                icon: Icon(Icons.person_outline, color: AppColors.textPrimary),
+                onPressed: () {
+                  AuthGuard.requireAuth(
+                    context,
+                    onAuthenticated: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const MyPageScreen()),
+                      );
+                    },
+                    message: '마이페이지 이용을 위해 로그인이 필요합니다.',
+                  );
+                },
+              ),
+            ],
+          ),
+          body: RefreshIndicator(
+            color: AppColors.primary,
+            onRefresh: () => apiProvider.loadDashboardData(forceRefresh: true),
+            child: SingleChildScrollView(
+              physics: AlwaysScrollableScrollPhysics(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 추천 공연 슬라이더 (API: HOT 공연)
+                  _buildFeaturedSlider(apiProvider),
+
+                  SizedBox(height: 20),
+
+                  // 빠른 액세스 메뉴 (내 티켓, 양도 마켓)
+                  _buildQuickAccess(),
+
+                  SizedBox(height: 20),
+
+                  // 예매 가능한 공연 목록 (API: Available 공연)
+                  _buildUpcomingConcerts(apiProvider),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildFeaturedSlider(ApiProvider apiProvider) {
+    // 로딩 상태
+    if (apiProvider.isLoading && apiProvider.cachedHotPerformances == null) {
+      return Container(
+        height: 220,
+        child: Column(
           children: [
-            Icon(Icons.confirmation_number, color: AppColors.primary, size: 28),
-            SizedBox(width: 8),
-            Text(
-              'WE-Ticket',
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+            Expanded(
+              child: Container(
+                margin: EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.gray300,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(color: AppColors.primary),
+                      SizedBox(height: 16),
+                      Text(
+                        'HOT 공연 로딩 중...',
+                        style: TextStyle(color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: 10),
+            // 로딩 중 점 표시
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                3,
+                (index) => Container(
+                  margin: EdgeInsets.symmetric(horizontal: 3),
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.gray300,
+                  ),
+                ),
               ),
             ),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.person_outline, color: AppColors.textPrimary),
-            onPressed: () {
-              AuthGuard.requireAuth(
-                context,
-                onAuthenticated: () {
-                  // 마이페이지로 이동
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const MyPageScreen()),
-                  );
-                },
-                message: '마이페이지 이용을 위해 로그인이 필요합니다.',
-              );
-            },
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        color: AppColors.primary,
-        onRefresh: () async {
-          // TODO 새로고침 로직
-          await Future.delayed(Duration(seconds: 1));
-        },
-        child: SingleChildScrollView(
-          physics: AlwaysScrollableScrollPhysics(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 추천 공연 슬라이더
-              _buildFeaturedSlider(),
+      );
+    }
 
-              SizedBox(height: 20),
-
-              // 빠른 액세스 메뉴 (내 티켓, 양도 마켓)
-              _buildQuickAccess(),
-
-              SizedBox(height: 20),
-
-              // 예매 가능한 공연 목록
-              _buildUpcomingConcerts(),
-            ],
-          ),
+    // 에러 상태
+    if (apiProvider.errorMessage != null &&
+        apiProvider.cachedHotPerformances == null) {
+      return Container(
+        height: 220,
+        child: Column(
+          children: [
+            Expanded(
+              child: Container(
+                margin: EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.gray100,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.gray300),
+                ),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        color: AppColors.gray600,
+                        size: 48,
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'HOT 공연 로드 실패',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 14,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      TextButton(
+                        onPressed: () =>
+                            apiProvider.loadDashboardData(forceRefresh: true),
+                        child: Text(
+                          '다시 시도',
+                          style: TextStyle(color: AppColors.primary),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                3,
+                (index) => Container(
+                  margin: EdgeInsets.symmetric(horizontal: 3),
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.gray300,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
-      ),
-    );
-  }
+      );
+    }
 
-  Widget _buildFeaturedSlider() {
+    final hotPerformances = apiProvider.cachedHotPerformances;
+
+    // 빈 상태
+    if (hotPerformances == null || hotPerformances.isEmpty) {
+      return Container(
+        height: 220,
+        child: Column(
+          children: [
+            Expanded(
+              child: Container(
+                margin: EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.gray100,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.music_note,
+                        color: AppColors.gray600,
+                        size: 48,
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        '현재 HOT 공연이 없습니다',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                3,
+                (index) => Container(
+                  margin: EdgeInsets.symmetric(horizontal: 3),
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.gray300,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // 정상 데이터 표시
+    _startAutoSlide(hotPerformances.length);
+
     return Container(
       height: 220,
       child: Column(
@@ -206,30 +334,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 setState(() {
                   _currentSlide = index;
                 });
-                //사용자가 수동으로 슬라이드 조작 할 때 타이머 재시작
+                // 사용자가 수동으로 슬라이드 조작할 때 타이머 재시작
                 _timer?.cancel();
-                _startAutoSlide();
+                _startAutoSlide(hotPerformances.length);
               },
-              itemCount: _featuredConcerts.length,
+              itemCount: hotPerformances.length,
               itemBuilder: (context, index) {
-                final concert = _featuredConcerts[index];
+                final performance = hotPerformances[index];
                 return GestureDetector(
                   onTap: () {
-                    // FIXME API 연동 후 수정
+                    // API 데이터를 기존 상세 화면 형식에 맞게 변환
                     final detailConcert = {
-                      'id': 'featured_${index}',
-                      'title': concert['title']!,
-                      'artist': _getArtistFromTitle(concert['title']!),
-                      'date': concert['date']!,
+                      'id': 'featured_${performance.performanceId}',
+                      'title': performance.title.isNotEmpty
+                          ? performance.title
+                          : '제목 없음',
+                      'artist': _getArtistFromTitle(performance.title),
+                      'date': performance.startDate.isNotEmpty
+                          ? performance.startDate
+                          : '날짜 미정',
                       'time': '20:00', // 기본값
-                      'venue': concert['venue']!,
-                      'location': _getLocationFromVenue(concert['venue']!),
-                      'image': concert['image']!,
-                      'price': '99,000원부터', // 기본값
-                      'category': 'K-POP',
+                      'venue': performance.venueName.isNotEmpty
+                          ? performance.venueName
+                          : '장소 미정',
+                      'location': performance.venueLocation.isNotEmpty
+                          ? performance.venueLocation
+                          : _getLocationFromVenue(performance.venueName),
+                      'image': performance.mainImage.isNotEmpty
+                          ? performance.mainImage
+                          : 'https://via.placeholder.com/400x300?text=No+Image',
+                      'price': '가격 미정', // API에서 가격 정보 없음
+                      'category': performance.genre.isNotEmpty
+                          ? performance.genre
+                          : 'K-POP',
                       'status': 'available',
-                      'isHot': true,
-                      'tags': ['HOT', '추천'],
+                      'isHot': performance.isHot,
+                      'tags': performance.tags.isNotEmpty
+                          ? performance.tags
+                          : ['추천'],
                     };
 
                     Navigator.push(
@@ -261,7 +403,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             width: double.infinity,
                             height: double.infinity,
                             child: Image.network(
-                              concert['image']!,
+                              performance.mainImage.isNotEmpty
+                                  ? performance.mainImage
+                                  : 'https://via.placeholder.com/400x300?text=No+Image',
                               fit: BoxFit.cover,
                               loadingBuilder:
                                   (context, child, loadingProgress) {
@@ -287,10 +431,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               errorBuilder: (context, error, stackTrace) {
                                 return Container(
                                   color: AppColors.gray300,
-                                  child: Icon(
-                                    Icons.broken_image,
-                                    size: 50,
-                                    color: AppColors.gray600,
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.music_note,
+                                        size: 50,
+                                        color: AppColors.gray600,
+                                      ),
+                                      SizedBox(height: 8),
+                                      Text(
+                                        performance.title.length > 15
+                                            ? '${performance.title.substring(0, 15)}...'
+                                            : performance.title,
+                                        style: TextStyle(
+                                          color: AppColors.gray600,
+                                          fontSize: 12,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
                                   ),
                                 );
                               },
@@ -317,7 +477,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  concert['title']!,
+                                  performance.title.isNotEmpty
+                                      ? performance.title
+                                      : '제목 없음',
                                   style: TextStyle(
                                     color: AppColors.white,
                                     fontSize: 18,
@@ -328,7 +490,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ),
                                 SizedBox(height: 4),
                                 Text(
-                                  '${concert['date']} | ${concert['venue']}',
+                                  '${performance.startDate.isNotEmpty ? performance.startDate : '날짜 미정'} | ${performance.venueName.isNotEmpty ? performance.venueName : '장소 미정'}',
                                   style: TextStyle(
                                     color: AppColors.white.withOpacity(0.7),
                                     fontSize: 14,
@@ -349,14 +511,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(
-              _featuredConcerts.length,
+              hotPerformances.length > 0
+                  ? hotPerformances.length
+                  : 1, // 최소 1개는 표시
               (index) => Container(
                 margin: EdgeInsets.symmetric(horizontal: 3),
                 width: 8,
                 height: 8,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: _currentSlide == index
+                  color: hotPerformances.length > 0 && _currentSlide == index
                       ? AppColors.primary
                       : AppColors.gray300,
                 ),
@@ -453,7 +617,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildUpcomingConcerts() {
+  Widget _buildUpcomingConcerts(ApiProvider apiProvider) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -485,38 +649,178 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
         SizedBox(height: 8),
-        ListView.builder(
-          shrinkWrap: true,
-          physics: NeverScrollableScrollPhysics(),
-          padding: EdgeInsets.symmetric(horizontal: 16),
-          itemCount: _upcomingConcerts.length,
-          itemBuilder: (context, index) {
-            final concert = _upcomingConcerts[index];
-            return _buildConcertCard(concert);
-          },
-        ),
+
+        // 로딩 상태
+        if (apiProvider.isLoading &&
+            apiProvider.cachedAvailablePerformances == null) ...[
+          ListView.builder(
+            shrinkWrap: true,
+            physics: NeverScrollableScrollPhysics(),
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            itemCount: 3, // 로딩 스켈레톤 3개
+            itemBuilder: (context, index) {
+              return Container(
+                margin: EdgeInsets.only(bottom: 12),
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.gray300,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        color: AppColors.gray400,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            height: 16,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: AppColors.gray400,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Container(
+                            height: 12,
+                            width: 150,
+                            decoration: BoxDecoration(
+                              color: AppColors.gray400,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ]
+        // 에러 상태
+        else if (apiProvider.errorMessage != null &&
+            apiProvider.cachedAvailablePerformances == null) ...[
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.gray100,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.gray300),
+              ),
+              child: Column(
+                children: [
+                  Icon(Icons.error_outline, color: AppColors.gray600, size: 32),
+                  SizedBox(height: 8),
+                  Text(
+                    '예매 가능한 공연 로드 실패',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 14,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () =>
+                        apiProvider.loadDashboardData(forceRefresh: true),
+                    child: Text(
+                      '다시 시도',
+                      style: TextStyle(color: AppColors.primary),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ]
+        // 정상 데이터 또는 빈 상태
+        else ...[
+          _buildAvailablePerformancesList(
+            apiProvider.cachedAvailablePerformances,
+          ),
+        ],
       ],
     );
   }
 
-  Widget _buildConcertCard(Map<String, String> concert) {
+  Widget _buildAvailablePerformancesList(
+    List<PerformanceAvailableItem>? performances,
+  ) {
+    if (performances == null || performances.isEmpty) {
+      return Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16),
+        child: Container(
+          padding: EdgeInsets.all(32),
+          child: Center(
+            child: Column(
+              children: [
+                Icon(Icons.event_note, color: AppColors.gray600, size: 48),
+                SizedBox(height: 16),
+                Text(
+                  '현재 예매 가능한 공연이 없습니다',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: NeverScrollableScrollPhysics(),
+      padding: EdgeInsets.symmetric(horizontal: 16),
+      itemCount: performances.length,
+      itemBuilder: (context, index) {
+        final performance = performances[index];
+        return _buildConcertCard(performance);
+      },
+    );
+  }
+
+  Widget _buildConcertCard(PerformanceAvailableItem performance) {
     return GestureDetector(
       onTap: () {
-        // 카드 데이터를 상세 화면 형식에 맞게 변환
+        // API 데이터를 상세 화면 형식에 맞게 변환
         final detailConcert = {
-          'id': 'upcoming_${concert['title']}',
-          'title': concert['title']!,
-          'artist': _getArtistFromTitle(concert['title']!),
-          'date': concert['date']!,
+          'id': 'upcoming_${performance.performanceId}',
+          'title': performance.title.isNotEmpty ? performance.title : '제목 없음',
+          'artist': _getArtistFromTitle(performance.title),
+          'date': performance.startDate.isNotEmpty
+              ? performance.startDate
+              : '날짜 미정',
           'time': '19:30', // 기본값
-          'venue': concert['venue']!,
-          'location': _getLocationFromVenue(concert['venue']!),
-          'image': concert['image']!,
-          'price': '88,000원부터', // 기본값
-          'category': 'K-POP',
+          'venue': performance.venueName.isNotEmpty
+              ? performance.venueName
+              : '장소 미정',
+          'location': performance.venueLocation.isNotEmpty
+              ? performance.venueLocation
+              : _getLocationFromVenue(performance.venueName),
+          'image': performance.mainImage.isNotEmpty
+              ? performance.mainImage
+              : 'https://via.placeholder.com/400x300?text=No+Image',
+          'price': '가격 미정', // API에서 가격 정보 없음
+          'category': performance.genre.isNotEmpty
+              ? performance.genre
+              : 'K-POP',
           'status': 'available',
-          'isHot': false,
-          'tags': ['예매 가능'],
+          'isHot': performance.isHot,
+          'tags': performance.tags.isNotEmpty ? performance.tags : ['예매 가능'],
         };
 
         Navigator.push(
@@ -550,7 +854,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: Image.network(
-                  concert['image']!,
+                  performance.mainImage.isNotEmpty
+                      ? performance.mainImage
+                      : 'https://via.placeholder.com/60x60?text=No+Image',
                   fit: BoxFit.cover,
                   loadingBuilder: (context, child, loadingProgress) {
                     if (loadingProgress == null) return child;
@@ -567,10 +873,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   errorBuilder: (context, error, stackTrace) {
                     return Container(
                       color: AppColors.primary.withOpacity(0.1),
-                      child: Icon(
-                        Icons.music_note,
-                        color: AppColors.primary,
-                        size: 30,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.music_note,
+                            color: AppColors.primary,
+                            size: 24,
+                          ),
+                          Text(
+                            performance.title.length > 8
+                                ? '${performance.title.substring(0, 8)}...'
+                                : performance.title,
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 8,
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
                     );
                   },
@@ -583,20 +906,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    concert['title']!,
+                    performance.title.isNotEmpty ? performance.title : '제목 없음',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                       color: AppColors.textPrimary,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   SizedBox(height: 4),
                   Text(
-                    '${concert['date']} | ${concert['venue']}',
+                    '${performance.startDate.isNotEmpty ? performance.startDate : '날짜 미정'} | ${performance.venueName.isNotEmpty ? performance.venueName : '장소 미정'}',
                     style: TextStyle(
                       fontSize: 12,
                       color: AppColors.textSecondary,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),

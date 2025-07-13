@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:we_ticket/services/user_service.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/api_provider.dart';
+import '../../models/user_models.dart';
 import '../../utils/app_colors.dart';
 import 'signup_screen.dart';
 
@@ -19,6 +22,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _rememberMe = false;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -46,6 +50,9 @@ class _LoginScreenState extends State<LoginScreen> {
             fontWeight: FontWeight.w600,
           ),
         ),
+        actions: [
+          // 더이상 모드 전환 버튼 불필요
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -88,9 +95,6 @@ class _LoginScreenState extends State<LoginScreen> {
               _buildSignupLink(),
 
               SizedBox(height: 20),
-
-              // 프론트 개발용 더미 데이터
-              _buildDemoAccountsInfo(),
             ],
           ),
         ),
@@ -162,6 +166,9 @@ class _LoginScreenState extends State<LoginScreen> {
         if (value == null || value.isEmpty) {
           return '아이디를 입력해주세요';
         }
+        if (!UserService.validateLoginId(value)) {
+          return '아이디는 4-20자의 영문, 숫자만 사용 가능합니다';
+        }
         return null;
       },
     );
@@ -209,6 +216,9 @@ class _LoginScreenState extends State<LoginScreen> {
         if (value == null || value.isEmpty) {
           return '비밀번호를 입력해주세요';
         }
+        if (!UserService.validatePassword(value)) {
+          return '비밀번호는 4자 이상 입력해주세요';
+        }
         return null;
       },
     );
@@ -254,7 +264,9 @@ class _LoginScreenState extends State<LoginScreen> {
         // 아이디/비밀번호 찾기
         TextButton(
           onPressed: () {
-            //TODO
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('아이디/비밀번호 찾기 기능은 추후 구현 예정입니다.')),
+            );
           },
           child: Text(
             '아이디/비밀번호 찾기',
@@ -270,13 +282,15 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildLoginButton() {
-    return Consumer<AuthProvider>(
-      builder: (context, authProvider, child) {
+    return Consumer2<AuthProvider, ApiProvider>(
+      builder: (context, authProvider, apiProvider, child) {
+        final isLoading = _isLoading || apiProvider.isLoading;
+
         return SizedBox(
           width: double.infinity,
           height: 56,
           child: ElevatedButton(
-            onPressed: authProvider.isLoading ? null : _handleLogin,
+            onPressed: isLoading ? null : _handleLogin,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: AppColors.white,
@@ -286,7 +300,7 @@ class _LoginScreenState extends State<LoginScreen> {
               elevation: 2,
               shadowColor: AppColors.primary.withOpacity(0.3),
             ),
-            child: authProvider.isLoading
+            child: isLoading
                 ? SizedBox(
                     width: 24,
                     height: 24,
@@ -436,98 +450,96 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  //FIXME 삭제
-  Widget _buildDemoAccountsInfo() {
-    return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.gray50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.gray200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.developer_mode, color: AppColors.warning, size: 20),
-              SizedBox(width: 8),
-              Text(
-                '개발용 테스트 더미  계정',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 8),
-          _buildDemoAccount('testuser', 'password123'),
-          _buildDemoAccount('weticket', '1234'),
-          _buildDemoAccount('demo', 'demo'),
-        ],
-      ),
-    );
-  }
-
-  //FIXME 추후 삭제
-  Widget _buildDemoAccount(String id, String password) {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _idController.text = id;
-          _passwordController.text = password;
-        });
-      },
-      child: Container(
-        margin: EdgeInsets.only(top: 6),
-        padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                '$id / $password',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
-                  fontFamily: 'monospace',
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    final authProvider = context.read<AuthProvider>();
-    final success = await authProvider.login(
-      _idController.text.trim(),
-      _passwordController.text,
-    );
+    setState(() {
+      _isLoading = true;
+    });
 
-    if (success) {
-      // 로그인 성공
-      if (widget.onLoginSuccess != null) {
-        widget.onLoginSuccess!();
+    try {
+      final loginId = _idController.text.trim();
+      final password = _passwordController.text;
+
+      // API 로그인만 사용
+      await _handleApiLogin(loginId, password);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
-      Navigator.pop(context);
-    } else {
-      // 로그인 실패
+    }
+  }
+
+  Future<void> _handleApiLogin(String loginId, String password) async {
+    try {
+      final apiProvider = context.read<ApiProvider>();
+      final loginRequest = LoginRequest(
+        loginId: loginId,
+        loginPassword: password,
+      );
+
+      print('🔐 API 로그인 시도: $loginId');
+      final response = await apiProvider.apiService.user.login(loginRequest);
+
+      if (response.isSuccess) {
+        // API 로그인 성공
+        print('✅ API 로그인 성공: ${response.message}');
+
+        // 사용자 정보 저장 (UserService)
+        await apiProvider.apiService.user.saveUserInfo(response);
+
+        // AuthProvider 상태 업데이트 (중요!)
+        final authProvider = context.read<AuthProvider>();
+        await authProvider.setLoggedIn(
+          userId: response.userId.toString(),
+          userName: response.message, // 또는 실제 사용자 이름이 있다면 사용
+          // token: response.token, // 토큰이 있다면 추가
+        );
+
+        // 로그인 성공 처리
+        if (widget.onLoginSuccess != null) {
+          widget.onLoginSuccess!();
+        }
+        Navigator.pop(context);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('로그인 성공!'),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        // API 로그인 실패
+        print('❌ API 로그인 실패: ${response.message}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('로그인 실패: ${response.message}'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      print('❌ API 로그인 오류: $e');
+      String errorMessage = '로그인 중 오류가 발생했습니다.';
+
+      // 에러 타입에 따른 메시지 설정
+      if (e.toString().contains('연결')) {
+        errorMessage = '서버에 연결할 수 없습니다. 네트워크를 확인해주세요.';
+      } else if (e.toString().contains('401') || e.toString().contains('로그인')) {
+        errorMessage = '아이디 또는 비밀번호가 올바르지 않습니다.';
+      } else if (e.toString().contains('500')) {
+        errorMessage = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('아이디 또는 비밀번호가 올바르지 않습니다.'),
+          content: Text(errorMessage),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ),
@@ -536,6 +548,11 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _handleSocialLogin(String provider) {
-    // TODO: 실제 소셜 로그인 구현
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$provider 로그인은 추후 구현 예정입니다.'),
+        duration: Duration(seconds: 2),
+      ),
+    );
   }
 }

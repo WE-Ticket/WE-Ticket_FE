@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:we_ticket/screens/ticketing/seat_selection_screen.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/api_provider.dart';
+import '../../models/ticket_models.dart';
 import '../../utils/app_colors.dart';
+import '../../utils/json_parser.dart';
 
 class ScheduleSelectionScreen extends StatefulWidget {
-  final Map<String, dynamic>? concertInfo; // nullable로 변경
+  final Map<String, dynamic>? concertInfo;
 
   const ScheduleSelectionScreen({Key? key, this.concertInfo}) : super(key: key);
 
@@ -15,70 +18,62 @@ class ScheduleSelectionScreen extends StatefulWidget {
 }
 
 class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
-  String? _selectedShowTime;
+  int? _selectedSessionId;
+  PerformanceSchedule? _scheduleData;
+  bool _isLoading = true;
+  String? _errorMessage;
 
-  // FIXME: 더미 데이터 - 실제로는 API에서 가져올 예정
-  final List<Map<String, dynamic>> _allSchedules = [
-    {
-      'showId': 'show_001',
-      'date': '2025년 7월 4일',
-      'weekday': '금요일',
-      'time': '18:00',
-      'availableSeats': 1250,
-      'totalSeats': 1500,
-      'prices': {'VIP': 220000, 'R': 165000, 'S': 132000, 'A': 99000},
-      'isAvailable': true,
-    },
-    {
-      'showId': 'show_002',
-      'date': '2025년 7월 4일',
-      'weekday': '금요일',
-      'time': '20:00',
-      'availableSeats': 980,
-      'totalSeats': 1500,
-      'prices': {'VIP': 220000, 'R': 165000, 'S': 132000, 'A': 99000},
-      'isAvailable': true,
-    },
-    {
-      'showId': 'show_003',
-      'date': '2025년 7월 5일',
-      'weekday': '토요일',
-      'time': '19:00',
-      'availableSeats': 0,
-      'totalSeats': 1500,
-      'prices': {'VIP': 220000, 'R': 165000, 'S': 132000, 'A': 99000},
-      'isAvailable': false, // 매진
-    },
-    {
-      'showId': 'show_004',
-      'date': '2025년 7월 6일',
-      'weekday': '일요일',
-      'time': '15:00',
-      'availableSeats': 1350,
-      'totalSeats': 1500,
-      'prices': {'VIP': 220000, 'R': 165000, 'S': 132000, 'A': 99000},
-      'isAvailable': true,
-    },
-    {
-      'showId': 'show_005',
-      'date': '2025년 7월 6일',
-      'weekday': '일요일',
-      'time': '19:00',
-      'availableSeats': 890,
-      'totalSeats': 1500,
-      'prices': {'VIP': 220000, 'R': 165000, 'S': 132000, 'A': 99000},
-      'isAvailable': true,
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadScheduleData();
+  }
+
+  /// 공연 스케줄 데이터 로드
+  Future<void> _loadScheduleData() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+
+      final apiProvider = context.read<ApiProvider>();
+
+      // JsonParserUtils를 사용하여 안전하게 ID 추출
+      final performanceId = JsonParserUtils.extractPerformanceIdWithDebug(
+        widget.concertInfo,
+      );
+
+      if (performanceId == null) {
+        throw Exception(
+          '유효한 공연 ID를 찾을 수 없습니다.\n전달받은 데이터: ${widget.concertInfo}',
+        );
+      }
+
+      print('🎫 공연 스케줄 로딩 시작 - 공연 ID: $performanceId');
+
+      final schedule = await apiProvider.apiService.ticket
+          .getPerformanceSchedule(performanceId);
+
+      setState(() {
+        _scheduleData = schedule;
+        _isLoading = false;
+      });
+
+      print('✅ 공연 스케줄 로딩 완료 - ${schedule.sessions.length}개 세션');
+    } catch (e) {
+      print('❌ 공연 스케줄 로딩 실패: $e');
+      setState(() {
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
     final isAuthenticated = authProvider.user != null;
-
-    final prices = _allSchedules.isNotEmpty
-        ? _allSchedules.first['prices']
-        : {};
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -97,33 +92,136 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
             fontWeight: FontWeight.w600,
           ),
         ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.refresh, color: AppColors.textPrimary),
+            onPressed: _loadScheduleData,
+          ),
+        ],
       ),
       body: Column(
         children: [
           _buildConcertHeader(),
-
-          Expanded(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [_buildScheduleListSection()],
-              ),
-            ),
-          ),
-
+          Expanded(child: _buildMainContent()),
           _buildNextButton(isAuthenticated),
         ],
       ),
     );
   }
 
+  Widget _buildMainContent() {
+    if (_isLoading) {
+      return _buildLoadingState();
+    }
+
+    if (_errorMessage != null) {
+      return _buildErrorState();
+    }
+
+    if (_scheduleData == null) {
+      return _buildEmptyState();
+    }
+
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [_buildScheduleListSection()],
+      ),
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(color: AppColors.primary),
+          SizedBox(height: 16),
+          Text(
+            '공연 일정을 불러오고 있습니다...',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 64, color: AppColors.error),
+            SizedBox(height: 16),
+            Text(
+              '일정 정보를 불러올 수 없습니다',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              _errorMessage ?? '네트워크 연결을 확인해주세요',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: _loadScheduleData,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.white,
+              ),
+              child: Text('다시 시도'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.event_busy, size: 64, color: AppColors.gray400),
+            SizedBox(height: 16),
+            Text(
+              '예매 가능한 일정이 없습니다',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              '현재 예매 가능한 공연 일정이 없습니다',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildConcertHeader() {
-    final concertData = widget.concertInfo ?? {};
-    final title = concertData['title'] ?? '공연 제목';
-    final artist = concertData['artist'] ?? '아티스트';
-    final venue = concertData['venue'] ?? '공연장';
-    final poster = concertData['poster'] ?? '';
+    // API 데이터가 있으면 해당 데이터 사용, 없으면 기존 concertInfo 사용
+    final title =
+        _scheduleData?.title ?? widget.concertInfo?['title'] ?? '공연 제목';
+    final artist =
+        _scheduleData?.performerName ?? widget.concertInfo?['artist'] ?? '아티스트';
+    final venue =
+        _scheduleData?.venueName ?? widget.concertInfo?['venue'] ?? '공연장';
+    final poster = widget.concertInfo?['poster'] ?? '';
 
     return Container(
       color: AppColors.surface,
@@ -195,6 +293,11 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
   }
 
   Widget _buildScheduleListSection() {
+    if (_scheduleData == null) return SizedBox.shrink();
+
+    final availableSessions = _scheduleData!.availableSessions;
+    final soldOutSessions = _scheduleData!.soldOutSessions;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -213,18 +316,33 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
         ),
         SizedBox(height: 16),
 
-        // 회차 리스트
-        ..._allSchedules
-            .map((schedule) => _buildShowTimeCard(schedule))
-            .toList(),
+        // 예매 가능한 세션들
+        if (availableSessions.isNotEmpty) ...[
+          ...availableSessions.map((session) => _buildSessionCard(session)),
+        ],
+
+        // 매진 세션들
+        if (soldOutSessions.isNotEmpty) ...[
+          SizedBox(height: 24),
+          Text(
+            '매진된 일정',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          SizedBox(height: 12),
+          ...soldOutSessions.map((session) => _buildSessionCard(session)),
+        ],
       ],
     );
   }
 
   Widget _buildPriceInfoCard() {
-    final prices = _allSchedules.isNotEmpty
-        ? _allSchedules.first['prices']
-        : {};
+    if (_scheduleData == null || _scheduleData!.seatPricings.isEmpty) {
+      return SizedBox.shrink();
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -241,9 +359,9 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
         Wrap(
           spacing: 16,
           runSpacing: 8,
-          children: prices.entries.map<Widget>((entry) {
+          children: _scheduleData!.seatPricings.map<Widget>((pricing) {
             return Text(
-              '${entry.key}석 ${_formatPrice(entry.value)}원',
+              '${pricing.seatGrade}석 ${pricing.priceDisplay}',
               style: TextStyle(
                 fontSize: 13,
                 color: AppColors.primary,
@@ -252,43 +370,59 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
             );
           }).toList(),
         ),
+        SizedBox(height: 8),
+        Text(
+          '최저 ${_scheduleData!.minPrice.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}원 ~ 최고 ${_scheduleData!.maxPrice.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}원',
+          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+        ),
       ],
     );
   }
 
-  Widget _buildShowTimeCard(Map<String, dynamic> schedule) {
-    final isSelected = _selectedShowTime == schedule['showId'];
+  Widget _buildSessionCard(PerformanceSession session) {
+    final isSelected = _selectedSessionId == session.performanceSessionId;
+    final isAvailable = session.isAvailable;
 
     return Container(
       margin: EdgeInsets.only(bottom: 12),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {
-            setState(() {
-              _selectedShowTime = schedule['showId'];
-            });
-          },
+          onTap: isAvailable
+              ? () {
+                  setState(() {
+                    _selectedSessionId = session.performanceSessionId;
+                  });
+                }
+              : null,
           borderRadius: BorderRadius.circular(12),
           child: Container(
             padding: EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: isSelected
+              color: !isAvailable
+                  ? AppColors.gray100
+                  : isSelected
                   ? AppColors.primary.withOpacity(0.1)
                   : AppColors.surface,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: isSelected ? AppColors.primary : AppColors.border,
+                color: !isAvailable
+                    ? AppColors.gray300
+                    : isSelected
+                    ? AppColors.primary
+                    : AppColors.border,
                 width: isSelected ? 2 : 1,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.shadowLight,
-                  spreadRadius: 1,
-                  blurRadius: 4,
-                  offset: Offset(0, 2),
-                ),
-              ],
+              boxShadow: !isAvailable
+                  ? []
+                  : [
+                      BoxShadow(
+                        color: AppColors.shadowLight,
+                        spreadRadius: 1,
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -301,11 +435,13 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '${schedule['date']} (${schedule['weekday']})',
+                            session.dateDisplay,
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              color: AppColors.textPrimary,
+                              color: isAvailable
+                                  ? AppColors.textPrimary
+                                  : AppColors.textSecondary,
                             ),
                           ),
                           SizedBox(height: 4),
@@ -314,15 +450,19 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
                               Icon(
                                 Icons.access_time,
                                 size: 18,
-                                color: AppColors.primary,
+                                color: isAvailable
+                                    ? AppColors.primary
+                                    : AppColors.gray400,
                               ),
                               SizedBox(width: 6),
                               Text(
-                                schedule['time'],
+                                session.timeDisplay,
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
-                                  color: AppColors.primary,
+                                  color: isAvailable
+                                      ? AppColors.primary
+                                      : AppColors.gray400,
                                 ),
                               ),
                             ],
@@ -330,10 +470,34 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
                         ],
                       ),
                     ),
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: session.isSoldOut
+                            ? AppColors.error.withOpacity(0.1)
+                            : session.remainingSeats < 10
+                            ? AppColors.warning.withOpacity(0.1)
+                            : AppColors.success.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Text(
+                        session.availabilityText,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: session.isSoldOut
+                              ? AppColors.error
+                              : session.remainingSeats < 10
+                              ? AppColors.warning
+                              : AppColors.success,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
-
-                SizedBox(height: 12),
               ],
             ),
           ),
@@ -343,7 +507,8 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
   }
 
   Widget _buildNextButton(bool isAuthenticated) {
-    final canProceed = _selectedShowTime != null && isAuthenticated;
+    final canProceed =
+        _selectedSessionId != null && isAuthenticated && _scheduleData != null;
 
     return Container(
       padding: EdgeInsets.all(16),
@@ -360,8 +525,7 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
       ),
       child: Column(
         children: [
-          if (_selectedShowTime != null) _buildSelectedShowSummary(),
-
+          if (_selectedSessionId != null) _buildSelectedSessionSummary(),
           SizedBox(
             width: double.infinity,
             height: 56,
@@ -381,7 +545,7 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
               child: Text(
                 !isAuthenticated
                     ? '본인 인증 후 예매 가능'
-                    : _selectedShowTime == null
+                    : _selectedSessionId == null
                     ? '회차를 선택해주세요'
                     : '좌석 선택하기',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
@@ -393,11 +557,13 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
     );
   }
 
-  Widget _buildSelectedShowSummary() {
-    if (_selectedShowTime == null) return SizedBox.shrink();
+  Widget _buildSelectedSessionSummary() {
+    if (_selectedSessionId == null || _scheduleData == null) {
+      return SizedBox.shrink();
+    }
 
-    final selectedSchedule = _allSchedules.firstWhere(
-      (schedule) => schedule['showId'] == _selectedShowTime,
+    final selectedSession = _scheduleData!.sessions.firstWhere(
+      (session) => session.performanceSessionId == _selectedSessionId,
     );
 
     return Container(
@@ -414,7 +580,7 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
           SizedBox(width: 8),
           Expanded(
             child: Text(
-              '${selectedSchedule['date']} (${selectedSchedule['weekday']}) ${selectedSchedule['time']}',
+              '${selectedSession.dateTimeDisplay} (${selectedSession.availabilityText})',
               style: TextStyle(
                 fontSize: 14,
                 color: AppColors.primary,
@@ -424,13 +590,6 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  String _formatPrice(int price) {
-    return price.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]},',
     );
   }
 
@@ -465,13 +624,29 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
   }
 
   void _goToSeatSelection() {
-    final selectedSchedule = _allSchedules.firstWhere(
-      (schedule) => schedule['showId'] == _selectedShowTime,
+    if (_scheduleData == null || _selectedSessionId == null) return;
+
+    final selectedSession = _scheduleData!.sessions.firstWhere(
+      (session) => session.performanceSessionId == _selectedSessionId,
     );
 
     final selectionData = {
-      'concertInfo': widget.concertInfo ?? {}, // null 체크
-      'selectedSchedule': selectedSchedule,
+      'performanceId': _scheduleData!.performanceId,
+      'performanceSessionId': selectedSession.performanceSessionId,
+      'concertInfo': {
+        'title': _scheduleData!.title,
+        'artist': _scheduleData!.performerName,
+        'venue': _scheduleData!.venueName,
+        'poster': widget.concertInfo?['poster'] ?? '',
+        ...?widget.concertInfo,
+      },
+      'selectedSession': {
+        'sessionId': selectedSession.performanceSessionId,
+        'dateTime': selectedSession.dateTimeDisplay,
+        'availabilityText': selectedSession.availabilityText,
+        'remainingSeats': selectedSession.remainingSeats,
+      },
+      'scheduleData': _scheduleData,
     };
 
     Navigator.push(

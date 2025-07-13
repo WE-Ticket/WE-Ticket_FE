@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:we_ticket/providers/api_provider.dart';
+import 'package:we_ticket/models/performance_models.dart';
 import '../../utils/app_colors.dart';
 import 'concert_detail_screen.dart';
 
@@ -10,99 +13,103 @@ class ConcertListScreen extends StatefulWidget {
 class _ConcertListScreenState extends State<ConcertListScreen> {
   String _selectedCategory = '전체';
   String _sortBy = '최신순';
-
-  // FIXME 더미 데이터 -> API
-  final List<Map<String, dynamic>> _concerts = [
-    {
-      'id': 'concert_1',
-      'title': '2025 RIIZE CONCERT TOUR',
-      'artist': 'RIIZE',
-      'date': '2025.07.04',
-      'time': '20:00',
-      'venue': 'KSPO DOME',
-      'location': '서울',
-      'image':
-          'https://talkimg.imbc.com/TVianUpload/tvian/TViews/image/2025/05/22/0be8f4e2-5e79-4a67-b80c-b14654cf908c.jpg',
-      'price': '99,000원부터',
-      'category': 'K-POP',
-      'status': 'available', // available, soldout, coming_soon
-      'isHot': true,
-      'tags': ['HOT', '라이즈'],
-    },
-    {
-      'id': 'concert_2',
-      'title': 'NewJeans Fan Meeting',
-      'artist': 'NewJeans',
-      'date': '2025.07.25',
-      'time': '19:00',
-      'venue': '올림픽공원 체조경기장',
-      'location': '서울',
-      'image':
-          'https://img4.yna.co.kr/etc/inner/KR/2024/06/25/AKR20240625045000005_01_i_P4.jpg',
-      'price': '88,000원부터',
-      'category': 'K-POP',
-      'status': 'available',
-      'isHot': false,
-      'tags': ['뉴진스', '팬미팅'],
-    },
-    {
-      'id': 'concert_3',
-      'title': 'SEVENTEEN CONCERT',
-      'artist': 'SEVENTEEN',
-      'date': '2025.08.10',
-      'time': '18:00',
-      'venue': 'KSPO DOME',
-      'location': '서울',
-      'image': 'https://newsimg.sedaily.com/2024/08/14/2DD0HP41GF_1.jpg',
-      'price': '132,000원부터',
-      'category': 'K-POP',
-      'status': 'soldout',
-      'isHot': true,
-      'tags': ['세븐틴', 'SOLD OUT'],
-    },
-    {
-      'id': 'concert_4',
-      'title': 'KAI ON',
-      'artist': 'KAI',
-      'date': '2025.08.30',
-      'time': '19:30',
-      'venue': '잠실실내체육관',
-      'location': '서울',
-      'image':
-          'https://cdn2.smentertainment.com/wp-content/uploads/2025/04/%EC%B9%B4%EC%9D%B4-%EC%86%94%EB%A1%9C-%EC%BD%98%EC%84%9C%ED%8A%B8-%ED%88%AC%EC%96%B4-KAION-%ED%8F%AC%EC%8A%A4%ED%84%B0-%EC%9D%B4%EB%AF%B8%EC%A7%80-1.jpg',
-      'price': '110,000원부터',
-      'category': 'K-POP',
-      'status': 'coming_soon',
-      'isHot': false,
-      'tags': ['KAI', '곧 오픈'],
-    },
-    {
-      'id': 'concert_5',
-      'title': 'ATEEZ CONCERT 2025',
-      'artist': 'ATEEZ',
-      'date': '2025.08.15',
-      'time': '20:00',
-      'venue': '인스파이어 아레나',
-      'location': '인천',
-      'image':
-          'https://tkfile.yes24.com/upload2/PerfBlog/202505/20250527/20250527-53911.jpg',
-      'price': '99,000원부터',
-      'category': 'K-POP',
-      'status': 'available',
-      'isHot': false,
-      'tags': ['에이티즈'],
-    },
-  ];
+  List<PerformanceListItem> _allPerformances = [];
+  bool _isLoading = false;
+  String? _errorMessage;
 
   final List<String> _categories = ['전체', 'K-POP', '발라드', '록', '힙합', '인디'];
   final List<String> _sortOptions = ['최신순', '인기순', '가격순', '날짜순'];
 
+  @override
+  void initState() {
+    super.initState();
+    _loadAllPerformances();
+  }
+
+  Future<void> _loadAllPerformances() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final apiProvider = context.read<ApiProvider>();
+      final response = await apiProvider.apiService.performance
+          .getAllPerformances();
+
+      setState(() {
+        _allPerformances = response.results;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = '공연 목록을 불러올 수 없습니다. 다시 시도해주세요.';
+        _isLoading = false;
+      });
+      print('❌ 전체 공연 목록 로드 실패: $e');
+    }
+  }
+
+  // FIXME API 연동 후 삭제 - 기존 호환성을 위해 유지
+  String _getArtistFromTitle(String title) {
+    if (title.contains('RIIZE')) return 'RIIZE';
+    if (title.contains('ATEEZ')) return 'ATEEZ';
+    if (title.contains('키스오브라이프') || title.contains('Kiss'))
+      return 'Kiss Of Life';
+    if (title.contains('NewJeans')) return 'NewJeans';
+    if (title.contains('SEVENTEEN')) return 'SEVENTEEN';
+    if (title.contains('KAI')) return 'KAI';
+    return '아티스트';
+  }
+
+  // FIXME API 연동 후 삭제 - 기존 호환성을 위해 유지
+  String _getLocationFromVenue(String venue) {
+    if (venue.contains('KSPO') || venue.contains('잠실') || venue.contains('올림픽'))
+      return '서울';
+    if (venue.contains('인스파이어')) return '인천';
+    if (venue.contains('서울월드컵')) return '서울';
+    return '서울';
+  }
+
+  // API 데이터를 기존 형식으로 변환
+  Map<String, dynamic> _convertToLegacyFormat(PerformanceListItem performance) {
+    return {
+      'id': 'performance_${performance.performanceId}',
+      'title': performance.title.isNotEmpty ? performance.title : '제목 없음',
+      'artist': performance.performerName.isNotEmpty
+          ? performance.performerName
+          : _getArtistFromTitle(performance.title),
+      'date': performance.startDate.isNotEmpty
+          ? performance.startDate
+          : '날짜 미정',
+      'time': '19:30', // 기본값 (API에서 시간 정보 없음)
+      'venue': performance.venueName.isNotEmpty
+          ? performance.venueName
+          : '장소 미정',
+      'location': _getLocationFromVenue(performance.venueName),
+      'image': performance.mainImage.isNotEmpty
+          ? performance.mainImage
+          : 'https://via.placeholder.com/400x300?text=No+Image',
+      'price': performance.minPrice > 0 ? performance.priceDisplay : '가격 미정',
+      'category': performance.genre.isNotEmpty ? performance.genre : 'K-POP',
+      'status': performance.isSoldOut
+          ? 'soldout'
+          : (performance.isTicketOpen ? 'available' : 'coming_soon'),
+      'isHot': performance.isHot,
+      'tags': performance.tags.isNotEmpty
+          ? performance.tags
+          : [performance.statusText],
+    };
+  }
+
   List<Map<String, dynamic>> get _filteredConcerts {
-    List<Map<String, dynamic>> filtered = _concerts;
+    List<Map<String, dynamic>> converted = _allPerformances
+        .map((performance) => _convertToLegacyFormat(performance))
+        .toList();
 
     // 카테고리 필터링
     if (_selectedCategory != '전체') {
-      filtered = filtered
+      converted = converted
           .where((concert) => concert['category'] == _selectedCategory)
           .toList();
     }
@@ -113,17 +120,32 @@ class _ConcertListScreenState extends State<ConcertListScreen> {
         // 기본 순서 유지
         break;
       case '인기순':
-        filtered.sort((a, b) => (b['isHot'] ? 1 : 0) - (a['isHot'] ? 1 : 0));
+        converted.sort((a, b) => (b['isHot'] ? 1 : 0) - (a['isHot'] ? 1 : 0));
         break;
       case '가격순':
-        filtered.sort((a, b) => a['price'].compareTo(b['price']));
+        converted.sort((a, b) {
+          // 가격 문자열에서 숫자만 추출해서 비교
+          String priceA = a['price'].toString().replaceAll(
+            RegExp(r'[^0-9]'),
+            '',
+          );
+          String priceB = b['price'].toString().replaceAll(
+            RegExp(r'[^0-9]'),
+            '',
+          );
+          int numA = int.tryParse(priceA) ?? 0;
+          int numB = int.tryParse(priceB) ?? 0;
+          return numA.compareTo(numB);
+        });
         break;
       case '날짜순':
-        filtered.sort((a, b) => a['date'].compareTo(b['date']));
+        converted.sort(
+          (a, b) => a['date'].toString().compareTo(b['date'].toString()),
+        );
         break;
     }
 
-    return filtered;
+    return converted;
   }
 
   @override
@@ -149,7 +171,10 @@ class _ConcertListScreenState extends State<ConcertListScreen> {
           IconButton(
             icon: Icon(Icons.search, color: AppColors.textPrimary),
             onPressed: () {
-              // 검색 기능
+              // TODO: 검색 기능 구현
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text('검색 기능은 추후 구현 예정입니다.')));
             },
           ),
         ],
@@ -160,24 +185,150 @@ class _ConcertListScreenState extends State<ConcertListScreen> {
           _buildFilterSection(),
 
           // 공연 목록
-          Expanded(
-            child: RefreshIndicator(
-              color: AppColors.primary,
-              onRefresh: () async {
-                // TODO 새로고침 로직
-                await Future.delayed(Duration(seconds: 1));
-              },
-              child: ListView.builder(
-                padding: EdgeInsets.all(16),
-                itemCount: _filteredConcerts.length,
-                itemBuilder: (context, index) {
-                  final concert = _filteredConcerts[index];
-                  return _buildConcertCard(concert);
-                },
-              ),
-            ),
-          ),
+          Expanded(child: _buildContentSection()),
         ],
+      ),
+    );
+  }
+
+  Widget _buildContentSection() {
+    // 로딩 상태
+    if (_isLoading) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(color: AppColors.primary),
+            SizedBox(height: 16),
+            Text(
+              '공연 목록을 불러오는 중...',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // 에러 상태
+    if (_errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 64, color: AppColors.gray600),
+              SizedBox(height: 16),
+              Text(
+                '공연 목록 로드 실패',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                _errorMessage!,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+              SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _loadAllPerformances,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: Text(
+                  '다시 시도',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // 빈 상태
+    if (_allPerformances.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.event_note, size: 64, color: AppColors.gray600),
+              SizedBox(height: 16),
+              Text(
+                '등록된 공연이 없습니다',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                '곧 다양한 공연이 업데이트될 예정입니다.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // 정상 데이터 표시
+    final filteredConcerts = _filteredConcerts;
+
+    if (filteredConcerts.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.search_off, size: 64, color: AppColors.gray600),
+              SizedBox(height: 16),
+              Text(
+                '조건에 맞는 공연이 없습니다',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                '다른 카테고리나 정렬 조건을 시도해보세요.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: _loadAllPerformances,
+      child: ListView.builder(
+        padding: EdgeInsets.all(16),
+        itemCount: filteredConcerts.length,
+        itemBuilder: (context, index) {
+          final concert = filteredConcerts[index];
+          return _buildConcertCard(concert);
+        },
       ),
     );
   }
@@ -327,10 +478,26 @@ class _ConcertListScreenState extends State<ConcertListScreen> {
                       errorBuilder: (context, error, stackTrace) {
                         return Container(
                           color: AppColors.gray300,
-                          child: Icon(
-                            Icons.broken_image,
-                            size: 50,
-                            color: AppColors.gray600,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.music_note,
+                                size: 50,
+                                color: AppColors.gray600,
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                concert['title'].toString().length > 20
+                                    ? '${concert['title'].toString().substring(0, 20)}...'
+                                    : concert['title'].toString(),
+                                style: TextStyle(
+                                  color: AppColors.gray600,
+                                  fontSize: 12,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
                           ),
                         );
                       },
@@ -415,7 +582,9 @@ class _ConcertListScreenState extends State<ConcertListScreen> {
                   Wrap(
                     spacing: 6,
                     runSpacing: 6,
-                    children: concert['tags'].map<Widget>((tag) {
+                    children: (concert['tags'] as List<dynamic>).map<Widget>((
+                      tag,
+                    ) {
                       return Container(
                         padding: EdgeInsets.symmetric(
                           horizontal: 8,
@@ -426,7 +595,7 @@ class _ConcertListScreenState extends State<ConcertListScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          tag,
+                          tag.toString(),
                           style: TextStyle(
                             color: AppColors.primary,
                             fontSize: 11,
@@ -489,6 +658,8 @@ class _ConcertListScreenState extends State<ConcertListScreen> {
           child: Text(
             text,
             style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],

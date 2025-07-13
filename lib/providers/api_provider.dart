@@ -5,8 +5,8 @@ import '../models/user_models.dart';
 
 /// API 서비스를 앱 전체에서 공유하기 위한 Provider
 ///
-/// ChangeNotifier를 상속받아 상태 변화를 UI에 알릴 수 있습니다.
-/// Provider 패키지와 함께 사용하면 의존성 주입과 상태 관리가 편해집니다.
+/// ChangeNotifier를 상속받아 상태 변화를 UI에 알릴 수 있음.
+/// Provider 패키지와 함께 사용하면 의존성 주입과 상태 관리가 편해진다고...
 class ApiProvider extends ChangeNotifier {
   late final ApiService _apiService;
 
@@ -51,7 +51,7 @@ class ApiProvider extends ChangeNotifier {
   /// Provider 초기화
   Future<void> _initializeProvider() async {
     try {
-      print('🔧 ApiProvider 초기화 시작');
+      print('ApiProvider 초기화 시작');
 
       // 네트워크 연결 확인
       final isConnected = await _apiService.checkConnection();
