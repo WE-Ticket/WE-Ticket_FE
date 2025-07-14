@@ -18,6 +18,20 @@ class ApiConstants {
       '/tickets/performance/{performance_id}/session/{performance_session_id}/zone/{seat_zone}';
   static const String createTicket = '/tickets/create';
 
+  // Transfer (추후 더 추가될 예정 -> 파라미터들이 다 누락됨)
+  static const String transferTicketList = '/transfers/ticket-list/';
+  static const String transferTicketDetail =
+      '/transfers/ticket-detail/{transfer_ticket_id}/';
+  static const String privateTransferDetail =
+      '/transfers/private-ticket-detail/';
+  static const String uniqueCodeLookup = '/transfers/unique-code-lookup/';
+  static const String uniqueCodeRegeneration =
+      '/transfers/unique-code-regeneration/';
+  static const String myRegisteredTickets =
+      '/transfers/my-ticket-list/registered/';
+  static const String myTransferableTickets =
+      '/transfers/my-ticket-list/transferable/';
+
   // User
   static const String login = '/users/login/';
   static const String signup = '/users/signup/';

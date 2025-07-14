@@ -2,6 +2,7 @@ import '../core/dio_client.dart';
 import 'performance_service.dart';
 import 'ticket_service.dart';
 import 'user_service.dart';
+import 'transfer_service.dart'; // 새로 추가
 
 /// 모든 API 서비스를 통합 관리하는 클래스
 ///
@@ -14,6 +15,7 @@ class ApiService {
   late final PerformanceService performance;
   late final TicketService ticket;
   late final UserService user;
+  late final TransferService transfer; // 새로 추가
 
   /// 생성자
   ///
@@ -22,8 +24,9 @@ class ApiService {
     performance = PerformanceService(_dioClient);
     ticket = TicketService(_dioClient);
     user = UserService(_dioClient);
+    transfer = TransferService(_dioClient); // 새로 추가
 
-    print('🚀 ApiService 초기화 완료');
+    print('🚀 ApiService 초기화 완료 (Transfer 서비스 포함)');
   }
 
   /// 팩토리 생성자 - 기본 설정으로 생성
@@ -89,6 +92,57 @@ class ApiService {
     }
   }
 
+  /// 양도 마켓 대시보드 데이터 로드 (새로 추가)
+  ///
+  /// 양도 마켓 메인 화면에서 필요한 데이터를 로드합니다.
+  Future<Map<String, dynamic>> loadTransferMarketData() async {
+    try {
+      print('🎫 양도 마켓 데이터 로딩 시작...');
+
+      // 양도 가능한 티켓 리스트 조회
+      final transferList = await transfer.getTransferTicketList();
+
+      final transferMarketData = {
+        'transferTickets': transferList.results,
+        'totalCount': transferList.count,
+        'loadedAt': DateTime.now(),
+      };
+
+      print('✅ 양도 마켓 데이터 로딩 완료 (${transferList.results.length}개)');
+      return transferMarketData;
+    } catch (e) {
+      print('❌ 양도 마켓 데이터 로딩 실패: $e');
+      rethrow;
+    }
+  }
+
+  /// 사용자별 양도 관리 데이터 로드 (새로 추가)
+  ///
+  /// 내 양도 등록 티켓과 양도 가능한 티켓을 동시에 로드합니다.
+  Future<Map<String, dynamic>> loadUserTransferData(int userId) async {
+    try {
+      print('👤 사용자 양도 데이터 로딩 시작 (사용자 ID: $userId)');
+
+      // 내 양도 등록 티켓과 양도 가능한 티켓을 동시에 요청
+      final results = await Future.wait([
+        transfer.getMyRegisteredTickets(userId: userId),
+        transfer.getMyTransferableTickets(userId: userId),
+      ]);
+
+      final userTransferData = {
+        'registeredTickets': results[0],
+        'transferableTickets': results[1],
+        'loadedAt': DateTime.now(),
+      };
+
+      print('✅ 사용자 양도 데이터 로딩 완료');
+      return userTransferData;
+    } catch (e) {
+      print('❌ 사용자 양도 데이터 로딩 실패: $e');
+      rethrow;
+    }
+  }
+
   /// 전체 예매 플로우 데이터 로드
   ///
   /// 예매에 필요한 모든 정보를 순차적으로 가져옵니다.
@@ -141,12 +195,16 @@ class ApiService {
     try {
       print('👤 사용자 초기 데이터 로딩 시작 (사용자 ID: $userId)');
 
-      // 현재는 공통 데이터만 로드 (사용자별 API가 없음)
-      // 나중에 사용자 티켓 목록, 찜한 공연 등의 API가 추가되면 여기서 로드
+      // 대시보드 데이터와 사용자 양도 데이터를 동시에 로드
+      final results = await Future.wait([
+        loadDashboardData(),
+        loadUserTransferData(userId),
+      ]);
 
       final initialData = {
         'userId': userId,
-        'dashboardData': await loadDashboardData(),
+        'dashboardData': results[0],
+        'transferData': results[1],
         'loginTime': DateTime.now(),
       };
 
@@ -176,6 +234,16 @@ class ApiService {
       print('❌ Performance Service 오류: $e');
     }
 
+    // Transfer Service 테스트 (새로 추가)
+    try {
+      await transfer.getTransferTicketList();
+      results['transfer'] = true;
+      print('✅ Transfer Service 정상');
+    } catch (e) {
+      results['transfer'] = false;
+      print('❌ Transfer Service 오류: $e');
+    }
+
     // Ticket Service 테스트 (스케줄 조회는 performance_id가 필요해서 스킵)
     results['ticket'] = true; // 일단 true로 설정
     print('⚠️ Ticket Service 테스트 스킵 (performance_id 필요)');
@@ -198,6 +266,7 @@ class ApiService {
     performance = PerformanceService(_dioClient);
     ticket = TicketService(_dioClient);
     user = UserService(_dioClient);
+    transfer = TransferService(_dioClient); // 새로 추가
 
     print('✅ API 서비스 리셋 완료');
   }
