@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:we_ticket/screens/transfer/my_transfer_manage_screen.dart.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/auth_guard.dart';
+import '../../providers/api_provider.dart';
 import 'transfer_detail_screen.dart';
 import 'private_transfer_screen.dart';
-// import 'my_transfer_manage_screen.dart';
 
 class TransferMarketScreen extends StatefulWidget {
   @override
@@ -14,6 +15,10 @@ class TransferMarketScreen extends StatefulWidget {
 class _TransferMarketScreenState extends State<TransferMarketScreen> {
   String _selectedFilter = '전체보기';
   final List<String> _filterOptions = ['전체보기', '공연별로 보기'];
+
+  // API 테스트 상태
+  bool _isTestingApi = false;
+  String? _apiTestResult;
 
   // 더미 데이터 - 실제로는 API에서 가져올 예정
   final List<Map<String, dynamic>> _transferTickets = [
@@ -88,6 +93,15 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
+          // API 테스트 버튼 추가
+          IconButton(
+            icon: Icon(
+              Icons.bug_report,
+              color: _isTestingApi ? AppColors.warning : AppColors.textPrimary,
+            ),
+            onPressed: _testTransferApi,
+            tooltip: 'API 테스트',
+          ),
           IconButton(
             icon: Icon(Icons.refresh, color: AppColors.textPrimary),
             onPressed: _refreshTickets,
@@ -98,12 +112,237 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
         children: [
           _buildPurposeHeader(),
 
+          // API 테스트 결과 표시
+          if (_apiTestResult != null) _buildApiTestResult(),
+
           _buildFilterAndActions(),
 
           Expanded(child: _buildTransferTicketList()),
         ],
       ),
     );
+  }
+
+  /// API 테스트 결과 표시 위젯
+  Widget _buildApiTestResult() {
+    final isSuccess =
+        _apiTestResult!.contains('✅') || _apiTestResult!.contains('🏁');
+    final isInProgress = _apiTestResult!.contains('🔄');
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(12),
+      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: isInProgress
+            ? AppColors.warning.withOpacity(0.1)
+            : isSuccess
+            ? Colors.green.withOpacity(0.1)
+            : Colors.red.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isInProgress
+              ? AppColors.warning
+              : isSuccess
+              ? Colors.green
+              : Colors.red,
+          width: 1,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            isInProgress
+                ? Icons.hourglass_top
+                : isSuccess
+                ? Icons.check_circle
+                : Icons.error,
+            color: isInProgress
+                ? AppColors.warning
+                : isSuccess
+                ? Colors.green
+                : Colors.red,
+            size: 16,
+          ),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              _apiTestResult!,
+              style: TextStyle(
+                fontSize: 11,
+                color: isInProgress
+                    ? AppColors.warning
+                    : isSuccess
+                    ? Colors.green[700]
+                    : Colors.red[700],
+                fontWeight: FontWeight.w500,
+                height: 1.3,
+              ),
+            ),
+          ),
+          if (!isInProgress)
+            IconButton(
+              icon: Icon(Icons.close, size: 16),
+              padding: EdgeInsets.zero,
+              constraints: BoxConstraints(minWidth: 24, minHeight: 24),
+              onPressed: () {
+                setState(() {
+                  _apiTestResult = null;
+                });
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// 모든 양도 관련 API 테스트 함수
+  Future<void> _testTransferApi() async {
+    if (_isTestingApi) return;
+
+    setState(() {
+      _isTestingApi = true;
+      _apiTestResult = '🔄 양도 API 전체 테스트 중...';
+    });
+
+    final apiProvider = Provider.of<ApiProvider>(context, listen: false);
+    final transferService = apiProvider.apiService.transfer;
+    final currentUserId = apiProvider.currentUserId ?? 1; // 테스트용 임시 사용자 ID
+
+    int successCount = 0;
+    int totalTests = 0;
+    final List<String> testResults = [];
+
+    try {
+      print('🧪 양도 마켓 전체 API 테스트 시작');
+      print('=' * 50);
+
+      // 1. 양도 티켓 리스트 조회 테스트
+      totalTests++;
+      try {
+        print('📋 [1/7] 양도 티켓 리스트 조회 테스트...');
+        final transferList = await transferService.getTransferTicketList();
+        successCount++;
+        testResults.add('✅ 양도 티켓 리스트: ${transferList.count}개');
+        print('✅ 양도 티켓 리스트 조회 성공: ${transferList.count}개');
+
+        if (transferList.results.isNotEmpty) {
+          final first = transferList.results.first;
+          print(
+            '   📝 첫 번째 티켓: ${first.performanceTitle} (ID: ${first.transferTicketId})',
+          );
+        }
+      } catch (e) {
+        testResults.add('❌ 양도 티켓 리스트: 실패');
+        print('❌ 양도 티켓 리스트 조회 실패: $e');
+      }
+
+      // 2. 공연별 필터링 테스트 (performanceId=1)
+      totalTests++;
+      try {
+        print('\n🎯 [2/7] 공연별 필터링 테스트 (performanceId=1)...');
+        final filteredList = await transferService.getTransferTicketList(
+          performanceId: 1,
+        );
+        successCount++;
+        testResults.add('✅ 공연별 필터: ${filteredList.results.length}개');
+        print('✅ 공연별 필터링 성공: ${filteredList.results.length}개');
+      } catch (e) {
+        testResults.add('❌ 공연별 필터: 실패');
+        print('❌ 공연별 필터링 실패: $e');
+      }
+
+      // 3. 공개 양도 티켓 상세 조회 테스트 (임시 ID=1)
+      totalTests++;
+      try {
+        print('\n🔍 [3/7] 공개 양도 티켓 상세 조회 테스트 (ID=1)...');
+        final detail = await transferService.getPublicTransferDetail(1);
+        successCount++;
+        testResults.add('✅ 공개 상세조회: ${detail.performanceTitle}');
+        print('✅ 공개 양도 상세 조회 성공: ${detail.performanceTitle}');
+      } catch (e) {
+        testResults.add('❌ 공개 상세조회: 실패');
+        print('❌ 공개 양도 상세 조회 실패: $e');
+      }
+
+      // 4. 비공개 양도 티켓 상세 조회 테스트 (더미 코드)
+      totalTests++;
+      try {
+        print('\n🔐 [4/7] 비공개 양도 티켓 상세 조회 테스트 (더미 코드)...');
+        await transferService.getPrivateTransferDetail('TESTCODE1234567890');
+        successCount++;
+        testResults.add('✅ 비공개 상세조회: 성공');
+        print('✅ 비공개 양도 상세 조회 성공');
+      } catch (e) {
+        testResults.add('❌ 비공개 상세조회: 예상된 실패');
+        print('❌ 비공개 양도 상세 조회 실패 (예상된 결과): $e');
+      }
+
+      // 5. 고유번호 조회 테스트 (임시 transfer_ticket_id=1)
+      totalTests++;
+      try {
+        print('\n🔑 [5/7] 고유번호 조회 테스트 (transfer_ticket_id=1)...');
+        final uniqueCode = await transferService.getUniqueCode(1);
+        successCount++;
+        testResults.add(
+          '✅ 고유번호 조회: ${uniqueCode.tempUniqueCode.substring(0, 8)}...',
+        );
+        print('✅ 고유번호 조회 성공: ${uniqueCode.tempUniqueCode}');
+      } catch (e) {
+        testResults.add('❌ 고유번호 조회: 실패');
+        print('❌ 고유번호 조회 실패: $e');
+      }
+
+      // 6. 내 양도 등록 티켓 조회 테스트
+      totalTests++;
+      try {
+        print('\n📋 [6/7] 내 양도 등록 티켓 조회 테스트 (userId=$currentUserId)...');
+        final myRegistered = await transferService.getMyRegisteredTickets(
+          userId: currentUserId,
+        );
+        successCount++;
+        testResults.add('✅ 내 양도등록: ${myRegistered.length}개');
+        print('✅ 내 양도 등록 티켓 조회 성공: ${myRegistered.length}개');
+      } catch (e) {
+        testResults.add('❌ 내 양도등록: 실패');
+        print('❌ 내 양도 등록 티켓 조회 실패: $e');
+      }
+
+      // 7. 내 양도 가능 티켓 조회 테스트
+      totalTests++;
+      try {
+        print('\n🎟️ [7/7] 내 양도 가능 티켓 조회 테스트 (userId=$currentUserId)...');
+        final myTransferable = await transferService.getMyTransferableTickets(
+          userId: currentUserId,
+        );
+        successCount++;
+        testResults.add('✅ 내 양도가능: ${myTransferable.length}개');
+        print('✅ 내 양도 가능 티켓 조회 성공: ${myTransferable.length}개');
+      } catch (e) {
+        testResults.add('❌ 내 양도가능: 실패');
+        print('❌ 내 양도 가능 티켓 조회 실패: $e');
+      }
+
+      // 최종 결과
+      print('\n' + '=' * 50);
+      print('🏁 양도 API 테스트 완료: $successCount/$totalTests 성공');
+
+      setState(() {
+        _apiTestResult =
+            '🏁 양도 API 테스트 완료: $successCount/$totalTests 성공\n${testResults.take(3).join('\n')}${testResults.length > 3 ? '\n...' : ''}';
+      });
+    } catch (e) {
+      print('💥 양도 API 테스트 중 예외 발생: $e');
+      setState(() {
+        _apiTestResult =
+            '💥 테스트 중 예외 발생: ${e.toString().length > 50 ? e.toString().substring(0, 50) + '...' : e.toString()}';
+      });
+    } finally {
+      setState(() {
+        _isTestingApi = false;
+      });
+    }
   }
 
   Widget _buildPurposeHeader() {
@@ -120,14 +359,14 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
         children: [
           Icon(Icons.info_outline, color: AppColors.warning, size: 15),
           SizedBox(width: 6),
-          Text(
-            '모바일 신분증 인증이 완료된 사용자만 양도 거래가 가능합니다.',
-            softWrap: true,
-            overflow: TextOverflow.visible,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w400,
-              color: AppColors.textPrimary,
+          Expanded(
+            child: Text(
+              '모바일 신분증 인증이 완료된 사용자만 양도 거래가 가능합니다.',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w400,
+                color: AppColors.textPrimary,
+              ),
             ),
           ),
         ],
@@ -497,7 +736,11 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
   }
 
   Future<void> _refreshTickets() async {
-    // TODO: 실제로는 API 호출하여 최신 양도 티켓 목록을 가져옴
+    // TODO: 나중에 실제 API 데이터로 더미 데이터 교체
+    print('🔄 새로고침 - 현재는 더미 데이터 사용 중');
     await Future.delayed(Duration(seconds: 1));
+
+    // API 테스트도 함께 실행 (옵션)
+    // await _testTransferApi();
   }
 }
