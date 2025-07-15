@@ -60,7 +60,6 @@ class TransferRegistrationDialogs {
 
                 SizedBox(height: 20),
 
-                //FIXME
                 // 상태별 내용
                 if (isLoading) ...[
                   _buildLoadingState(),
@@ -73,6 +72,12 @@ class TransferRegistrationDialogs {
                     transferType,
                     onRegister,
                     setState,
+                    (loading, code) {
+                      setState(() {
+                        isLoading = loading;
+                        generatedCode = code;
+                      });
+                    },
                   ),
                 ],
               ],
@@ -189,6 +194,7 @@ class TransferRegistrationDialogs {
     String transferType,
     Function(Map<String, dynamic>, String, String?) onRegister,
     StateSetter setState,
+    Function(bool, String?) updateState,
   ) {
     return Column(
       children: [
@@ -230,7 +236,7 @@ class TransferRegistrationDialogs {
                   ticket,
                   transferType,
                   onRegister,
-                  setState,
+                  updateState,
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: transferType == 'private'
@@ -251,8 +257,23 @@ class TransferRegistrationDialogs {
     );
   }
 
-  // 티켓 정보 컨테이너
+  // 티켓 정보 컨테이너 (안전한 버전)
   static Widget _buildTicketInfoContainer(Map<String, dynamic> ticket) {
+    // 안전하게 데이터 추출
+    final title = _getSafeString(ticket, [
+      'title',
+      'concertTitle',
+      'performance_title',
+    ], '제목 없음');
+    final date = _getSafeString(ticket, ['date'], '날짜 미정');
+    final time = _getSafeString(ticket, ['time'], '시간 미정');
+    final seat = _getSafeString(ticket, ['seat', 'seat_number'], '좌석 미정');
+    final price = _getSafePrice(ticket, [
+      'originalPrice',
+      'price',
+      'seat_price',
+    ], 0);
+
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -263,7 +284,7 @@ class TransferRegistrationDialogs {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            ticket['concertTitle'],
+            title,
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
@@ -272,11 +293,11 @@ class TransferRegistrationDialogs {
           ),
           SizedBox(height: 4),
           Text(
-            '${ticket['date']} ${ticket['time']}',
+            '$date $time',
             style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
           ),
           Text(
-            ticket['seat'],
+            seat,
             style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
           ),
           SizedBox(height: 8),
@@ -292,7 +313,7 @@ class TransferRegistrationDialogs {
                 ),
               ),
               Text(
-                '${_formatPrice(ticket['originalPrice'])}원',
+                '${_formatPrice(price)}원',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -344,37 +365,89 @@ class TransferRegistrationDialogs {
     );
   }
 
-  // 등록 처리 함수
+  // 등록 처리 함수 (수정된 버전)
   static Future<void> _handleRegistration(
     BuildContext context,
     Map<String, dynamic> ticket,
     String transferType,
     Function(Map<String, dynamic>, String, String?) onRegister,
-    StateSetter setState,
+    Function(bool, String?) updateState,
   ) async {
-    setState(() {
-      // 로딩 상태로 변경하려면 상위 StatefulBuilder에서 관리해야 함
-    });
+    // 로딩 상태로 변경
+    updateState(true, null);
 
-    // 등록 시뮬레이션
-    await Future.delayed(Duration(seconds: 2));
+    try {
+      // 등록 시뮬레이션
+      await Future.delayed(Duration(seconds: 2));
 
-    String? generatedCode;
-    if (transferType == 'private') {
-      generatedCode =
-          'PRIV-${DateTime.now().millisecondsSinceEpoch.toString().substring(7, 11)}-TCKT-${(DateTime.now().millisecondsSinceEpoch % 10000).toString().padLeft(4, '0')}';
-    }
+      String? generatedCode;
+      if (transferType == 'private') {
+        generatedCode =
+            'PRIV-${DateTime.now().millisecondsSinceEpoch.toString().substring(7, 11)}-TCKT-${(DateTime.now().millisecondsSinceEpoch % 10000).toString().padLeft(4, '0')}';
+      }
 
-    // 등록 완료 처리
-    onRegister(ticket, transferType, generatedCode);
+      // 등록 완료 처리
+      onRegister(ticket, transferType, generatedCode);
 
-    setState(() {
       // 완료 상태로 변경
-    });
+      updateState(false, generatedCode);
+    } catch (e) {
+      print('❌ 양도 등록 오류: $e');
+
+      // 오류 발생 시 로딩 상태 해제
+      updateState(false, null);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('양도 등록 중 오류가 발생했습니다.'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  // 안전한 문자열 추출 함수
+  static String _getSafeString(
+    Map<String, dynamic> data,
+    List<String> keys,
+    String defaultValue,
+  ) {
+    for (String key in keys) {
+      final value = data[key];
+      if (value != null &&
+          value.toString().isNotEmpty &&
+          value.toString() != 'null') {
+        return value.toString();
+      }
+    }
+    return defaultValue;
+  }
+
+  // 안전한 가격 추출 함수
+  static int _getSafePrice(
+    Map<String, dynamic> data,
+    List<String> keys,
+    int defaultValue,
+  ) {
+    for (String key in keys) {
+      final value = data[key];
+      if (value != null) {
+        if (value is int) return value;
+        if (value is double) return value.toInt();
+        if (value is String) {
+          final parsed = int.tryParse(value);
+          if (parsed != null) return parsed;
+        }
+      }
+    }
+    return defaultValue;
   }
 
   // 유틸리티 메서드들
   static String _formatPrice(int price) {
+    if (price <= 0) return '0';
     return price.toString().replaceAllMapped(
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
       (Match m) => '${m[1]},',

@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../providers/transfer_provider.dart';
+import '../../../transfer/data/models/transfer_models.dart';
 
 class TransferEditDialogs {
   // 양도 수정 메인 팝업
   static void showEditTransferDialog(
     BuildContext context,
-    Map<String, dynamic> ticket,
-    Function(Map<String, dynamic>) onUpdate,
+    MyTransferTicket ticket,
+    Function(MyTransferTicket) onUpdate,
   ) {
     showDialog(
       context: context,
@@ -57,19 +60,20 @@ class TransferEditDialogs {
 
               SizedBox(height: 12),
 
-              // 양도 방식 변경
-              _buildEditOption(
-                context,
-                icon: Icons.swap_horiz,
-                title: '양도 방식 변경',
-                color: AppColors.primary,
-                onTap: () {
-                  Navigator.pop(context);
-                  showChangeTransferTypeDialog(context, ticket, onUpdate);
-                },
-              ),
+              // 양도 방식 변경 (진행 중이 아닐 때만)
+              if (ticket.canCancel)
+                _buildEditOption(
+                  context,
+                  icon: Icons.swap_horiz,
+                  title: '양도 방식 변경',
+                  color: AppColors.primary,
+                  onTap: () {
+                    Navigator.pop(context);
+                    showChangeTransferTypeDialog(context, ticket, onUpdate);
+                  },
+                ),
 
-              if (ticket['transferType'] == 'private') ...[
+              if (!ticket.isPublicTransfer && ticket.canCancel) ...[
                 SizedBox(height: 8),
                 // 고유 번호 재생성
                 _buildEditOption(
@@ -110,7 +114,7 @@ class TransferEditDialogs {
   }
 
   // 현재 양도 정보 표시
-  static Widget _buildCurrentTransferInfo(Map<String, dynamic> ticket) {
+  static Widget _buildCurrentTransferInfo(MyTransferTicket ticket) {
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -123,26 +127,44 @@ class TransferEditDialogs {
           Row(
             children: [
               Icon(
-                ticket['transferType'] == 'private' ? Icons.lock : Icons.public,
+                ticket.isPublicTransfer ? Icons.public : Icons.lock,
                 size: 16,
-                color: ticket['transferType'] == 'private'
-                    ? AppColors.secondary
-                    : AppColors.primary,
+                color: ticket.isPublicTransfer
+                    ? AppColors.primary
+                    : AppColors.secondary,
               ),
               SizedBox(width: 8),
               Text(
-                '${ticket['transferType'] == 'private' ? '비공개' : '공개'} 양도',
+                ticket.transferTypeText,
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: AppColors.textPrimary,
                 ),
               ),
+              Spacer(),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: _getStatusColor(
+                    ticket.transferStatus,
+                  ).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  ticket.statusText,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: _getStatusColor(ticket.transferStatus),
+                  ),
+                ),
+              ),
             ],
           ),
           SizedBox(height: 12),
           Text(
-            ticket['concertTitle'],
+            ticket.performanceTitle,
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
@@ -151,7 +173,7 @@ class TransferEditDialogs {
           ),
           SizedBox(height: 4),
           Text(
-            ticket['seat'],
+            '${ticket.seatNumber} (${ticket.seatGrade})',
             style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
           ),
         ],
@@ -200,11 +222,11 @@ class TransferEditDialogs {
   // 양도 방식 변경 팝업
   static void showChangeTransferTypeDialog(
     BuildContext context,
-    Map<String, dynamic> ticket,
-    Function(Map<String, dynamic>) onUpdate,
+    MyTransferTicket ticket,
+    Function(MyTransferTicket) onUpdate,
   ) {
-    String currentType = ticket['transferType'];
-    String newType = currentType == 'public' ? 'private' : 'public';
+    bool currentIsPublic = ticket.isPublicTransfer;
+    bool newIsPublic = !currentIsPublic;
 
     showDialog(
       context: context,
@@ -212,6 +234,7 @@ class TransferEditDialogs {
       builder: (context) {
         bool isLoading = false;
         String? newGeneratedCode;
+        bool isCompleted = false;
 
         return StatefulBuilder(
           builder: (context, setState) => Dialog(
@@ -262,37 +285,62 @@ class TransferEditDialogs {
 
                   if (isLoading) ...[
                     _buildLoadingState('양도 방식을 변경하고 있습니다...'),
-                  ] else if (newGeneratedCode != null) ...[
+                  ] else if (isCompleted) ...[
                     _buildChangeCompletedState(
                       context,
-                      newType,
-                      newGeneratedCode!,
+                      newIsPublic,
+                      newGeneratedCode,
                       ticket,
                       onUpdate,
                     ),
                   ] else ...[
                     _buildChangeConfirmationState(
                       context,
-                      currentType,
-                      newType,
+                      currentIsPublic,
+                      newIsPublic,
                       () async {
                         setState(() {
                           isLoading = true;
                         });
 
-                        // 변경 시뮬레이션
-                        await Future.delayed(Duration(seconds: 2));
+                        try {
+                          // final transferProvider = Provider.of<TransferProvider>(
+                          //   context,
+                          //   listen: false,
+                          // );
 
-                        String? generatedCode;
-                        if (newType == 'private') {
-                          generatedCode =
-                              'CHNG-${DateTime.now().millisecondsSinceEpoch.toString().substring(7, 11)}-PRIV-${(DateTime.now().millisecondsSinceEpoch % 10000).toString().padLeft(4, '0')}';
+                          // print('🔄 양도 방식 변경 API 호출 시작');
+
+                          // final result = await transferProvider.toggleTransferType(
+                          //   ticket.transferTicketId,
+                          // );
+
+                          // String? generatedCode;
+                          // if (result != null && result.containsKey('unique_code')) {
+                          //   generatedCode = result['unique_code'];
+                          // }
+
+                          // setState(() {
+                          //   isLoading = false;
+                          //   isCompleted = true;
+                          //   newGeneratedCode = generatedCode;
+                          // });
+
+                          print('✅ 양도 방식 변경 완료');
+                        } catch (e) {
+                          print('❌ 양도 방식 변경 실패: $e');
+
+                          setState(() {
+                            isLoading = false;
+                          });
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('양도 방식 변경에 실패했습니다'),
+                              backgroundColor: AppColors.error,
+                            ),
+                          );
                         }
-
-                        setState(() {
-                          isLoading = false;
-                          newGeneratedCode = generatedCode;
-                        });
                       },
                     ),
                   ],
@@ -308,8 +356,8 @@ class TransferEditDialogs {
   // 고유 번호 재생성 팝업
   static void showRegenerateCodeDialog(
     BuildContext context,
-    Map<String, dynamic> ticket,
-    Function(Map<String, dynamic>) onUpdate,
+    MyTransferTicket ticket,
+    Function(MyTransferTicket) onUpdate,
   ) {
     showDialog(
       context: context,
@@ -317,6 +365,7 @@ class TransferEditDialogs {
       builder: (context) {
         bool isLoading = false;
         String? newCode;
+        bool isCompleted = false;
 
         return StatefulBuilder(
           builder: (context, setState) => Dialog(
@@ -363,7 +412,7 @@ class TransferEditDialogs {
 
                   if (isLoading) ...[
                     _buildLoadingState('새로운 고유 번호를 생성하고 있습니다...'),
-                  ] else if (newCode != null) ...[
+                  ] else if (isCompleted && newCode != null) ...[
                     _buildRegenerateCompletedState(
                       context,
                       ticket,
@@ -371,22 +420,55 @@ class TransferEditDialogs {
                       onUpdate,
                     ),
                   ] else ...[
-                    _buildRegenerateConfirmationState(context, ticket, () async {
-                      setState(() {
-                        isLoading = true;
-                      });
+                    _buildRegenerateConfirmationState(
+                      context,
+                      ticket,
+                      () async {
+                        setState(() {
+                          isLoading = true;
+                        });
 
-                      // 재생성 시뮬레이션
-                      await Future.delayed(Duration(seconds: 1));
+                        try {
+                          final transferProvider =
+                              Provider.of<TransferProvider>(
+                                context,
+                                listen: false,
+                              );
 
-                      String generatedCode =
-                          'RENW-${DateTime.now().millisecondsSinceEpoch.toString().substring(7, 11)}-CODE-${(DateTime.now().millisecondsSinceEpoch % 10000).toString().padLeft(4, '0')}';
+                          print('🔄 고유번호 재발급 API 호출 시작');
 
-                      setState(() {
-                        isLoading = false;
-                        newCode = generatedCode;
-                      });
-                    }),
+                          // 실제 API 호출
+                          final uniqueCode = await transferProvider
+                              .regenerateUniqueCode(ticket.transferTicketId);
+
+                          if (uniqueCode != null) {
+                            setState(() {
+                              isLoading = false;
+                              isCompleted = true;
+                              newCode = uniqueCode.tempUniqueCode;
+                            });
+                            print(
+                              '✅ 고유번호 재발급 완료: ${uniqueCode.tempUniqueCode}',
+                            );
+                          } else {
+                            throw Exception('고유번호 생성 실패');
+                          }
+                        } catch (e) {
+                          print('❌ 고유번호 재발급 실패: $e');
+
+                          setState(() {
+                            isLoading = false;
+                          });
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('고유번호 재발급에 실패했습니다'),
+                              backgroundColor: AppColors.error,
+                            ),
+                          );
+                        }
+                      },
+                    ),
                   ],
                 ],
               ),
@@ -421,8 +503,8 @@ class TransferEditDialogs {
   // 변경 확인 상태
   static Widget _buildChangeConfirmationState(
     BuildContext context,
-    String currentType,
-    String newType,
+    bool currentIsPublic,
+    bool newIsPublic,
     VoidCallback onConfirm,
   ) {
     return Column(
@@ -441,15 +523,15 @@ class TransferEditDialogs {
                 child: Column(
                   children: [
                     Icon(
-                      currentType == 'private' ? Icons.lock : Icons.public,
-                      color: currentType == 'private'
-                          ? AppColors.secondary
-                          : AppColors.primary,
+                      currentIsPublic ? Icons.public : Icons.lock,
+                      color: currentIsPublic
+                          ? AppColors.primary
+                          : AppColors.secondary,
                       size: 32,
                     ),
                     SizedBox(height: 8),
                     Text(
-                      '현재: ${currentType == 'private' ? '비공개' : '공개'} 양도',
+                      '현재: ${currentIsPublic ? '공개' : '비공개'} 양도',
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,
@@ -467,15 +549,15 @@ class TransferEditDialogs {
                 child: Column(
                   children: [
                     Icon(
-                      newType == 'private' ? Icons.lock : Icons.public,
-                      color: newType == 'private'
-                          ? AppColors.secondary
-                          : AppColors.primary,
+                      newIsPublic ? Icons.public : Icons.lock,
+                      color: newIsPublic
+                          ? AppColors.primary
+                          : AppColors.secondary,
                       size: 32,
                     ),
                     SizedBox(height: 8),
                     Text(
-                      '변경: ${newType == 'private' ? '비공개' : '공개'} 양도',
+                      '변경: ${newIsPublic ? '공개' : '비공개'} 양도',
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,
@@ -505,7 +587,7 @@ class TransferEditDialogs {
               SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  newType == 'private'
+                  !newIsPublic
                       ? '비공개로 변경 시 새로운 고유 번호가 생성됩니다'
                       : '공개로 변경 시 양도 마켓에 즉시 노출됩니다',
                   style: TextStyle(fontSize: 12, color: AppColors.warning),
@@ -558,10 +640,10 @@ class TransferEditDialogs {
   // 변경 완료 상태
   static Widget _buildChangeCompletedState(
     BuildContext context,
-    String newType,
-    String newGeneratedCode,
-    Map<String, dynamic> ticket,
-    Function(Map<String, dynamic>) onUpdate,
+    bool newIsPublic,
+    String? newGeneratedCode,
+    MyTransferTicket ticket,
+    Function(MyTransferTicket) onUpdate,
   ) {
     return Column(
       children: [
@@ -585,7 +667,7 @@ class TransferEditDialogs {
           ),
         ),
 
-        if (newType == 'private') ...[
+        if (!newIsPublic && newGeneratedCode != null) ...[
           SizedBox(height: 20),
           Text(
             '새로 생성된 고유 번호',
@@ -620,13 +702,13 @@ class TransferEditDialogs {
           child: ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              // 업데이트된 티켓 정보 반영
-              Map<String, dynamic> updatedTicket = Map.from(ticket);
-              updatedTicket['transferType'] = newType;
-              if (newType == 'private') {
-                updatedTicket['uniqueCode'] = newGeneratedCode;
-              }
-              onUpdate(updatedTicket);
+              // 데이터 새로고침을 위해 상위에서 처리
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('양도 방식이 변경되었습니다'),
+                  backgroundColor: AppColors.success,
+                ),
+              );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
@@ -646,7 +728,7 @@ class TransferEditDialogs {
   // 재생성 확인 상태
   static Widget _buildRegenerateConfirmationState(
     BuildContext context,
-    Map<String, dynamic> ticket,
+    MyTransferTicket ticket,
     VoidCallback onConfirm,
   ) {
     return Column(
@@ -667,19 +749,23 @@ class TransferEditDialogs {
           child: Column(
             children: [
               Text(
-                '현재 고유 번호',
+                '현재 등록된 비공개 양도',
                 style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
               ),
-              SizedBox(height: 4),
-              Text(
-                ticket['uniqueCode'],
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'monospace',
-                  color: AppColors.textPrimary,
-                  letterSpacing: 1,
-                ),
+              SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.lock, color: AppColors.secondary, size: 16),
+                  SizedBox(width: 8),
+                  Text(
+                    '고유번호가 재생성됩니다',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -751,9 +837,9 @@ class TransferEditDialogs {
   // 재생성 완료 상태
   static Widget _buildRegenerateCompletedState(
     BuildContext context,
-    Map<String, dynamic> ticket,
+    MyTransferTicket ticket,
     String newCode,
-    Function(Map<String, dynamic>) onUpdate,
+    Function(MyTransferTicket) onUpdate,
   ) {
     return Column(
       children: [
@@ -789,29 +875,10 @@ class TransferEditDialogs {
           child: Column(
             children: [
               Text(
-                '기존 번호',
+                '새로 생성된 고유 번호',
                 style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
               ),
-              SizedBox(height: 4),
-              Text(
-                ticket['uniqueCode'],
-                style: TextStyle(
-                  fontSize: 14,
-                  fontFamily: 'monospace',
-                  color: AppColors.textSecondary,
-                  decoration: TextDecoration.lineThrough,
-                ),
-              ),
-
-              SizedBox(height: 16),
-              Divider(color: AppColors.border),
-              SizedBox(height: 16),
-
-              Text(
-                '새 번호',
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-              ),
-              SizedBox(height: 4),
+              SizedBox(height: 8),
               Text(
                 newCode,
                 style: TextStyle(
@@ -865,10 +932,13 @@ class TransferEditDialogs {
           child: ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              // 업데이트된 티켓 정보 반영
-              Map<String, dynamic> updatedTicket = Map.from(ticket);
-              updatedTicket['uniqueCode'] = newCode;
-              onUpdate(updatedTicket);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('고유번호가 재생성되었습니다'),
+                  backgroundColor: AppColors.success,
+                ),
+              );
+              // 데이터 새로고침을 위해 상위에서 처리
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
@@ -923,6 +993,23 @@ class TransferEditDialogs {
     );
   }
 
+  // 상태별 색상 반환
+  static Color _getStatusColor(String status) {
+    switch (status) {
+      case 'pending':
+        return AppColors.warning;
+      case 'in_progress':
+        return AppColors.secondary;
+      case 'completed':
+        return AppColors.success;
+      case 'cancelled':
+        return AppColors.gray500;
+      default:
+        return AppColors.gray500;
+    }
+  }
+
+  // 고유번호 복사 기능
   static void _copyUniqueCode(BuildContext context, String code) {
     Clipboard.setData(ClipboardData(text: code));
     ScaffoldMessenger.of(context).showSnackBar(

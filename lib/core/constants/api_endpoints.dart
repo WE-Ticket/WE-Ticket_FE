@@ -15,8 +15,13 @@ class ApiConstants {
   static const String sessionSeats =
       '/tickets/performance/{performance_id}/session/{performance_session_id}/seats/';
   static const String seatLayout =
-      '/tickets/performance/{performance_id}/session/{performance_session_id}/zone/{seat_zone}';
-  static const String createTicket = '/tickets/create';
+      '/tickets/performance/{performance_id}/session/{performance_session_id}/zone/{seat_zone}/layout/';
+  static const String createTicket = '/tickets/create/';
+
+  // My Tickets
+  static const String myTickets = '/tickets/my-page/owned-ticket-list/';
+  static const String myPurchases = '/tickets/my-page/touched-ticket-list/';
+  static const String myTicketDetail = '/tickets/my-ticket-detail/';
 
   // Transfer
   static const String transferTicketList = '/transfers/ticket-list/';
@@ -31,10 +36,17 @@ class ApiConstants {
       '/transfers/my-ticket-list/registered/';
   static const String myTransferableTickets =
       '/transfers/my-ticket-list/transferable/';
+  static const String transferIdentityVerificationRecord =
+      '/transfers/identity-verification-record/';
 
   // User
   static const String login = '/users/login/';
   static const String signup = '/users/signup/';
+  static const String userIdentityVerificationMethod =
+      '/users/identity-verification-method/';
+  static const String userIdentityVerificationRecord =
+      '/users/identity-verification-record/';
+  static const String userMyPage = '/users/my-page/';
 
   // Headers
   static const Map<String, String> defaultHeaders = {

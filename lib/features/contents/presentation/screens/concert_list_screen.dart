@@ -17,7 +17,7 @@ class _ConcertListScreenState extends State<ConcertListScreen> {
   bool _isLoading = false;
   String? _errorMessage;
 
-  final List<String> _categories = ['전체', 'K-POP', '발라드', '록', '힙합', '인디'];
+  final List<String> _categories = ['전체', '콘서트', '뮤지컬', '연극', '기타'];
   final List<String> _sortOptions = ['최신순', '인기순', '가격순', '날짜순'];
 
   @override
@@ -170,12 +170,7 @@ class _ConcertListScreenState extends State<ConcertListScreen> {
         actions: [
           IconButton(
             icon: Icon(Icons.search, color: AppColors.textPrimary),
-            onPressed: () {
-              // TODO: 검색 기능 구현
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text('검색 기능은 추후 구현 예정입니다.')));
-            },
+            onPressed: () {},
           ),
         ],
       ),

@@ -413,13 +413,13 @@ class TransferDialogs {
   }
 
   // 양도 수정 팝업
-  static void showEditTransferDialog(
-    BuildContext context,
-    Map<String, dynamic> ticket,
-    Function(Map<String, dynamic>) onUpdate,
-  ) {
-    TransferEditDialogs.showEditTransferDialog(context, ticket, onUpdate);
-  }
+  // static void showEditTransferDialog(
+  //   BuildContext context,
+  //   Map<String, dynamic> ticket,
+  //   Function(Map<String, dynamic>) onUpdate,
+  // ) {
+  //   TransferEditDialogs.showEditTransferDialog(context, ticket, onUpdate);
+  // }
 
   static String _formatPrice(int price) {
     return price.toString().replaceAllMapped(

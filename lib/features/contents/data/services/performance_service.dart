@@ -2,7 +2,6 @@ import '../../../../core/services/dio_client.dart';
 import '../../../../core/constants/api_endpoints.dart';
 import '../models/performance_models.dart';
 
-/// 공연 관련 API 서비스
 class PerformanceService {
   final DioClient _dioClient;
 
@@ -10,10 +9,8 @@ class PerformanceService {
 
   /// HOT 공연 3개 조회
   /// GET /performances/hot/
-  /// 대시보드 슬라이더에서 사용
   Future<List<PerformanceHotItem>> getHotPerformances() async {
     try {
-      print('!!! HOT 공연 조회 시작');
       final response = await _dioClient.get(ApiConstants.hotPerformances);
 
       if (response.statusCode == 200) {

@@ -20,6 +20,13 @@ class AuthProvider extends ChangeNotifier {
   /// 앱 시작 시 저장된 로그인 상태 확인
   Future<void> checkAuthStatus() async {
     try {
+      // //FIXME 무조건 지워야!!! (로그인 API 복구되면)
+      // _user = UserModel(id: "1", name: "테스트 사용자");
+      // _isLoggedIn = true;
+      // print('✅ 강제 로그인 상태 설정: 사용자 ID 1');
+      // notifyListeners();
+      // return; // 여기서 종료해서 아래 코드 실행 안 함
+
       final prefs = await SharedPreferences.getInstance();
       final isLoggedIn = prefs.getBool('is_logged_in') ?? false;
       final savedId = prefs.getString('user_id');

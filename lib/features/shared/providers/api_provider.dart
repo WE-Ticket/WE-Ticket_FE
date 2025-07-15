@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../services/api_service.dart';
 import '../../contents/data/models/performance_models.dart';
-import '../../auth/data/models/user_models.dart';
 
 /// API 서비스를 앱 전체에서 공유하기 위한 Provider
 ///
@@ -19,13 +18,14 @@ class ApiProvider extends ChangeNotifier {
   List<PerformanceAvailableItem>? _cachedAvailablePerformances;
   DateTime? _lastDataLoadTime;
 
-  // 사용자 상태
+  // // 사용자 상태
   bool _isLoggedIn = false;
   int? _currentUserId;
 
   /// 생성자
   ApiProvider() {
     _apiService = ApiService.create();
+
     _initializeProvider();
   }
 
@@ -99,14 +99,14 @@ class ApiProvider extends ChangeNotifier {
           isCacheValid &&
           _cachedHotPerformances != null &&
           _cachedAvailablePerformances != null) {
-        print('📦 캐시된 대시보드 데이터 사용');
+        print('캐시된 대시보드 데이터 사용');
         return;
       }
 
       _setLoading(true);
       clearError();
 
-      print('🔄 대시보드 데이터 새로 로드');
+      print('대시보드 데이터 새로 로드');
 
       final dashboardData = await _apiService.loadDashboardData();
 

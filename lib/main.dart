@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:we_ticket/features/contents/presentation/screens/dashboard_screen.dart';
 import 'package:we_ticket/features/auth/presentation/providers/auth_provider.dart';
 import 'package:we_ticket/features/shared/providers/api_provider.dart';
+import 'package:we_ticket/features/transfer/presentation/providers/transfer_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,6 +19,11 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ApiProvider()),
+        ChangeNotifierProvider(
+          create: (context) => TransferProvider(
+            Provider.of<ApiProvider>(context, listen: false).apiService,
+          ),
+        ),
       ],
       child: MaterialApp(title: 'WE-Ticket', home: MainApp()),
     );

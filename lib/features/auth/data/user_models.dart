@@ -1,4 +1,4 @@
-import '../../../../core/utils/json_parser.dart';
+import '../../../core/utils/json_parser.dart';
 
 /// 로그인 요청 모델
 class LoginRequest {

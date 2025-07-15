@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../shared/providers/api_provider.dart';
+import '../providers/transfer_provider.dart';
+import '../../../transfer/data/models/transfer_models.dart';
 import 'transfer_dialogs.dart';
 
 class MyTransferManageScreen extends StatefulWidget {
@@ -12,91 +16,45 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  // 더미 데이터 - 양도 등록 내역
-  final List<Map<String, dynamic>> _myTransferTickets = [
-    {
-      'id': 'my_transfer_001',
-      'concertTitle': 'IVE SHOW WHAT I HAVE',
-      'artist': 'IVE',
-      'date': '2025.07.28',
-      'time': '18:00',
-      'venue': '잠실실내체육관',
-      'seat': 'R석 2층 B구역 5열 20번',
-      'originalPrice': 132000,
-      'transferPrice': 132000,
-      'poster':
-          'https://talkimg.imbc.com/TVianUpload/tvian/TViews/image/2025/05/22/0be8f4e2-5e79-4a67-b80c-b14654cf908c.jpg',
-      'registeredAt': '2025.06.15 14:30',
-      'status': 'active',
-      'transferType': 'public',
-      'uniqueCode': 'ABCD-1234-EFGH-5678',
-      'viewCount': 15,
-      'daysLeft': 12,
-    },
-    {
-      'id': 'my_transfer_002',
-      'concertTitle': 'SEVENTEEN GOD OF MUSIC',
-      'artist': 'SEVENTEEN',
-      'date': '2025.09.10',
-      'time': '19:00',
-      'venue': '고척스카이돔',
-      'seat': 'VIP석 1층 C구역 1열 8번',
-      'originalPrice': 165000,
-      'transferPrice': 165000,
-      'poster': 'https://newsimg.sedaily.com/2024/08/14/2DD0HP41GF_1.jpg',
-      'registeredAt': '2025.06.20 09:15',
-      'status': 'sold',
-      'transferType': 'private',
-      'soldAt': '2025.06.22 16:45',
-      'buyerId': 'buyer123',
-      'viewCount': 28,
-      'uniqueCode': 'SOLD-5678-PRIV-9012',
-    },
-  ];
-
-  // 더미 데이터 - 양도 가능한 티켓
-  final List<Map<String, dynamic>> _availableTickets = [
-    {
-      'id': 'available_001',
-      'concertTitle': 'NewJeans Get Up Concert',
-      'artist': 'NewJeans',
-      'date': '2025.08.15',
-      'time': '19:00',
-      'venue': 'KSPO DOME',
-      'seat': 'VIP석 1층 A구역 2열 15번',
-      'originalPrice': 154000,
-      'poster':
-          'https://tkfile.yes24.com/upload2/PerfBlog/202505/20250527/20250527-53911.jpg',
-      'purchasedAt': '2025.06.10 20:00',
-      'canTransfer': true,
-    },
-    {
-      'id': 'available_002',
-      'concertTitle': 'aespa MY WORLD TOUR',
-      'artist': 'aespa',
-      'date': '2025.07.05',
-      'time': '19:00',
-      'venue': 'KSPO DOME',
-      'seat': 'R석 2층 A구역 3열 12번',
-      'originalPrice': 132000,
-      'poster':
-          'https://ticketimage.interpark.com/Play/image/large/24/24013254_p.gif',
-      'purchasedAt': '2025.06.05 15:30',
-      'canTransfer': false,
-      'reason': '공연 7일 전부터는 양도가 불가능합니다',
-    },
-  ];
-
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadInitialData();
+    });
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  /// 초기 데이터 로드
+  Future<void> _loadInitialData() async {
+    print('🔥 DEBUG: _loadInitialData 시작'); // 이거 추가
+    final apiProvider = Provider.of<ApiProvider>(context, listen: false);
+    final transferProvider = Provider.of<TransferProvider>(
+      context,
+      listen: false,
+    );
+
+    print('🔥 DEBUG: currentUserId = ${apiProvider.currentUserId}'); // 이거 추가
+
+    if (apiProvider.currentUserId != null) {
+      print('🔥 DEBUG: Future.wait 시작'); // 이거 추가
+      await Future.wait([
+        transferProvider.loadMyRegisteredTickets(
+          userId: apiProvider.currentUserId!,
+          forceRefresh: true,
+        ),
+        transferProvider.loadMyTransferableTickets(
+          userId: apiProvider.currentUserId!,
+          forceRefresh: true,
+        ),
+      ]);
+    }
   }
 
   @override
@@ -119,6 +77,12 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
           icon: Icon(Icons.arrow_back, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.refresh, color: AppColors.textPrimary),
+            onPressed: _refreshData,
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           labelColor: AppColors.primary,
@@ -138,49 +102,145 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
   }
 
   Widget _buildTransferHistoryTab() {
-    return Column(
-      children: [
-        _buildTransferSummary(),
-        Expanded(
-          child: _myTransferTickets.isEmpty
-              ? _buildEmptyState('등록된 양도 내역이 없습니다', '티켓을 양도 등록해보세요')
-              : ListView.builder(
-                  padding: EdgeInsets.all(16),
-                  itemCount: _myTransferTickets.length,
-                  itemBuilder: (context, index) {
-                    return _buildTransferHistoryCard(_myTransferTickets[index]);
-                  },
-                ),
-        ),
-      ],
+    return Consumer<TransferProvider>(
+      builder: (context, transferProvider, child) {
+        // 로딩 상태
+        if (transferProvider.isLoading &&
+            transferProvider.myRegisteredTickets == null) {
+          return _buildLoadingState('양도 등록 내역을 불러오는 중...');
+        }
+
+        // 에러 상태
+        if (transferProvider.errorMessage != null) {
+          return _buildErrorState(transferProvider.errorMessage!);
+        }
+
+        final registeredTickets = transferProvider.myRegisteredTickets ?? [];
+
+        return Column(
+          children: [
+            _buildTransferSummary(registeredTickets),
+            Expanded(
+              child: registeredTickets.isEmpty
+                  ? _buildEmptyState('등록된 양도 내역이 없습니다', '티켓을 양도 등록해보세요')
+                  : RefreshIndicator(
+                      color: AppColors.primary,
+                      onRefresh: _refreshData,
+                      child: ListView.builder(
+                        padding: EdgeInsets.all(16),
+                        itemCount: registeredTickets.length,
+                        itemBuilder: (context, index) {
+                          return _buildTransferHistoryCard(
+                            registeredTickets[index],
+                          );
+                        },
+                      ),
+                    ),
+            ),
+          ],
+        );
+      },
     );
   }
 
   Widget _buildAvailableTicketsTab() {
-    return Column(
-      children: [
-        _buildTransferGuide(),
-        Expanded(
-          child: _availableTickets.isEmpty
-              ? _buildEmptyState('보유한 티켓이 없습니다', '티켓을 구매해보세요')
-              : ListView.builder(
-                  padding: EdgeInsets.all(16),
-                  itemCount: _availableTickets.length,
-                  itemBuilder: (context, index) {
-                    return _buildAvailableTicketCard(_availableTickets[index]);
-                  },
-                ),
-        ),
-      ],
+    return Consumer<TransferProvider>(
+      builder: (context, transferProvider, child) {
+        // 로딩 상태
+        if (transferProvider.isLoading &&
+            transferProvider.myTransferableTickets == null) {
+          return _buildLoadingState('양도 가능한 티켓을 불러오는 중...');
+        }
+
+        // 에러 상태
+        if (transferProvider.errorMessage != null) {
+          return _buildErrorState(transferProvider.errorMessage!);
+        }
+
+        final transferableTickets =
+            transferProvider.myTransferableTickets ?? [];
+
+        return Column(
+          children: [
+            _buildTransferGuide(),
+            Expanded(
+              child: transferableTickets.isEmpty
+                  ? _buildEmptyState('보유한 티켓이 없습니다', '티켓을 구매해보세요')
+                  : RefreshIndicator(
+                      color: AppColors.primary,
+                      onRefresh: _refreshData,
+                      child: ListView.builder(
+                        padding: EdgeInsets.all(16),
+                        itemCount: transferableTickets.length,
+                        itemBuilder: (context, index) {
+                          return _buildAvailableTicketCard(
+                            transferableTickets[index],
+                          );
+                        },
+                      ),
+                    ),
+            ),
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildTransferSummary() {
-    final activeCount = _myTransferTickets
-        .where((t) => t['status'] == 'active')
+  Widget _buildLoadingState(String message) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(color: AppColors.primary),
+          SizedBox(height: 16),
+          Text(
+            message,
+            style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState(String errorMessage) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.error_outline, size: 64, color: AppColors.error),
+          SizedBox(height: 16),
+          Text(
+            errorMessage,
+            style: TextStyle(fontSize: 16, color: AppColors.error),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () {
+              final transferProvider = Provider.of<TransferProvider>(
+                context,
+                listen: false,
+              );
+              transferProvider.clearError();
+              _refreshData();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.white,
+            ),
+            child: Text('다시 시도'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTransferSummary(List<MyTransferTicket> tickets) {
+    final activeCount = tickets
+        .where((t) => t.transferStatus == 'pending')
         .length;
-    final soldCount = _myTransferTickets
-        .where((t) => t['status'] == 'sold')
+    final soldCount = tickets
+        .where((t) => t.transferStatus == 'completed')
         .length;
 
     return Container(
@@ -279,7 +339,11 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
     );
   }
 
-  Widget _buildTransferHistoryCard(Map<String, dynamic> ticket) {
+  Widget _buildTransferHistoryCard(MyTransferTicket ticket) {
+    final sessionDate = DateTime.parse(ticket.sessionDatetime);
+    final now = DateTime.now();
+    final daysUntilSession = sessionDate.difference(now).inDays;
+
     return Container(
       margin: EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -301,9 +365,9 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildStatusBadge(ticket['status']),
+                _buildStatusBadge(ticket.transferStatus),
                 Text(
-                  '등록: ${ticket['registeredAt']}',
+                  '등록: ${_formatDateTime(DateTime.parse(ticket.createdDatetime))}',
                   style: TextStyle(
                     fontSize: 12,
                     color: AppColors.textSecondary,
@@ -328,20 +392,29 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      ticket['poster'],
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: AppColors.gray300,
-                          child: Icon(
-                            Icons.broken_image,
-                            size: 20,
-                            color: AppColors.gray600,
+                    child: ticket.performanceMainImage != null
+                        ? Image.network(
+                            ticket.performanceMainImage!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                color: AppColors.gray300,
+                                child: Icon(
+                                  Icons.broken_image,
+                                  size: 20,
+                                  color: AppColors.gray600,
+                                ),
+                              );
+                            },
+                          )
+                        : Container(
+                            color: AppColors.gray300,
+                            child: Icon(
+                              Icons.music_note,
+                              size: 20,
+                              color: AppColors.gray600,
+                            ),
                           ),
-                        );
-                      },
-                    ),
                   ),
                 ),
 
@@ -353,7 +426,7 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        ticket['concertTitle'],
+                        ticket.performanceTitle,
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -364,7 +437,7 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
                       ),
                       SizedBox(height: 4),
                       Text(
-                        '${ticket['date']} ${ticket['time']}',
+                        _formatSessionDateTime(sessionDate),
                         style: TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary,
@@ -372,7 +445,7 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
                       ),
                       SizedBox(height: 2),
                       Text(
-                        ticket['seat'],
+                        '${ticket.seatNumber} (${ticket.seatGrade})',
                         style: TextStyle(
                           fontSize: 12,
                           color: AppColors.primary,
@@ -389,7 +462,7 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      '${_formatPrice(ticket['transferPrice'])}원',
+                      '${_formatPrice(ticket.transferTicketPrice)}원',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
@@ -402,16 +475,18 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
             ),
           ),
 
-          if (ticket['status'] == 'active')
-            _buildActiveActions(ticket)
-          else if (ticket['status'] == 'sold')
+          if (ticket.canCancel)
+            _buildActiveActions(ticket, daysUntilSession)
+          else if (ticket.isCompleted)
             _buildSoldInfo(ticket),
         ],
       ),
     );
   }
 
-  Widget _buildAvailableTicketCard(Map<String, dynamic> ticket) {
+  Widget _buildAvailableTicketCard(TransferableTicket ticket) {
+    final sessionDate = DateTime.parse(ticket.sessionDatetime);
+
     return Container(
       margin: EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -442,20 +517,29 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      ticket['poster'],
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: AppColors.gray300,
-                          child: Icon(
-                            Icons.broken_image,
-                            size: 20,
-                            color: AppColors.gray600,
+                    child: ticket.performanceMainImage != null
+                        ? Image.network(
+                            ticket.performanceMainImage!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                color: AppColors.gray300,
+                                child: Icon(
+                                  Icons.broken_image,
+                                  size: 20,
+                                  color: AppColors.gray600,
+                                ),
+                              );
+                            },
+                          )
+                        : Container(
+                            color: AppColors.gray300,
+                            child: Icon(
+                              Icons.music_note,
+                              size: 20,
+                              color: AppColors.gray600,
+                            ),
                           ),
-                        );
-                      },
-                    ),
                   ),
                 ),
 
@@ -467,7 +551,7 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        ticket['concertTitle'],
+                        ticket.performanceTitle,
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -478,7 +562,7 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
                       ),
                       SizedBox(height: 4),
                       Text(
-                        '${ticket['date']} ${ticket['time']}',
+                        _formatSessionDateTime(sessionDate),
                         style: TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary,
@@ -486,7 +570,7 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
                       ),
                       SizedBox(height: 2),
                       Text(
-                        ticket['seat'],
+                        '${ticket.seatNumber} (${ticket.seatGrade})',
                         style: TextStyle(
                           fontSize: 12,
                           color: AppColors.primary,
@@ -501,7 +585,7 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
 
                 // 가격
                 Text(
-                  '${_formatPrice(ticket['originalPrice'])}원',
+                  '${_formatPrice(ticket.seatPrice)}원',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -521,7 +605,7 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
                 bottomRight: Radius.circular(12),
               ),
             ),
-            child: ticket['canTransfer']
+            child: ticket.isRegisterable
                 ? Row(
                     children: [
                       Expanded(
@@ -545,7 +629,7 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          ticket['reason'] ?? '양도 불가',
+                          ticket.registerableStatusText,
                           style: TextStyle(
                             fontSize: 12,
                             color: AppColors.error,
@@ -565,17 +649,17 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
     String text;
 
     switch (status) {
-      case 'active':
+      case 'pending':
         color = AppColors.warning;
         text = '등록 중';
         break;
-      case 'sold':
+      case 'in_progress':
+        color = AppColors.secondary;
+        text = '진행 중';
+        break;
+      case 'completed':
         color = AppColors.success;
         text = '판매 완료';
-        break;
-      case 'expired':
-        color = AppColors.error;
-        text = '만료됨';
         break;
       case 'cancelled':
         color = AppColors.gray500;
@@ -583,7 +667,7 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
         break;
       default:
         color = AppColors.gray500;
-        text = '    ';
+        text = '알 수 없음';
     }
 
     return Container(
@@ -603,7 +687,7 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
     );
   }
 
-  Widget _buildActiveActions(Map<String, dynamic> ticket) {
+  Widget _buildActiveActions(MyTransferTicket ticket, int daysUntilSession) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
@@ -626,30 +710,25 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
             child: Row(
               children: [
                 Icon(
-                  ticket['transferType'] == 'private'
-                      ? Icons.lock
-                      : Icons.public,
+                  ticket.isPublicTransfer ? Icons.public : Icons.lock,
                   size: 16,
-                  color: ticket['transferType'] == 'private'
-                      ? AppColors.secondary
-                      : AppColors.primary,
+                  color: ticket.isPublicTransfer
+                      ? AppColors.primary
+                      : AppColors.secondary,
                 ),
                 SizedBox(width: 8),
                 Text(
-                  ticket['transferType'] == 'private' ? '비공개 양도' : '공개 양도',
+                  ticket.transferTypeText,
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary,
                   ),
                 ),
-                if (ticket['transferType'] == 'private') ...[
+                if (!ticket.isPublicTransfer) ...[
                   Spacer(),
                   GestureDetector(
-                    onTap: () => TransferDialogs.showUniqueCodeDialog(
-                      context,
-                      ticket['uniqueCode'],
-                    ),
+                    onTap: () => _showUniqueCode(ticket),
                     child: Container(
                       padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
@@ -675,22 +754,18 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
 
           Row(
             children: [
-              if (ticket['daysLeft'] != null) ...[
+              if (daysUntilSession >= 0) ...[
                 Icon(Icons.timer, size: 16, color: AppColors.warning),
                 SizedBox(width: 4),
                 Text(
-                  '${ticket['daysLeft']}일 후 공연',
+                  daysUntilSession == 0 ? '오늘 공연' : '${daysUntilSession}일 후 공연',
                   style: TextStyle(fontSize: 12, color: AppColors.warning),
                 ),
                 Spacer(),
               ],
 
               TextButton(
-                onPressed: () => TransferDialogs.showEditTransferDialog(
-                  context,
-                  ticket,
-                  _updateTicketData,
-                ),
+                onPressed: () => _showEditDialog(ticket),
                 child: Text(
                   '수정',
                   style: TextStyle(fontSize: 12, color: AppColors.primary),
@@ -711,7 +786,7 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
     );
   }
 
-  Widget _buildSoldInfo(Map<String, dynamic> ticket) {
+  Widget _buildSoldInfo(MyTransferTicket ticket) {
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -727,7 +802,9 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
           SizedBox(width: 8),
           Expanded(
             child: Text(
-              '${ticket['soldAt']}에 판매 완료',
+              ticket.finishedDatetime != null
+                  ? '${_formatDateTime(DateTime.parse(ticket.finishedDatetime!))}에 판매 완료'
+                  : '판매 완료',
               style: TextStyle(
                 fontSize: 12,
                 color: AppColors.success,
@@ -765,51 +842,77 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
     );
   }
 
-  String _formatPrice(int price) {
-    return price.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]},',
+  /// 고유번호 조회 및 표시
+  Future<void> _showUniqueCode(MyTransferTicket ticket) async {
+    final transferProvider = Provider.of<TransferProvider>(
+      context,
+      listen: false,
     );
+
+    try {
+      final uniqueCode = await transferProvider.getUniqueCode(
+        ticket.transferTicketId,
+      );
+
+      if (uniqueCode != null && mounted) {
+        TransferDialogs.showUniqueCodeDialog(
+          context,
+          uniqueCode.tempUniqueCode,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('고유번호를 불러오는데 실패했습니다.'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
   }
 
-  void _showTransferOptions(Map<String, dynamic> ticket) {
-    TransferDialogs.showTransferOptions(context, ticket, _registerTransfer);
+  /// 양도 등록 옵션 표시
+  void _showTransferOptions(TransferableTicket ticket) {
+    // TODO: 실제 양도 등록 API 연결
+    TransferDialogs.showTransferOptions(context, {
+      'id': ticket.nftTicketId,
+      'concertTitle': ticket.performanceTitle,
+      'artist': ticket.performerName,
+      'date': _formatSessionDateTime(DateTime.parse(ticket.sessionDatetime)),
+      'seat': '${ticket.seatNumber} (${ticket.seatGrade})',
+      'originalPrice': ticket.seatPrice,
+    }, _registerTransfer);
   }
 
+  /// 수정 다이얼로그 표시
+  void _showEditDialog(MyTransferTicket ticket) {
+    // TODO: 실제 수정 API 연결
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('수정 기능 준비 중입니다')));
+  }
+
+  /// 양도 등록 처리
   void _registerTransfer(
     Map<String, dynamic> ticket,
     String transferType,
     String? uniqueCode,
   ) {
-    setState(() {
-      _myTransferTickets.add({
-        ...ticket,
-        'id': 'new_transfer_${DateTime.now().millisecondsSinceEpoch}',
-        'registeredAt':
-            '${DateTime.now().year}.${DateTime.now().month.toString().padLeft(2, '0')}.${DateTime.now().day.toString().padLeft(2, '0')} ${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}',
-        'status': 'active',
-        'transferType': transferType,
-        'uniqueCode': uniqueCode,
-        'viewCount': 0,
-        'daysLeft': 15,
-      });
+    // TODO: 실제 양도 등록 API 호출
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('양도 등록이 완료되었습니다'),
+        backgroundColor: AppColors.success,
+      ),
+    );
 
-      _availableTickets.removeWhere((t) => t['id'] == ticket['id']);
-    });
+    // 데이터 새로고침
+    _refreshData();
   }
 
-  void _updateTicketData(Map<String, dynamic> updatedTicket) {
-    setState(() {
-      final index = _myTransferTickets.indexWhere(
-        (t) => t['id'] == updatedTicket['id'],
-      );
-      if (index != -1) {
-        _myTransferTickets[index] = updatedTicket;
-      }
-    });
-  }
-
-  void _cancelTransfer(Map<String, dynamic> ticket) {
+  /// 양도 취소
+  void _cancelTransfer(MyTransferTicket ticket) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -827,26 +930,69 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              setState(() {
-                final index = _myTransferTickets.indexWhere(
-                  (t) => t['id'] == ticket['id'],
-                );
-                if (index != -1) {
-                  _myTransferTickets[index]['status'] = 'cancelled';
-                }
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('양도가 취소되었습니다'),
-                  backgroundColor: AppColors.success,
-                ),
-              );
+              _performCancelTransfer(ticket);
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             child: Text('취소하기', style: TextStyle(color: AppColors.white)),
           ),
         ],
       ),
+    );
+  }
+
+  /// 실제 양도 취소 수행
+  Future<void> _performCancelTransfer(MyTransferTicket ticket) async {
+    try {
+      // TODO: 실제 양도 취소 API 호출
+      // await transferService.cancelTransfer(ticket.transferTicketId);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('양도가 취소되었습니다'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+
+      // 데이터 새로고침
+      await _refreshData();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('양도 취소에 실패했습니다'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
+  /// 데이터 새로고침
+  Future<void> _refreshData() async {
+    final apiProvider = Provider.of<ApiProvider>(context, listen: false);
+    final transferProvider = Provider.of<TransferProvider>(
+      context,
+      listen: false,
+    );
+
+    if (apiProvider.currentUserId != null) {
+      await transferProvider.refreshData(userId: apiProvider.currentUserId!);
+    }
+  }
+
+  /// 시간 형식 변환
+  String _formatDateTime(DateTime dateTime) {
+    return '${dateTime.year}.${dateTime.month.toString().padLeft(2, '0')}.${dateTime.day.toString().padLeft(2, '0')} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+  }
+
+  /// 세션 날짜 시간 형식 변환
+  String _formatSessionDateTime(DateTime dateTime) {
+    return '${dateTime.year}.${dateTime.month.toString().padLeft(2, '0')}.${dateTime.day.toString().padLeft(2, '0')} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+  }
+
+  /// 가격 포맷팅
+  String _formatPrice(int price) {
+    return price.toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]},',
     );
   }
 }

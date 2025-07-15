@@ -470,32 +470,32 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
                         ],
                       ),
                     ),
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: session.isSoldOut
-                            ? AppColors.error.withOpacity(0.1)
-                            : session.remainingSeats < 10
-                            ? AppColors.warning.withOpacity(0.1)
-                            : AppColors.success.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Text(
-                        session.availabilityText,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: session.isSoldOut
-                              ? AppColors.error
-                              : session.remainingSeats < 10
-                              ? AppColors.warning
-                              : AppColors.success,
-                        ),
-                      ),
-                    ),
+                    // Container(
+                    //   padding: EdgeInsets.symmetric(
+                    //     horizontal: 12,
+                    //     vertical: 6,
+                    //   ),
+                    //   decoration: BoxDecoration(
+                    //     color: session.isSoldOut
+                    //         ? AppColors.error.withOpacity(0.1)
+                    //         : session.remainingSeats < 10
+                    //         ? AppColors.warning.withOpacity(0.1)
+                    //         : AppColors.success.withOpacity(0.1),
+                    //     borderRadius: BorderRadius.circular(16),
+                    //   ),
+                    //   child: Text(
+                    //     session.availabilityText,
+                    //     style: TextStyle(
+                    //       fontSize: 12,
+                    //       fontWeight: FontWeight.w600,
+                    //       color: session.isSoldOut
+                    //           ? AppColors.error
+                    //           : session.remainingSeats < 10
+                    //           ? AppColors.warning
+                    //           : AppColors.success,
+                    //     ),
+                    //   ),
+                    // ),
                   ],
                 ),
               ],
@@ -580,7 +580,9 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
           SizedBox(width: 8),
           Expanded(
             child: Text(
-              '${selectedSession.dateTimeDisplay} (${selectedSession.availabilityText})',
+              '${selectedSession.dateTimeDisplay}',
+
+              // '${selectedSession.dateTimeDisplay} (${selectedSession.availabilityText})',
               style: TextStyle(
                 fontSize: 14,
                 color: AppColors.primary,

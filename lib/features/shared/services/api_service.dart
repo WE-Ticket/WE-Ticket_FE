@@ -1,60 +1,48 @@
+import 'package:we_ticket/features/mypage/my_ticket_service.dart';
 import '../../../core/services/dio_client.dart';
 import '../../contents/data/services/performance_service.dart';
 import '../../ticketing/data/services/ticket_service.dart';
 import '../../auth/data/services/user_service.dart';
-import '../../transfer/data/services/transfer_service.dart'; // 새로 추가
+import '../../transfer/data/services/transfer_service.dart';
 
-/// 모든 API 서비스를 통합 관리하는 클래스
-///
-/// 앱 전체에서 하나의 인스턴스로 모든 API를 관리합니다.
-/// DioClient를 공유하여 네트워크 설정을 일관되게 유지합니다.
+/// [ 모든 API 서비스를 통합 관리하는 클래스 ]
+/// 앱 전체에서 하나의 인스턴스로 모든 API를 관리
+/// DioClient를 공유하여 네트워크 설정을 일관되게 유지
 class ApiService {
   final DioClient _dioClient;
 
-  // 각 도메인별 서비스들
   late final PerformanceService performance;
   late final TicketService ticket;
+  late final TransferService transfer;
   late final UserService user;
-  late final TransferService transfer; // 새로 추가
+  late final MyTicketService myTicket;
 
   /// 생성자
-  ///
-  /// DioClient 인스턴스를 받아서 각 서비스에 주입합니다.
   ApiService(this._dioClient) {
     performance = PerformanceService(_dioClient);
     ticket = TicketService(_dioClient);
     user = UserService(_dioClient);
-    transfer = TransferService(_dioClient); // 새로 추가
-
-    print('🚀 ApiService 초기화 완료 (Transfer 서비스 포함)');
+    transfer = TransferService(_dioClient);
+    myTicket = MyTicketService(_dioClient);
   }
 
   /// 팩토리 생성자 - 기본 설정으로 생성
-  ///
-  /// 가장 간단하게 ApiService를 생성하는 방법입니다.
-  /// DioClient를 내부에서 자동으로 생성합니다.
   factory ApiService.create() {
-    print('🔧 ApiService 기본 설정으로 생성 중...');
     return ApiService(DioClient());
   }
 
   /// 커스텀 DioClient로 생성
-  ///
-  /// 특별한 네트워크 설정이 필요한 경우 사용합니다.
   factory ApiService.withCustomClient(DioClient dioClient) {
-    print('🔧 ApiService 커스텀 설정으로 생성 중...');
     return ApiService(dioClient);
   }
 
   /// 네트워크 연결 상태 확인
-  ///
-  /// 실제 API 호출 전에 기본적인 연결 상태를 확인합니다.
+  /// 실제 API 호출 전에 기본적인 연결 상태를 확인
   Future<bool> checkConnection() async {
     try {
-      print('🌐 네트워크 연결 상태 확인 중...');
+      print('네트워크 연결 상태 확인 중...');
 
       // 가장 가벼운 API 호출로 연결 상태 확인
-      // HOT 공연 API를 이용 (보통 빠르고 가벼움)
       await performance.getHotPerformances();
 
       print('✅ 네트워크 연결 정상');
@@ -66,13 +54,9 @@ class ApiService {
   }
 
   /// 모든 대시보드 데이터를 한 번에 로드
-  ///
-  /// 대시보드 화면에서 필요한 모든 데이터를 병렬로 가져옵니다.
   Future<Map<String, dynamic>> loadDashboardData() async {
     try {
-      print('📊 대시보드 데이터 로딩 시작...');
-
-      // HOT 공연과 예매 가능한 공연을 동시에 요청
+      // HOT 공연, 예매 가능한 공연
       final results = await Future.wait([
         performance.getHotPerformances(),
         performance.getAvailablePerformances(),
@@ -92,13 +76,10 @@ class ApiService {
     }
   }
 
-  /// 양도 마켓 대시보드 데이터 로드 (새로 추가)
-  ///
-  /// 양도 마켓 메인 화면에서 필요한 데이터를 로드합니다.
+  /// 양도 마켓 대시보드 데이터 로드
+  /// 양도 마켓 메인 화면에서 필요한 데이터를 로드
   Future<Map<String, dynamic>> loadTransferMarketData() async {
     try {
-      print('🎫 양도 마켓 데이터 로딩 시작...');
-
       // 양도 가능한 티켓 리스트 조회
       final transferList = await transfer.getTransferTicketList();
 
@@ -116,7 +97,7 @@ class ApiService {
     }
   }
 
-  /// 사용자별 양도 관리 데이터 로드 (새로 추가)
+  /// 사용자별 양도 관리 데이터 로드
   ///
   /// 내 양도 등록 티켓과 양도 가능한 티켓을 동시에 로드합니다.
   Future<Map<String, dynamic>> loadUserTransferData(int userId) async {
@@ -139,6 +120,93 @@ class ApiService {
       return userTransferData;
     } catch (e) {
       print('❌ 사용자 양도 데이터 로딩 실패: $e');
+      rethrow;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getOwnedTickets(
+    int userId, {
+    String? state,
+  }) async {
+    try {
+      print('🎫 내 티켓 목록 조회 시작 (사용자 ID: $userId, 상태: $state)');
+
+      final requestData = {
+        'user_id': userId,
+        if (state != null && state.isNotEmpty) 'state': state,
+      };
+
+      final response = await _dioClient.post(
+        '/tickets/my-page/owned-ticket-list/',
+        data: requestData,
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data;
+        final tickets = data.cast<Map<String, dynamic>>();
+
+        print('✅ 내 티켓 목록 조회 성공: ${tickets.length}개');
+        return tickets;
+      } else {
+        throw Exception('내 티켓 목록 조회 실패: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ 내 티켓 목록 조회 오류: $e');
+      rethrow;
+    }
+  }
+
+  /// 티켓 상세 정보 조회
+  ///
+  /// POST /tickets/my-ticket-detail/
+  /// 티켓 상세 화면에서 사용
+  Future<Map<String, dynamic>> getTicketDetail(String nftTicketId) async {
+    try {
+      print('🎫 티켓 상세 정보 조회 시작 (티켓 ID: $nftTicketId)');
+
+      final requestData = {'nft_ticket_id': nftTicketId};
+
+      final response = await _dioClient.post(
+        '/tickets/my-ticket-detail/',
+        data: requestData,
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = response.data;
+        print('✅ 티켓 상세 정보 조회 성공');
+        return data;
+      } else {
+        throw Exception('티켓 상세 정보 조회 실패: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ 티켓 상세 정보 조회 오류: $e');
+      rethrow;
+    }
+  }
+
+  /// 사용자별 티켓 관리 데이터 로드 (새로 추가)
+  ///
+  /// 내 티켓 목록과 구매 이력을 동시에 로드합니다.
+  Future<Map<String, dynamic>> loadUserTicketData(int userId) async {
+    try {
+      print('🎫 사용자 티켓 데이터 로딩 시작 (사용자 ID: $userId)');
+
+      // 내 티켓 목록과 구매 이력을 동시에 요청
+      final results = await Future.wait([
+        myTicket.getOwnedTickets(userId),
+        myTicket.getTouchedTickets(userId),
+      ]);
+
+      final userTicketData = {
+        'ownedTickets': results[0],
+        'purchaseHistory': results[1],
+        'loadedAt': DateTime.now(),
+      };
+
+      print('✅ 사용자 티켓 데이터 로딩 완료');
+      return userTicketData;
+    } catch (e) {
+      print('❌ 사용자 티켓 데이터 로딩 실패: $e');
       rethrow;
     }
   }
@@ -195,16 +263,18 @@ class ApiService {
     try {
       print('👤 사용자 초기 데이터 로딩 시작 (사용자 ID: $userId)');
 
-      // 대시보드 데이터와 사용자 양도 데이터를 동시에 로드
+      // 대시보드 데이터, 양도 데이터, 티켓 데이터를 동시에 로드
       final results = await Future.wait([
         loadDashboardData(),
         loadUserTransferData(userId),
+        loadUserTicketData(userId), // 새로 추가
       ]);
 
       final initialData = {
         'userId': userId,
         'dashboardData': results[0],
         'transferData': results[1],
+        'ticketData': results[2], // 새로 추가
         'loginTime': DateTime.now(),
       };
 
@@ -234,7 +304,7 @@ class ApiService {
       print('❌ Performance Service 오류: $e');
     }
 
-    // Transfer Service 테스트 (새로 추가)
+    // Transfer Service 테스트
     try {
       await transfer.getTransferTicketList();
       results['transfer'] = true;
@@ -244,12 +314,17 @@ class ApiService {
       print('❌ Transfer Service 오류: $e');
     }
 
+    // MyTicket Service 테스트 (새로 추가)
+    // 사용자 ID가 필요해서 스킵
+    results['myTicket'] = true;
+    print('⚠️ MyTicket Service 테스트 스킵 (user_id 필요)');
+
     // Ticket Service 테스트 (스케줄 조회는 performance_id가 필요해서 스킵)
-    results['ticket'] = true; // 일단 true로 설정
+    results['ticket'] = true;
     print('⚠️ Ticket Service 테스트 스킵 (performance_id 필요)');
 
     // User Service 테스트 (실제 로그인은 위험해서 스킵)
-    results['user'] = true; // 일단 true로 설정
+    results['user'] = true;
     print('⚠️ User Service 테스트 스킵 (실제 로그인 위험)');
 
     print('🔍 API 서비스 상태 진단 완료');
@@ -266,7 +341,8 @@ class ApiService {
     performance = PerformanceService(_dioClient);
     ticket = TicketService(_dioClient);
     user = UserService(_dioClient);
-    transfer = TransferService(_dioClient); // 새로 추가
+    transfer = TransferService(_dioClient);
+    myTicket = MyTicketService(_dioClient); // 새로 추가
 
     print('✅ API 서비스 리셋 완료');
   }

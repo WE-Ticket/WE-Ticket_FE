@@ -1,20 +1,293 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import 'package:we_ticket/features/shared/providers/api_provider.dart';
 import '../../../../core/constants/app_colors.dart';
 
 class TicketDetailScreen extends StatefulWidget {
-  final Map<String, dynamic> ticket;
+  final String? ticketId;
+  final Map<String, dynamic>? ticket;
 
-  const TicketDetailScreen({Key? key, required this.ticket}) : super(key: key);
+  const TicketDetailScreen({Key? key, this.ticketId, this.ticket})
+    : super(key: key);
 
   @override
   _TicketDetailScreenState createState() => _TicketDetailScreenState();
 }
 
 class _TicketDetailScreenState extends State<TicketDetailScreen> {
+  Map<String, dynamic>? _ticketDetail;
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.ticket != null) {
+      // 리스트에서 넘어온 데이터가 있으면 사용
+      _ticketDetail = widget.ticket;
+    } else if (widget.ticketId != null) {
+      // 티켓 ID만 있으면 API 호출
+      _loadTicketDetail();
+    }
+  }
+
+  /// 티켓 상세 정보 API 호출
+  Future<void> _loadTicketDetail() async {
+    if (widget.ticketId == null) return;
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final apiProvider = context.read<ApiProvider>();
+
+      // API 호출 데이터 준비
+      final requestData = {'nft_ticket_id': widget.ticketId!};
+
+      print('티켓 상세 정보 조회 요청: $requestData');
+
+      // API 호출 (임시로 직접 호출)
+      final response = await apiProvider.apiService.getTicketDetail(
+        widget.ticketId!,
+      );
+
+      if (response != null) {
+        setState(() {
+          _ticketDetail = _convertApiToLocalFormat(response);
+          _isLoading = false;
+        });
+
+        print('✅ 티켓 상세 정보 조회 성공');
+      } else {
+        throw Exception('티켓 상세 정보를 찾을 수 없습니다.');
+      }
+    } catch (e) {
+      print('❌ 티켓 상세 정보 조회 오류: $e');
+      setState(() {
+        _errorMessage = '티켓 정보를 불러올 수 없습니다. 다시 시도해주세요.';
+        _isLoading = false;
+      });
+    }
+  }
+
+  /// API 응답 데이터를 화면에서 사용하는 형식으로 변환
+  Map<String, dynamic> _convertApiToLocalFormat(Map<String, dynamic> apiData) {
+    // API 응답 형식:
+    // {
+    //   "nft_ticket_id": "4444",
+    //   "performance_id": 2,
+    //   "performance_main_image": null,
+    //   "performance_title": "2025 aespa LIVE TOUR",
+    //   "performer_name": "aespa",
+    //   "session_datetime": "2025-08-29T09:00:00Z",
+    //   "venue_name": "올림픽 체조경기장",
+    //   "venue_location": "서울특별시 송파구 올림픽로 424",
+    //   "seat_number": "FLOOR층 4구역 16열 1번",
+    //   "seat_grade": "aeXIS석",
+    //   "seat_price": 170000,
+    //   "created_at": "2025-07-13T20:56:13.964549+09:00",
+    //   "transfer_history": []
+    // }
+
+    try {
+      final DateTime sessionDateTime = DateTime.parse(
+        apiData['session_datetime'] ?? '2025-01-01T00:00:00Z',
+      );
+      final DateTime createdAt = DateTime.parse(
+        apiData['created_at'] ?? '2025-01-01T00:00:00Z',
+      );
+      final now = DateTime.now();
+      final dday = sessionDateTime.difference(now).inDays;
+
+      // 티켓 상태 결정 로직
+      String status = 'upcoming';
+      if (sessionDateTime.isBefore(now)) {
+        status = 'used';
+      }
+      // 양도 중인지는 별도 API나 필드가 필요할 수 있음
+
+      return {
+        'id': apiData['nft_ticket_id'] ?? 'unknown',
+        'performanceId': apiData['performance_id'] ?? 0,
+        'title': apiData['performance_title'] ?? '제목 없음',
+        'artist': apiData['performer_name'] ?? '아티스트 미정',
+        'date': _formatDate(sessionDateTime),
+        'time': _formatTime(sessionDateTime),
+        'venue': apiData['venue_name'] ?? '장소 미정',
+        'venueLocation': apiData['venue_location'] ?? '',
+        'seat': apiData['seat_number'] ?? '좌석 미정',
+        'seatGrade': apiData['seat_grade'] ?? '',
+        'price': _formatPrice(apiData['seat_price']),
+        'poster': _getSafeImageUrl(apiData['performance_main_image']),
+        'status': status,
+        'dday': dday,
+        'createdAt': _formatDateTime(createdAt),
+        'transferHistory': apiData['transfer_history'] ?? [],
+        'sessionDateTime': sessionDateTime,
+        'rawPrice': apiData['seat_price'] ?? 0,
+      };
+    } catch (e) {
+      print('❌ 데이터 변환 오류: $e');
+      // 오류 발생 시 기본값으로 반환
+      return {
+        'id': apiData['nft_ticket_id'] ?? 'unknown',
+        'performanceId': apiData['performance_id'] ?? 0,
+        'title': apiData['performance_title'] ?? '제목 없음',
+        'artist': apiData['performer_name'] ?? '아티스트 미정',
+        'date': '날짜 미정',
+        'time': '시간 미정',
+        'venue': apiData['venue_name'] ?? '장소 미정',
+        'venueLocation': apiData['venue_location'] ?? '',
+        'seat': apiData['seat_number'] ?? '좌석 미정',
+        'seatGrade': apiData['seat_grade'] ?? '',
+        'price': _formatPrice(apiData['seat_price']),
+        'poster': _getSafeImageUrl(apiData['performance_main_image']),
+        'status': 'upcoming',
+        'dday': 0,
+        'createdAt': '날짜 미정',
+        'transferHistory': apiData['transfer_history'] ?? [],
+        'sessionDateTime': DateTime.now(),
+        'rawPrice': apiData['seat_price'] ?? 0,
+      };
+    }
+  }
+
+  /// 안전한 이미지 URL 생성
+  String _getSafeImageUrl(String? imageUrl) {
+    if (imageUrl == null || imageUrl.isEmpty || imageUrl == 'null') {
+      return 'https://via.placeholder.com/300x400?text=No+Image';
+    }
+
+    // URL이 유효한지 확인
+    try {
+      final uri = Uri.parse(imageUrl);
+      if (uri.hasScheme && (uri.scheme == 'http' || uri.scheme == 'https')) {
+        return imageUrl;
+      } else {
+        return 'https://via.placeholder.com/300x400?text=No+Image';
+      }
+    } catch (e) {
+      print('❌ 이미지 URL 파싱 오류: $e');
+      return 'https://via.placeholder.com/300x400?text=No+Image';
+    }
+  }
+
+  /// 날짜 포맷팅 (YYYY.MM.DD)
+  String _formatDate(DateTime dateTime) {
+    return '${dateTime.year}.${dateTime.month.toString().padLeft(2, '0')}.${dateTime.day.toString().padLeft(2, '0')}';
+  }
+
+  /// 시간 포맷팅 (HH:MM)
+  String _formatTime(DateTime dateTime) {
+    return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+  }
+
+  /// 날짜시간 포맷팅 (YYYY.MM.DD HH:MM)
+  String _formatDateTime(DateTime dateTime) {
+    return '${_formatDate(dateTime)} ${_formatTime(dateTime)}';
+  }
+
+  /// 가격 포맷팅
+  String _formatPrice(int? price) {
+    if (price == null || price == 0) return '가격 정보 없음';
+    return '${price.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}원';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final ticket = widget.ticket;
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          backgroundColor: AppColors.primary,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back, color: AppColors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: Text('티켓 상세', style: TextStyle(color: AppColors.white)),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: AppColors.primary),
+              SizedBox(height: 16),
+              Text(
+                '티켓 정보를 불러오는 중...',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          backgroundColor: AppColors.primary,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back, color: AppColors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: Text('티켓 상세', style: TextStyle(color: AppColors.white)),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 80, color: AppColors.error),
+              SizedBox(height: 16),
+              Text(
+                _errorMessage!,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: _loadTicketDetail,
+                icon: Icon(Icons.refresh),
+                label: Text('다시 시도'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_ticketDetail == null) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          backgroundColor: AppColors.primary,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back, color: AppColors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: Text('티켓 상세', style: TextStyle(color: AppColors.white)),
+        ),
+        body: Center(
+          child: Text(
+            '티켓 정보가 없습니다.',
+            style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
+          ),
+        ),
+      );
+    }
+
+    final ticket = _ticketDetail!;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -31,6 +304,10 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
             ),
             actions: [
               IconButton(
+                icon: Icon(Icons.refresh, color: AppColors.white),
+                onPressed: widget.ticketId != null ? _loadTicketDetail : null,
+              ),
+              IconButton(
                 icon: Icon(Icons.share, color: AppColors.white),
                 onPressed: () => _shareTicket(),
               ),
@@ -40,7 +317,8 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                 fit: StackFit.expand,
                 children: [
                   Image.network(
-                    ticket['poster'],
+                    ticket['poster'] ??
+                        'https://via.placeholder.com/300x400?text=No+Image',
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) {
                       return Container(
@@ -101,9 +379,9 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     );
   }
 
-  // 티켓 디지털 표시 섹션 (QR 코드 제거)
+  // 티켓 디지털 표시 섹션
   Widget _buildDigitalTicketSection() {
-    final ticket = widget.ticket;
+    final ticket = _ticketDetail!;
 
     return Container(
       margin: EdgeInsets.all(20),
@@ -139,13 +417,16 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                     ),
                   ),
                   SizedBox(height: 4),
-                  Text(
-                    '# ${ticket['id']?.toUpperCase() ?? 'UNKNOWN'}',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'monospace',
+                  GestureDetector(
+                    onTap: () => _copyTicketId(ticket['id']),
+                    child: Text(
+                      '# ${ticket['id']?.toUpperCase() ?? 'UNKNOWN'}',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'monospace',
+                      ),
                     ),
                   ),
                 ],
@@ -171,7 +452,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
           SizedBox(height: 20),
 
           Text(
-            ticket['title'],
+            ticket['title'] ?? '제목 없음',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -180,7 +461,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
           ),
           SizedBox(height: 4),
           Text(
-            ticket['artist'],
+            ticket['artist'] ?? '아티스트 미정',
             style: TextStyle(
               fontSize: 16,
               color: AppColors.primary,
@@ -205,7 +486,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.verified, size: 24, color: AppColors.primary),
-                    SizedBox(height: 20),
+                    SizedBox(width: 8),
                     Text(
                       'NFT 인증 완료',
                       style: TextStyle(
@@ -234,7 +515,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
 
   // 공연 상세 정보 섹션
   Widget _buildConcertDetailsSection() {
-    final ticket = widget.ticket;
+    final ticket = _ticketDetail!;
 
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 20),
@@ -268,11 +549,32 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
           _buildDetailRow(
             Icons.calendar_today,
             '공연 일시',
-            '${ticket['date']} ${ticket['time']}',
+            '${ticket['date'] ?? '날짜 미정'} ${ticket['time'] ?? '시간 미정'}',
           ),
-          _buildDetailRow(Icons.location_on, '공연 장소', ticket['venue']),
-          _buildDetailRow(Icons.event_seat, '좌석 정보', ticket['seat']),
-          _buildDetailRow(Icons.local_offer, '티켓 가격', ticket['price']),
+          _buildDetailRow(
+            Icons.location_on,
+            '공연 장소',
+            ticket['venue'] ?? '장소 미정',
+            subtitle:
+                (ticket['venueLocation'] != null &&
+                    ticket['venueLocation'].isNotEmpty)
+                ? ticket['venueLocation']
+                : null,
+          ),
+          _buildDetailRow(
+            Icons.event_seat,
+            '좌석 정보',
+            ticket['seat'] ?? '좌석 미정',
+            subtitle:
+                (ticket['seatGrade'] != null && ticket['seatGrade'].isNotEmpty)
+                ? '(${ticket['seatGrade']})'
+                : null,
+          ),
+          _buildDetailRow(
+            Icons.local_offer,
+            '티켓 가격',
+            ticket['price'] ?? '가격 정보 없음',
+          ),
         ],
       ),
     );
@@ -280,6 +582,8 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
 
   // NFT 정보 섹션
   Widget _buildNFTInfoSection() {
+    final ticket = _ticketDetail!;
+
     return Container(
       margin: EdgeInsets.all(20),
       padding: EdgeInsets.all(20),
@@ -308,8 +612,15 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
 
           SizedBox(height: 16),
 
-          _buildNFTDetailRow('발행 일시', '2025.06.15 14:30'),
-          _buildNFTDetailRow('소유권 이력', '원소유자 → 현재 소유자'),
+          _buildNFTDetailRow('발행 일시', ticket['createdAt'] ?? '정보 없음'),
+          _buildNFTDetailRow('토큰 ID', ticket['id'] ?? 'unknown'),
+          _buildNFTDetailRow(
+            '소유권 이력',
+            (ticket['transferHistory'] != null &&
+                    ticket['transferHistory'].isNotEmpty)
+                ? '${ticket['transferHistory'].length}회 양도됨'
+                : '원소유자 → 현재 소유자',
+          ),
           _buildNFTDetailRow('블록체인', 'Omnione Chain'),
 
           SizedBox(height: 12),
@@ -320,7 +631,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
 
   // 액션 버튼 섹션
   Widget _buildActionButtonsSection() {
-    final ticket = widget.ticket;
+    final ticket = _ticketDetail!;
 
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 20),
@@ -391,6 +702,38 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                 ),
               ),
             ),
+          ] else if (ticket['status'] == 'used') ...[
+            // 사용 완료된 티켓
+            Container(
+              width: double.infinity,
+              height: 56,
+              decoration: BoxDecoration(
+                color: AppColors.gray100,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.gray300),
+              ),
+              child: Center(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.check_circle,
+                      color: AppColors.success,
+                      size: 24,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      '공연 입장 완료',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.success,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ],
         ],
       ),
@@ -428,11 +771,11 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
           SizedBox(height: 12),
 
           Text(
-            '• 여기에 기획사별 주어지는 주의사항 혹은 일반적인 주의사항 입력하면 될듯\n'
             '• 입장 시 신분증과 NFT 티켓이 모두 필요합니다\n'
             '• 공연 시작 30분 전까지 입장해주세요\n'
             '• 재입장은 불가하니 유의해주세요\n'
-            '• 촬영 및 녹음은 금지되어 있습니다',
+            '• 촬영 및 녹음은 금지되어 있습니다\n'
+            '• 티켓 양도는 공연 7일 전까지만 가능합니다',
             style: TextStyle(
               fontSize: 12,
               color: AppColors.gray600,
@@ -445,7 +788,12 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   }
 
   // 상세 정보 행 위젯
-  Widget _buildDetailRow(IconData icon, String label, String value) {
+  Widget _buildDetailRow(
+    IconData icon,
+    String label,
+    String value, {
+    String? subtitle,
+  }) {
     return Padding(
       padding: EdgeInsets.only(bottom: 12),
       child: Row(
@@ -474,6 +822,16 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+                if (subtitle != null) ...[
+                  SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -496,12 +854,18 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
             ),
           ),
           Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w500,
+            child: GestureDetector(
+              onTap: label == '토큰 ID' ? () => _copyTicketId(value) : null,
+              child: Text(
+                value,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w500,
+                  decoration: label == '토큰 ID'
+                      ? TextDecoration.underline
+                      : null,
+                ),
               ),
             ),
           ),
@@ -512,30 +876,43 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
 
   // 상태 관련 헬퍼 메서드들
   Color _getStatusColor() {
-    switch (widget.ticket['status']) {
+    switch (_ticketDetail?['status']) {
       case 'upcoming':
         return AppColors.success;
       case 'transferring':
         return AppColors.warning;
-      default:
+      case 'used':
         return AppColors.primary;
+      default:
+        return AppColors.gray400;
     }
   }
 
   String _getStatusText() {
-    switch (widget.ticket['status']) {
+    switch (_ticketDetail?['status']) {
       case 'upcoming':
         return '입장 대기';
       case 'transferring':
         return '양도 중';
+      case 'used':
+        return '사용 완료';
       default:
-        return '활성';
+        return '알 수 없음';
     }
+  }
+
+  // 유틸리티 메서드들
+  void _copyTicketId(String? ticketId) {
+    final id = ticketId ?? 'unknown';
+    Clipboard.setData(ClipboardData(text: id));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('티켓 ID가 복사되었습니다'), duration: Duration(seconds: 2)),
+    );
   }
 
   // 액션 핸들러들
   void _handleEntry() {
-    // TODO: 05_01_NFC입장활성화 / 05_02_일반 검표 입장
+    // TODO: NFC 입장 또는 일반 검표 입장 화면으로 이동
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -561,21 +938,37 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   }
 
   void _handleTransfer() {
-    // TODO: 04_02_양도등록
+    // TODO: 양도 등록 화면으로 이동
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text('양도 등록 화면으로 이동합니다')));
   }
 
   void _handleTransferManage() {
-    // TODO: 06_03_내티켓관리
+    // TODO: 양도 관리 화면으로 이동
     Navigator.pop(context);
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('양도 관리 화면으로 이동합니다')));
   }
 
   void _shareTicket() {
     // 티켓 공유 기능
+    final ticket = _ticketDetail!;
+    final shareText =
+        '''
+🎫 ${ticket['title'] ?? '제목 없음'}
+🎤 ${ticket['artist'] ?? '아티스트 미정'}
+📅 ${ticket['date'] ?? '날짜 미정'} ${ticket['time'] ?? '시간 미정'}
+📍 ${ticket['venue'] ?? '장소 미정'}
+💺 ${ticket['seat'] ?? '좌석 미정'}
+
+NFT 티켓 ID: ${ticket['id'] ?? 'unknown'}
+''';
+
+    Clipboard.setData(ClipboardData(text: shareText));
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text('티켓 정보가 공유되었습니다')));
+    ).showSnackBar(SnackBar(content: Text('티켓 정보가 클립보드에 복사되었습니다')));
   }
 }

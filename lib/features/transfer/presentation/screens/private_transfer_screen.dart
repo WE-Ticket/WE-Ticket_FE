@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../providers/transfer_provider.dart';
 import 'transfer_detail_screen.dart';
 
 class PrivateTransferScreen extends StatefulWidget {
@@ -46,13 +48,9 @@ class _PrivateTransferScreenState extends State<PrivateTransferScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildInstructionHeader(),
-
             SizedBox(height: 24),
-
             _buildCodeInputForm(),
-
             SizedBox(height: 20),
-
             _buildNoticeSection(),
           ],
         ),
@@ -170,10 +168,11 @@ class _PrivateTransferScreenState extends State<PrivateTransferScreen> {
                 fontFamily: 'monospace',
               ),
               decoration: InputDecoration(
-                hintText: 'XXXX-XXXX-XXXX-XXXX',
+                hintText: '고유번호를 입력하세요',
                 hintStyle: TextStyle(
                   color: AppColors.textTertiary,
-                  letterSpacing: 2,
+                  fontSize: 14,
+                  letterSpacing: 1,
                 ),
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.all(20),
@@ -190,32 +189,20 @@ class _PrivateTransferScreenState extends State<PrivateTransferScreen> {
               ),
               inputFormatters: [
                 UpperCaseTextFormatter(),
-                FilteringTextInputFormatter.allow(RegExp(r'[A-Z0-9-]')),
-                LengthLimitingTextInputFormatter(19), // XXXX-XXXX-XXXX-XXXX
+                FilteringTextInputFormatter.allow(RegExp(r'[A-Z0-9]')),
+                LengthLimitingTextInputFormatter(16), // 스웨거 명세서 기준
               ],
               validator: (value) {
                 if (value == null || value.isEmpty) {
                   return '고유 번호를 입력해주세요';
                 }
-                if (value.length < 19) {
+                if (value.length < 8) {
                   return '올바른 형식의 고유 번호를 입력해주세요';
                 }
                 return null;
               },
               onChanged: (value) {
-                setState(() {
-                  // 자동으로 하이픈 추가
-                  if (value.length == 4 ||
-                      value.length == 9 ||
-                      value.length == 14) {
-                    if (!value.endsWith('-')) {
-                      _codeController.text = value + '-';
-                      _codeController.selection = TextSelection.fromPosition(
-                        TextPosition(offset: _codeController.text.length),
-                      );
-                    }
-                  }
-                });
+                setState(() {});
               },
             ),
           ),
@@ -321,49 +308,60 @@ class _PrivateTransferScreenState extends State<PrivateTransferScreen> {
     });
 
     try {
-      // TODO: 실제로는 API 호출하여 고유 번호로 티켓 조회
-      await Future.delayed(Duration(seconds: 2));
+      final transferProvider = Provider.of<TransferProvider>(
+        context,
+        listen: false,
+      );
+      final uniqueCode = _codeController.text.trim();
 
-      // 더미 응답 - 실제로는 서버 응답 처리
-      final isValidCode = _codeController.text.startsWith('ABCD'); // 가상 조건
+      print('🔐 비공개 양도 티켓 조회 시작: ${uniqueCode.substring(0, 4)}...');
 
-      if (isValidCode) {
-        // 조회 성공 - 티켓 정보 반환
-        final ticketData = {
-          'id': 'private_transfer_001',
-          'concertTitle': 'NewJeans Get Up Concert',
-          'artist': 'NewJeans',
-          'date': '2025.08.15',
-          'time': '19:00',
-          'venue': 'KSPO DOME',
-          'location': '서울',
-          'seat': 'VIP석 1층 A구역 2열 15번',
-          'originalPrice': 154000,
-          'transferPrice': 154000,
-          'poster': 'https://example.com/newjeans_poster.jpg',
-          'transferTime': '3시간 전',
-          'isUrgent': false,
-          'sellerId': 'private_seller',
-          'status': 'available',
-          'uniqueCode': _codeController.text,
-          'isPrivate': true,
-        };
+      // 비공개 양도 티켓 조회 API 호출
+      await transferProvider.loadPrivateTransferDetail(uniqueCode);
+
+      // 조회 성공 시 상세 화면으로 이동
+      if (transferProvider.currentTransferDetail != null) {
+        print('✅ 비공개 양도 티켓 조회 성공');
 
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => TransferDetailScreen(ticket: ticketData),
+            builder: (context) => TransferDetailScreen(
+              transferTicketId:
+                  transferProvider.currentTransferDetail!.transferTicketId,
+            ),
           ),
         );
       } else {
-        // 조회 실패
-        _showErrorDialog(
-          '유효하지 않은 고유 번호',
-          '입력하신 고유 번호를 찾을 수 없습니다.\n코드를 다시 확인해주세요.',
-        );
+        // 에러가 있다면 에러 메시지 표시
+        if (transferProvider.errorMessage != null) {
+          _showErrorDialog('조회 실패', transferProvider.errorMessage!);
+        } else {
+          _showErrorDialog('알 수 없는 오류', '티켓 조회 중 알 수 없는 오류가 발생했습니다.');
+        }
       }
     } catch (e) {
-      _showErrorDialog('조회 실패', '네트워크 오류가 발생했습니다.\n잠시 후 다시 시도해주세요.');
+      print('❌ 비공개 양도 티켓 조회 실패: $e');
+
+      // 에러 타입에 따른 메시지 구분
+      String errorTitle = '조회 실패';
+      String errorMessage = '';
+
+      if (e.toString().contains('404')) {
+        errorTitle = '유효하지 않은 고유 번호';
+        errorMessage = '입력하신 고유 번호를 찾을 수 없습니다.\n코드를 다시 확인해주세요.';
+      } else if (e.toString().contains('403')) {
+        errorTitle = '접근 불가';
+        errorMessage = '해당 티켓은 양도가 불가능한 상태입니다.\n양도자에게 문의해주세요.';
+      } else if (e.toString().contains('410')) {
+        errorTitle = '만료된 고유 번호';
+        errorMessage = '입력하신 고유 번호가 만료되었습니다.\n양도자에게 새로운 번호를 요청해주세요.';
+      } else {
+        errorTitle = '네트워크 오류';
+        errorMessage = '네트워크 연결을 확인하고\n잠시 후 다시 시도해주세요.';
+      }
+
+      _showErrorDialog(errorTitle, errorMessage);
     } finally {
       setState(() {
         _isLoading = false;
@@ -375,12 +373,42 @@ class _PrivateTransferScreenState extends State<PrivateTransferScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: Row(
+          children: [
+            Icon(Icons.error_outline, color: AppColors.error, size: 24),
+            SizedBox(width: 8),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          message,
+          style: TextStyle(
+            fontSize: 14,
+            color: AppColors.textSecondary,
+            height: 1.4,
+          ),
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('확인', style: TextStyle(color: AppColors.primary)),
+            onPressed: () {
+              Navigator.pop(context);
+              // 에러 상태 클리어
+              final transferProvider = Provider.of<TransferProvider>(
+                context,
+                listen: false,
+              );
+              transferProvider.clearError();
+            },
+            style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+            child: Text('확인', style: TextStyle(fontWeight: FontWeight.w600)),
           ),
         ],
       ),
