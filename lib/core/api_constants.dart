@@ -18,7 +18,7 @@ class ApiConstants {
       '/tickets/performance/{performance_id}/session/{performance_session_id}/zone/{seat_zone}';
   static const String createTicket = '/tickets/create';
 
-  // Transfer (추후 더 추가될 예정 -> 파라미터들이 다 누락됨)
+  // Transfer
   static const String transferTicketList = '/transfers/ticket-list/';
   static const String transferTicketDetail =
       '/transfers/ticket-detail/{transfer_ticket_id}/';
