@@ -1,0 +1,937 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:we_ticket/features/contents/presentation/screens/concert_list_screen.dart';
+import 'package:we_ticket/features/contents/presentation/screens/concert_detail_screen.dart';
+import 'package:we_ticket/features/mypage/presentation/screens/my_page_screen.dart';
+import 'package:we_ticket/features/mypage/presentation/screens/my_tickets_screen.dart';
+import 'package:we_ticket/features/transfer/presentation/screens/transfer_market_screen.dart';
+import 'package:we_ticket/features/auth/presentation/providers/auth_guard.dart';
+import 'package:we_ticket/features/shared/providers/api_provider.dart';
+import 'package:we_ticket/features/contents/data/models/performance_models.dart';
+import 'dart:async';
+import '../../../../core/constants/app_colors.dart';
+
+class DashboardScreen extends StatefulWidget {
+  @override
+  _DashboardScreenState createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  final PageController _pageController = PageController();
+  int _currentSlide = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    // API 데이터 로드
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ApiProvider>().loadDashboardData();
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _startAutoSlide(int itemCount) {
+    _timer?.cancel();
+    if (itemCount > 1) {
+      _timer = Timer.periodic(Duration(seconds: 3), (timer) {
+        if (_pageController.hasClients && mounted) {
+          int nextPage = (_currentSlide + 1) % itemCount;
+          _pageController.animateToPage(
+            nextPage,
+            duration: Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
+        }
+      });
+    }
+  }
+
+  // API 연동 후 삭제 예정 - 기존 호환성을 위해 유지
+  String _getArtistFromTitle(String title) {
+    if (title.contains('RIIZE')) return 'RIIZE';
+    if (title.contains('ATEEZ')) return 'ATEEZ';
+    if (title.contains('키스오프라이프')) return 'Kiss Of Life';
+    return '아티스트';
+  }
+
+  // API 연동 후 삭제 예정 - 기존 호환성을 위해 유지
+  String _getLocationFromVenue(String venue) {
+    if (venue.contains('KSPO') || venue.contains('잠실') || venue.contains('올림픽'))
+      return '서울';
+    if (venue.contains('인스파이어')) return '인천';
+    if (venue.contains('서울월드컵')) return '서울';
+    return '서울';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<ApiProvider>(
+      builder: (context, apiProvider, child) {
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          appBar: AppBar(
+            backgroundColor: AppColors.surface,
+            elevation: 0,
+            title: Row(
+              children: [
+                Icon(
+                  Icons.confirmation_number,
+                  color: AppColors.primary,
+                  size: 28,
+                ),
+                SizedBox(width: 8),
+                Text(
+                  'WE-Ticket',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              IconButton(
+                icon: Icon(Icons.person_outline, color: AppColors.textPrimary),
+                onPressed: () {
+                  AuthGuard.requireAuth(
+                    context,
+                    onAuthenticated: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const MyPageScreen()),
+                      );
+                    },
+                    message: '마이페이지 이용을 위해 로그인이 필요합니다.',
+                  );
+                },
+              ),
+            ],
+          ),
+          body: RefreshIndicator(
+            color: AppColors.primary,
+            onRefresh: () => apiProvider.loadDashboardData(forceRefresh: true),
+            child: SingleChildScrollView(
+              physics: AlwaysScrollableScrollPhysics(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 추천 공연 슬라이더 (API: HOT 공연)
+                  _buildFeaturedSlider(apiProvider),
+
+                  SizedBox(height: 20),
+
+                  // 빠른 액세스 메뉴 (내 티켓, 양도 마켓)
+                  _buildQuickAccess(),
+
+                  SizedBox(height: 20),
+
+                  // 예매 가능한 공연 목록 (API: Available 공연)
+                  _buildUpcomingConcerts(apiProvider),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildFeaturedSlider(ApiProvider apiProvider) {
+    // 로딩 상태
+    if (apiProvider.isLoading && apiProvider.cachedHotPerformances == null) {
+      return Container(
+        height: 220,
+        child: Column(
+          children: [
+            Expanded(
+              child: Container(
+                margin: EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.gray300,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(color: AppColors.primary),
+                      SizedBox(height: 16),
+                      Text(
+                        'HOT 공연 로딩 중...',
+                        style: TextStyle(color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: 10),
+            // 로딩 중 점 표시
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                3,
+                (index) => Container(
+                  margin: EdgeInsets.symmetric(horizontal: 3),
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.gray300,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // 에러 상태
+    if (apiProvider.errorMessage != null &&
+        apiProvider.cachedHotPerformances == null) {
+      return Container(
+        height: 220,
+        child: Column(
+          children: [
+            Expanded(
+              child: Container(
+                margin: EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.gray100,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.gray300),
+                ),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        color: AppColors.gray600,
+                        size: 48,
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'HOT 공연 로드 실패',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 14,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      TextButton(
+                        onPressed: () =>
+                            apiProvider.loadDashboardData(forceRefresh: true),
+                        child: Text(
+                          '다시 시도',
+                          style: TextStyle(color: AppColors.primary),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                3,
+                (index) => Container(
+                  margin: EdgeInsets.symmetric(horizontal: 3),
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.gray300,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final hotPerformances = apiProvider.cachedHotPerformances;
+
+    // 빈 상태
+    if (hotPerformances == null || hotPerformances.isEmpty) {
+      return Container(
+        height: 220,
+        child: Column(
+          children: [
+            Expanded(
+              child: Container(
+                margin: EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.gray100,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.music_note,
+                        color: AppColors.gray600,
+                        size: 48,
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        '현재 HOT 공연이 없습니다',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                3,
+                (index) => Container(
+                  margin: EdgeInsets.symmetric(horizontal: 3),
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.gray300,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // 정상 데이터 표시
+    _startAutoSlide(hotPerformances.length);
+
+    return Container(
+      height: 220,
+      child: Column(
+        children: [
+          Expanded(
+            child: PageView.builder(
+              controller: _pageController,
+              onPageChanged: (index) {
+                setState(() {
+                  _currentSlide = index;
+                });
+                // 사용자가 수동으로 슬라이드 조작할 때 타이머 재시작
+                _timer?.cancel();
+                _startAutoSlide(hotPerformances.length);
+              },
+              itemCount: hotPerformances.length,
+              itemBuilder: (context, index) {
+                final performance = hotPerformances[index];
+                return GestureDetector(
+                  onTap: () {
+                    // API 데이터를 기존 상세 화면 형식에 맞게 변환
+                    final detailConcert = {
+                      'id': 'featured_${performance.performanceId}',
+                      'title': performance.title.isNotEmpty
+                          ? performance.title
+                          : '제목 없음',
+                      'artist': _getArtistFromTitle(performance.title),
+                      'date': performance.startDate.isNotEmpty
+                          ? performance.startDate
+                          : '날짜 미정',
+                      'time': '20:00', // 기본값
+                      'venue': performance.venueName.isNotEmpty
+                          ? performance.venueName
+                          : '장소 미정',
+                      'location': performance.venueLocation.isNotEmpty
+                          ? performance.venueLocation
+                          : _getLocationFromVenue(performance.venueName),
+                      'image': performance.mainImage.isNotEmpty
+                          ? performance.mainImage
+                          : 'https://via.placeholder.com/400x300?text=No+Image',
+                      'price': '가격 미정', // API에서 가격 정보 없음
+                      'category': performance.genre.isNotEmpty
+                          ? performance.genre
+                          : 'K-POP',
+                      'status': 'available',
+                      'isHot': performance.isHot,
+                      'tags': performance.tags.isNotEmpty
+                          ? performance.tags
+                          : ['추천'],
+                    };
+
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            ConcertDetailScreen(concert: detailConcert),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    margin: EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.shadowDark,
+                          spreadRadius: 1,
+                          blurRadius: 8,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Stack(
+                        children: [
+                          Container(
+                            width: double.infinity,
+                            height: double.infinity,
+                            child: Image.network(
+                              performance.mainImage.isNotEmpty
+                                  ? performance.mainImage
+                                  : 'https://via.placeholder.com/400x300?text=No+Image',
+                              fit: BoxFit.cover,
+                              loadingBuilder:
+                                  (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return Container(
+                                      color: AppColors.gray300,
+                                      child: Center(
+                                        child: CircularProgressIndicator(
+                                          color: AppColors.primary,
+                                          value:
+                                              loadingProgress
+                                                      .expectedTotalBytes !=
+                                                  null
+                                              ? loadingProgress
+                                                        .cumulativeBytesLoaded /
+                                                    loadingProgress
+                                                        .expectedTotalBytes!
+                                              : null,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: AppColors.gray300,
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.music_note,
+                                        size: 50,
+                                        color: AppColors.gray600,
+                                      ),
+                                      SizedBox(height: 8),
+                                      Text(
+                                        performance.title.length > 15
+                                            ? '${performance.title.substring(0, 15)}...'
+                                            : performance.title,
+                                        style: TextStyle(
+                                          color: AppColors.gray600,
+                                          fontSize: 12,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          // 그라데이션 오버레이
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.transparent,
+                                  AppColors.black.withOpacity(0.7),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 20,
+                            left: 20,
+                            right: 20,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  performance.title.isNotEmpty
+                                      ? performance.title
+                                      : '제목 없음',
+                                  style: TextStyle(
+                                    color: AppColors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  '${performance.startDate.isNotEmpty ? performance.startDate : '날짜 미정'} | ${performance.venueName.isNotEmpty ? performance.venueName : '장소 미정'}',
+                                  style: TextStyle(
+                                    color: AppColors.white.withOpacity(0.7),
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              hotPerformances.length > 0
+                  ? hotPerformances.length
+                  : 1, // 최소 1개는 표시
+              (index) => Container(
+                margin: EdgeInsets.symmetric(horizontal: 3),
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: hotPerformances.length > 0 && _currentSlide == index
+                      ? AppColors.primary
+                      : AppColors.gray300,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickAccess() {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildQuickAccessCard(
+              '내 티켓',
+              Icons.confirmation_number,
+              AppColors.success,
+              () {
+                AuthGuard.requireAuth(
+                  context,
+                  onAuthenticated: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const MyTicketsScreen(),
+                      ),
+                    );
+                  },
+                  message: '해당 서비스는 로그인이 필요합니다.',
+                );
+              },
+            ),
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            child: _buildQuickAccessCard(
+              '양도 마켓',
+              Icons.storefront,
+              AppColors.error,
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => TransferMarketScreen()),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickAccessCard(
+    String title,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.shadowMedium,
+              spreadRadius: 1,
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 32, color: color),
+            SizedBox(height: 8),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUpcomingConcerts(ApiProvider apiProvider) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '예매 가능한 공연',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ConcertListScreen(),
+                    ),
+                  );
+                },
+                child: Text('전체보기', style: TextStyle(color: AppColors.primary)),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: 8),
+
+        // 로딩 상태
+        if (apiProvider.isLoading &&
+            apiProvider.cachedAvailablePerformances == null) ...[
+          ListView.builder(
+            shrinkWrap: true,
+            physics: NeverScrollableScrollPhysics(),
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            itemCount: 3, // 로딩 스켈레톤 3개
+            itemBuilder: (context, index) {
+              return Container(
+                margin: EdgeInsets.only(bottom: 12),
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.gray300,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        color: AppColors.gray400,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            height: 16,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: AppColors.gray400,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Container(
+                            height: 12,
+                            width: 150,
+                            decoration: BoxDecoration(
+                              color: AppColors.gray400,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ]
+        // 에러 상태
+        else if (apiProvider.errorMessage != null &&
+            apiProvider.cachedAvailablePerformances == null) ...[
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.gray100,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.gray300),
+              ),
+              child: Column(
+                children: [
+                  Icon(Icons.error_outline, color: AppColors.gray600, size: 32),
+                  SizedBox(height: 8),
+                  Text(
+                    '예매 가능한 공연 로드 실패',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 14,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () =>
+                        apiProvider.loadDashboardData(forceRefresh: true),
+                    child: Text(
+                      '다시 시도',
+                      style: TextStyle(color: AppColors.primary),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ]
+        // 정상 데이터 또는 빈 상태
+        else ...[
+          _buildAvailablePerformancesList(
+            apiProvider.cachedAvailablePerformances,
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildAvailablePerformancesList(
+    List<PerformanceAvailableItem>? performances,
+  ) {
+    if (performances == null || performances.isEmpty) {
+      return Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16),
+        child: Container(
+          padding: EdgeInsets.all(32),
+          child: Center(
+            child: Column(
+              children: [
+                Icon(Icons.event_note, color: AppColors.gray600, size: 48),
+                SizedBox(height: 16),
+                Text(
+                  '현재 예매 가능한 공연이 없습니다',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: NeverScrollableScrollPhysics(),
+      padding: EdgeInsets.symmetric(horizontal: 16),
+      itemCount: performances.length,
+      itemBuilder: (context, index) {
+        final performance = performances[index];
+        return _buildConcertCard(performance);
+      },
+    );
+  }
+
+  Widget _buildConcertCard(PerformanceAvailableItem performance) {
+    return GestureDetector(
+      onTap: () {
+        // API 데이터를 상세 화면 형식에 맞게 변환
+        final detailConcert = {
+          'id': 'upcoming_${performance.performanceId}',
+          'title': performance.title.isNotEmpty ? performance.title : '제목 없음',
+          'artist': _getArtistFromTitle(performance.title),
+          'date': performance.startDate.isNotEmpty
+              ? performance.startDate
+              : '날짜 미정',
+          'time': '19:30', // 기본값
+          'venue': performance.venueName.isNotEmpty
+              ? performance.venueName
+              : '장소 미정',
+          'location': performance.venueLocation.isNotEmpty
+              ? performance.venueLocation
+              : _getLocationFromVenue(performance.venueName),
+          'image': performance.mainImage.isNotEmpty
+              ? performance.mainImage
+              : 'https://via.placeholder.com/400x300?text=No+Image',
+          'price': '가격 미정', // API에서 가격 정보 없음
+          'category': performance.genre.isNotEmpty
+              ? performance.genre
+              : 'K-POP',
+          'status': 'available',
+          'isHot': performance.isHot,
+          'tags': performance.tags.isNotEmpty ? performance.tags : ['예매 가능'],
+        };
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ConcertDetailScreen(concert: detailConcert),
+          ),
+        );
+      },
+      child: Container(
+        margin: EdgeInsets.only(bottom: 12),
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.shadowMedium,
+              spreadRadius: 1,
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(8)),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  performance.mainImage.isNotEmpty
+                      ? performance.mainImage
+                      : 'https://via.placeholder.com/60x60?text=No+Image',
+                  fit: BoxFit.cover,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Container(
+                      color: AppColors.gray300,
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.primary,
+                          strokeWidth: 2,
+                        ),
+                      ),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: AppColors.primary.withOpacity(0.1),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.music_note,
+                            color: AppColors.primary,
+                            size: 24,
+                          ),
+                          Text(
+                            performance.title.length > 8
+                                ? '${performance.title.substring(0, 8)}...'
+                                : performance.title,
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 8,
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    performance.title.isNotEmpty ? performance.title : '제목 없음',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    '${performance.startDate.isNotEmpty ? performance.startDate : '날짜 미정'} | ${performance.venueName.isNotEmpty ? performance.venueName : '장소 미정'}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.gray400),
+          ],
+        ),
+      ),
+    );
+  }
+}
