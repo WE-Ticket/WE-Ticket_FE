@@ -1,0 +1,289 @@
+import '../../../../core/services/dio_client.dart';
+import '../../../../core/constants/api_endpoints.dart';
+import '../models/transfer_models.dart';
+
+/// 양도 마켓 관련 API 서비스
+class TransferService {
+  final DioClient _dioClient;
+
+  TransferService(this._dioClient);
+
+  /// 양도 가능한 티켓 전체 리스트 조회 (공연 필터 가능)
+  /// GET /api/transfers/ticket-list/?performance_id=공연아이디
+  Future<TransferListResponse> getTransferTicketList({
+    int? performanceId,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    try {
+      print('🎫 양도 티켓 리스트 조회 시작');
+
+      String endpoint = ApiConstants.transferTicketList;
+
+      // 쿼리 파라미터 구성
+      final queryParams = <String, dynamic>{};
+      if (performanceId != null) {
+        queryParams['performance_id'] = performanceId;
+      }
+      if (page > 1) {
+        queryParams['page'] = page;
+      }
+      if (limit != 20) {
+        queryParams['limit'] = limit;
+      }
+
+      final response = await _dioClient.get(
+        endpoint,
+        queryParameters: queryParams,
+      );
+
+      if (response.statusCode == 200) {
+        final transferList = TransferListResponse.fromJson(response.data);
+        print('✅ 양도 티켓 리스트 조회 성공 (${transferList.results.length}개)');
+        return transferList;
+      } else {
+        throw Exception('양도 티켓 리스트 조회 실패: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ 양도 티켓 리스트 조회 오류: $e');
+      rethrow;
+    }
+  }
+
+  /// 공개 티켓 상세 정보 조회
+  /// GET /api/transfers/ticket-detail/{transfer_ticket_id}
+  Future<TransferTicketDetail> getPublicTransferDetail(
+    int transferTicketId,
+  ) async {
+    try {
+      print('🔍 공개 양도 티켓 상세 조회 시작 (ID: $transferTicketId)');
+
+      final endpoint = ApiConstants.transferTicketDetail.replaceAll(
+        '{transfer_ticket_id}',
+        transferTicketId.toString(),
+      );
+
+      final response = await _dioClient.get(endpoint);
+
+      if (response.statusCode == 200) {
+        final detail = TransferTicketDetail.fromJson(response.data);
+        print('✅ 공개 양도 티켓 상세 조회 성공');
+        return detail;
+      } else {
+        throw Exception('공개 양도 티켓 상세 조회 실패: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ 공개 양도 티켓 상세 조회 오류 (ID: $transferTicketId): $e');
+      rethrow;
+    }
+  }
+
+  /// 비공개 티켓 상세 정보 조회
+  /// POST /api/transfers/private-ticket-detail/
+  Future<TransferTicketDetail> getPrivateTransferDetail(
+    String uniqueCode,
+  ) async {
+    try {
+      print('🔐 비공개 양도 티켓 상세 조회 시작 (코드: ${uniqueCode.substring(0, 4)}...)');
+
+      final response = await _dioClient.post(
+        ApiConstants.privateTransferDetail,
+        data: {'temp_unique_code': uniqueCode},
+      );
+
+      if (response.statusCode == 200) {
+        final detail = TransferTicketDetail.fromJson(response.data);
+        print('✅ 비공개 양도 티켓 상세 조회 성공');
+        return detail;
+      } else {
+        throw Exception('비공개 양도 티켓 상세 조회 실패: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ 비공개 양도 티켓 상세 조회 오류: $e');
+      rethrow;
+    }
+  }
+
+  /// 고유번호 조회
+  /// POST /api/transfers/unique-code-lookup/
+  Future<TransferUniqueCode> getUniqueCode(int transferTicketId) async {
+    try {
+      print('🔑 고유번호 조회 시작 (티켓 ID: $transferTicketId)');
+
+      final response = await _dioClient.post(
+        ApiConstants.uniqueCodeLookup, // Path Parameter 없음, 그냥 POST body 사용
+        data: {'transfer_ticket_id': transferTicketId},
+      );
+
+      if (response.statusCode == 200) {
+        final uniqueCode = TransferUniqueCode.fromJson(response.data);
+        print('✅ 고유번호 조회 성공: ${uniqueCode.tempUniqueCode}');
+        return uniqueCode;
+      } else {
+        throw Exception('고유번호 조회 실패: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ 고유번호 조회 오류 (티켓 ID: $transferTicketId): $e');
+      rethrow;
+    }
+  }
+
+  /// 고유번호 재발급
+  /// POST /api/transfers/unique-code-regeneration/
+  Future<TransferUniqueCode> regenerateUniqueCode(int transferTicketId) async {
+    try {
+      print('🔄 고유번호 재발급 시작 (티켓 ID: $transferTicketId)');
+
+      final response = await _dioClient.post(
+        ApiConstants
+            .uniqueCodeRegeneration, // Path Parameter 없음, 그냥 POST body 사용
+        data: {'transfer_ticket_id': transferTicketId},
+      );
+
+      if (response.statusCode == 200) {
+        final uniqueCode = TransferUniqueCode.fromJson(response.data);
+        print('✅ 고유번호 재발급 성공: ${uniqueCode.tempUniqueCode}');
+        return uniqueCode;
+      } else {
+        throw Exception('고유번호 재발급 실패: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ 고유번호 재발급 오류 (티켓 ID: $transferTicketId): $e');
+      rethrow;
+    }
+  }
+
+  /// 양도 등록한 티켓 리스트 조회 (기간 필터 가능)
+  /// POST /api/transfers/my-ticket-list/registered/
+  Future<List<MyTransferTicket>> getMyRegisteredTickets({
+    required int userId,
+    String? startDate,
+    String? endDate,
+  }) async {
+    try {
+      print('📋 내 양도 등록 티켓 리스트 조회 시작 (사용자 ID: $userId)');
+
+      final data = <String, dynamic>{'user_id': userId};
+      if (startDate != null) data['start_date'] = startDate;
+      if (endDate != null) data['end_date'] = endDate;
+
+      final response = await _dioClient.post(
+        ApiConstants.myRegisteredTickets,
+        data: data,
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> listData = response.data;
+        final tickets = listData
+            .map((json) => MyTransferTicket.fromJson(json))
+            .toList();
+        print('✅ 내 양도 등록 티켓 리스트 조회 성공 (${tickets.length}개)');
+        return tickets;
+      } else {
+        throw Exception('내 양도 등록 티켓 리스트 조회 실패: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ 내 양도 등록 티켓 리스트 조회 오류 (사용자 ID: $userId): $e');
+      rethrow;
+    }
+  }
+
+  /// 양도 가능한 티켓 리스트 조회 (기간 필터 가능)
+  /// POST /api/transfers/my-ticket-list/transferable/
+  Future<List<TransferableTicket>> getMyTransferableTickets({
+    required int userId,
+    String? startDate,
+    String? endDate,
+  }) async {
+    try {
+      print('🎟️ 내 양도 가능 티켓 리스트 조회 시작 (사용자 ID: $userId)');
+
+      final data = <String, dynamic>{'user_id': userId};
+      if (startDate != null) data['start_date'] = startDate;
+      if (endDate != null) data['end_date'] = endDate;
+
+      final response = await _dioClient.post(
+        ApiConstants.myTransferableTickets,
+        data: data,
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> listData = response.data;
+        final tickets = listData
+            .map((json) => TransferableTicket.fromJson(json))
+            .toList();
+        print('✅ 내 양도 가능 티켓 리스트 조회 성공 (${tickets.length}개)');
+        return tickets;
+      } else {
+        throw Exception('내 양도 가능 티켓 리스트 조회 실패: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ 내 양도 가능 티켓 리스트 조회 오류 (사용자 ID: $userId): $e');
+      rethrow;
+    }
+  }
+
+  /// 공연별 양도 티켓 필터링 (로컬 처리)
+  Future<List<TransferTicketItem>> getTransferTicketsByPerformance(
+    int performanceId,
+  ) async {
+    try {
+      print('🎯 공연별 양도 티켓 필터링 시작 (공연 ID: $performanceId)');
+
+      final transferList = await getTransferTicketList(
+        performanceId: performanceId,
+      );
+
+      print('✅ 공연별 양도 티켓 필터링 완료: ${transferList.results.length}개 결과');
+      return transferList.results;
+    } catch (e) {
+      print('❌ 공연별 양도 티켓 필터링 오류: $e');
+      rethrow;
+    }
+  }
+
+  /// 날짜 범위별 양도 티켓 필터링 (API에서 지원하지 않아 로컬 처리)
+  Future<List<TransferTicketItem>> getTransferTicketsByDateRange({
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    try {
+      print('📅 날짜 범위별 양도 티켓 필터링 시작');
+
+      final transferList = await getTransferTicketList();
+
+      final filteredResults = transferList.results.where((ticket) {
+        final sessionDate = DateTime.parse(ticket.sessionDatetime);
+        return sessionDate.isAfter(startDate.subtract(Duration(days: 1))) &&
+            sessionDate.isBefore(endDate.add(Duration(days: 1)));
+      }).toList();
+
+      print('✅ 날짜 범위별 양도 티켓 필터링 완료: ${filteredResults.length}개 결과');
+      return filteredResults;
+    } catch (e) {
+      print('❌ 날짜 범위별 양도 티켓 필터링 오류: $e');
+      rethrow;
+    }
+  }
+
+  /// 양도 티켓 검색 (제목, 아티스트명으로 검색 - 로컬 처리)
+  Future<List<TransferTicketItem>> searchTransferTickets(String query) async {
+    try {
+      print('🔍 양도 티켓 검색 시작: "$query"');
+
+      final transferList = await getTransferTicketList();
+
+      final filteredResults = transferList.results.where((ticket) {
+        final searchQuery = query.toLowerCase();
+        return ticket.performanceTitle.toLowerCase().contains(searchQuery) ||
+            ticket.performerName.toLowerCase().contains(searchQuery);
+      }).toList();
+
+      print('✅ 양도 티켓 검색 완료: ${filteredResults.length}개 결과');
+      return filteredResults;
+    } catch (e) {
+      print('❌ 양도 티켓 검색 오류: $e');
+      rethrow;
+    }
+  }
+}
