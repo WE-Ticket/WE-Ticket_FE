@@ -44,6 +44,7 @@ dependencies:
   url_launcher: ^6.2.1 # 외부 링크 열기
   webview_flutter: ^4.2.4
   http: ^1.1.0
+  dio: ^5.3.2
 
 dev_dependencies:
   flutter_test:
