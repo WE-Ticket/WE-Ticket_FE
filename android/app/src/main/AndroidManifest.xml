@@ -44,10 +44,13 @@
                 <!-- <data android:scheme="weticket" /> -->
                 <data android:scheme="https" />
                 <data android:scheme="kakaotalk" />
+                <data android:scheme="mobileid" />
             </intent-filter>
             
             
         </activity>
+
+
         
         <!-- FileProvider 설정 -->
         <provider
@@ -65,4 +68,18 @@
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
+
+        <!-- 모바일 신분증 관련  -->
+
+        <queries>
+            <intent>
+                <action android:name="android.intent.action.VIEW" />
+                <data android:scheme="mobileid" />
+            </intent>
+            <intent>
+                <action android:name="android.intent.action.VIEW" />
+                <data android:scheme="tauthlink" />
+            </intent>
+            <package android:name="kr.go.mobileid" />
+        </queries>
 </manifest>

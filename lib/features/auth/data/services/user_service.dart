@@ -1,3 +1,5 @@
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../../core/services/dio_client.dart';
 import '../../../../core/constants/api_endpoints.dart';
 import '../models/user_models.dart';
@@ -19,7 +21,7 @@ class UserService {
         ApiConstants.login,
         data: request.toJson(),
       );
-
+      print(response.statusCode);
       if (response.statusCode == 200) {
         final loginResponse = LoginResponse.fromJson(response.data);
         if (loginResponse.isSuccess) {
@@ -214,9 +216,9 @@ class UserService {
       print('💾 사용자 정보 저장 시작');
 
       // TODO: 실제 사용자 정보 저장 로직 구현
-      // final prefs = await SharedPreferences.getInstance();
-      // await prefs.setInt('user_id', loginResponse.userId);
-      // await prefs.setString('login_time', DateTime.now().toIso8601String());
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('user_id', loginResponse.userId);
+      await prefs.setString('login_time', DateTime.now().toIso8601String());
 
       print('✅ 사용자 정보 저장 완료');
     } catch (e) {

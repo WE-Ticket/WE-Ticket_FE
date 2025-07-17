@@ -36,7 +36,9 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
       final apiProvider = context.read<ApiProvider>();
 
       // 사용자 ID 확인
-      final userId = apiProvider.currentUserId;
+      // final userId = apiProvider.currentUserId;
+      //FIXME 하드코딩 무조건 지우기!!
+      final userId = 2;
       if (userId == null) {
         throw Exception('로그인이 필요합니다.');
       }

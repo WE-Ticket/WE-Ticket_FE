@@ -40,17 +40,20 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
       listen: false,
     );
 
+    //FIXME 로그인 정보 하드 코딩 수정!!!
+    final currentId = 2;
+
     print('🔥 DEBUG: currentUserId = ${apiProvider.currentUserId}'); // 이거 추가
 
-    if (apiProvider.currentUserId != null) {
+    if (currentId != null) {
       print('🔥 DEBUG: Future.wait 시작'); // 이거 추가
       await Future.wait([
         transferProvider.loadMyRegisteredTickets(
-          userId: apiProvider.currentUserId!,
+          userId: currentId,
           forceRefresh: true,
         ),
         transferProvider.loadMyTransferableTickets(
-          userId: apiProvider.currentUserId!,
+          userId: currentId,
           forceRefresh: true,
         ),
       ]);
