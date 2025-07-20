@@ -17,12 +17,20 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        // AuthProvider를 먼저 생성
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+
+        // 🔧 수정: ApiProvider 생성자 변경 (AuthProvider 의존성 제거)
         ChangeNotifierProvider(create: (_) => ApiProvider()),
-        ChangeNotifierProvider(
+
+        // TransferProvider는 ApiProvider에 의존
+        ChangeNotifierProxyProvider<ApiProvider, TransferProvider>(
           create: (context) => TransferProvider(
             Provider.of<ApiProvider>(context, listen: false).apiService,
           ),
+          update: (context, apiProvider, previousTransferProvider) =>
+              previousTransferProvider ??
+              TransferProvider(apiProvider.apiService),
         ),
       ],
       child: MaterialApp(title: 'WE-Ticket', home: MainApp()),

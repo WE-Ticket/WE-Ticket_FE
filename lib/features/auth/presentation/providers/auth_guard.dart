@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'auth_provider.dart';
+import 'package:we_ticket/core/constants/app_colors.dart';
+import '../providers/auth_provider.dart';
 import '../screens/login_screen.dart';
+import '../../data/user_models.dart';
 
 class AuthGuard {
   /// 로그인이 필요한 기능에 접근할 때 호출
@@ -33,6 +35,7 @@ class AuthGuard {
         builder: (context) => LoginScreen(
           onLoginSuccess: () {
             // 로그인 성공 후 원래 하려던 동작 실행
+            Navigator.pop(context);
             onAuthenticated();
           },
         ),
@@ -43,7 +46,12 @@ class AuthGuard {
     if (message != null) {
       Future.delayed(Duration(milliseconds: 300), () {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message), duration: Duration(seconds: 2)),
+          SnackBar(
+            content: Text(message),
+            duration: Duration(seconds: 2),
+            backgroundColor: AppColors.secondaryLight,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       });
     }
