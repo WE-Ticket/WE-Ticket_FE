@@ -291,12 +291,20 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
                 child: ElevatedButton(
                   onPressed: _getStatus() == 'available'
                       ? () {
+                          final Map<String, dynamic> _performanceInfo = {
+                            'performance_id': _performanceDetail!.performanceId,
+                            'title': _performanceDetail?.title ?? '제목 없음',
+                            'performer_name':
+                                _performanceDetail?.performerName ?? '미정',
+                            'venue_name':
+                                _performanceDetail?.venueName ?? '장소 미정',
+                            'main_image': _performanceDetail?.mainImage,
+                          };
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (_) => ScheduleSelectionScreen(
-                                performanceId:
-                                    _performanceDetail!.performanceId,
+                                performanceInfo: _performanceInfo,
                               ),
                             ),
                           );

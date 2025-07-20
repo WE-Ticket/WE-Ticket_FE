@@ -8,9 +8,9 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/json_parser.dart';
 
 class ScheduleSelectionScreen extends StatefulWidget {
-  final int performanceId;
+  final Map<String, dynamic> performanceInfo;
 
-  const ScheduleSelectionScreen({Key? key, required this.performanceId})
+  const ScheduleSelectionScreen({Key? key, required this.performanceInfo})
     : super(key: key);
 
   @override
@@ -39,10 +39,12 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
 
       final apiProvider = context.read<ApiProvider>();
 
-      print('🎫 공연 스케줄 로딩 시작 - 공연 ID: ${widget.performanceId}');
+      print(
+        '🎫 공연 스케줄 로딩 시작 - 공연 ID: ${widget.performanceInfo['performace_id']}',
+      );
 
       final schedule = await apiProvider.apiService.ticket
-          .getPerformanceSchedule(widget.performanceId);
+          .getPerformanceSchedule(widget.performanceInfo['performance_id']);
 
       setState(() {
         _scheduleData = schedule;
@@ -90,7 +92,7 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
       ),
       body: Column(
         children: [
-          // _buildConcertHeader(),
+          _buildConcertHeader(),
           Expanded(child: _buildMainContent()),
           _buildNextButton(isAuthenticated),
         ],
@@ -202,84 +204,80 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
     );
   }
 
-  // Widget _buildConcertHeader() {
-  //   // API 데이터가 있으면 해당 데이터 사용, 없으면 기존 concertInfo 사용
-  //   final title =
-  //       _scheduleData?.title ?? widget.concertInfo?['title'] ?? '공연 제목';
-  //   final artist =
-  //       _scheduleData?.performerName ?? widget.concertInfo?['artist'] ?? '아티스트';
-  //   final venue =
-  //       _scheduleData?.venueName ?? widget.concertInfo?['venue'] ?? '공연장';
-  //   final poster = widget.concertInfo?['poster'] ?? '';
+  Widget _buildConcertHeader() {
+    final title = widget.performanceInfo['title'] ?? '공연 제목';
+    final performerName = widget.performanceInfo['performer_name'] ?? '아티스트';
+    final venue = widget.performanceInfo['venue_name'] ?? '공연장';
+    final poster = widget.performanceInfo['main_image'] ?? '';
 
-  //   return Container(
-  //     color: AppColors.surface,
-  //     padding: EdgeInsets.all(16),
-  //     child: Column(
-  //       crossAxisAlignment: CrossAxisAlignment.start,
-  //       children: [
-  //         Row(
-  //           children: [
-  //             Container(
-  //               width: 60,
-  //               height: 60,
-  //               decoration: BoxDecoration(
-  //                 borderRadius: BorderRadius.circular(8),
-  //                 color: AppColors.gray200,
-  //                 image: poster.isNotEmpty
-  //                     ? DecorationImage(
-  //                         image: NetworkImage(poster),
-  //                         fit: BoxFit.cover,
-  //                       )
-  //                     : null,
-  //               ),
-  //               child: poster.isEmpty
-  //                   ? Icon(Icons.music_note, color: AppColors.gray400, size: 30)
-  //                   : null,
-  //             ),
-  //             SizedBox(width: 16),
-  //             Expanded(
-  //               child: Column(
-  //                 crossAxisAlignment: CrossAxisAlignment.start,
-  //                 children: [
-  //                   Text(
-  //                     title,
-  //                     style: TextStyle(
-  //                       fontSize: 16,
-  //                       fontWeight: FontWeight.bold,
-  //                       color: AppColors.textPrimary,
-  //                     ),
-  //                     maxLines: 2,
-  //                     overflow: TextOverflow.ellipsis,
-  //                   ),
-  //                   SizedBox(height: 4),
-  //                   Text(
-  //                     artist,
-  //                     style: TextStyle(
-  //                       fontSize: 14,
-  //                       color: AppColors.primary,
-  //                       fontWeight: FontWeight.w600,
-  //                     ),
-  //                   ),
-  //                   SizedBox(height: 4),
-  //                   Text(
-  //                     venue,
-  //                     style: TextStyle(
-  //                       fontSize: 12,
-  //                       color: AppColors.textSecondary,
-  //                     ),
-  //                   ),
-  //                 ],
-  //               ),
-  //             ),
-  //           ],
-  //         ),
-  //         SizedBox(height: 16),
-  //         _buildPriceInfoCard(),
-  //       ],
-  //     ),
-  //   );
-  // }
+    return Container(
+      color: AppColors.surface,
+      padding: EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 60,
+                height: 75,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(2),
+                  color: AppColors.gray200,
+                  image: poster.isNotEmpty
+                      ? DecorationImage(
+                          image: NetworkImage(poster),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
+                ),
+                child: poster.isEmpty
+                    ? Icon(Icons.music_note, color: AppColors.gray400, size: 30)
+                    : null,
+              ),
+              SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      performerName,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      venue,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 16),
+          _buildPriceInfoCard(),
+        ],
+      ),
+    );
+  }
 
   Widget _buildScheduleListSection() {
     if (_scheduleData == null) return SizedBox.shrink();
@@ -350,7 +348,7 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
           runSpacing: 8,
           children: _scheduleData!.seatPricings.map<Widget>((pricing) {
             return Text(
-              '${pricing.seatGrade}석 ${pricing.priceDisplay}',
+              '${pricing.seatGrade} ${pricing.priceDisplay}',
               style: TextStyle(
                 fontSize: 13,
                 color: AppColors.primary,
@@ -358,11 +356,6 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
               ),
             );
           }).toList(),
-        ),
-        SizedBox(height: 8),
-        Text(
-          '최저 ${_scheduleData!.minPrice.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}원 ~ 최고 ${_scheduleData!.maxPrice.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}원',
-          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
         ),
       ],
     );
@@ -541,6 +534,7 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
               ),
             ),
           ),
+          SizedBox(height: 40),
         ],
       ),
     );
@@ -621,30 +615,24 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
       (session) => session.performanceSessionId == _selectedSessionId,
     );
 
-    // final selectionData = {
-    //   'performanceId': _scheduleData!.performanceId,
-    //   'performanceSessionId': selectedSession.performanceSessionId,
-    //   'concertInfo': {
-    //     'title': _scheduleData!.title,
-    //     'artist': _scheduleData!.performerName,
-    //     'venue': _scheduleData!.venueName,
-    //     'poster': widget.concertInfo?['poster'] ?? '',
-    //     ...?widget.concertInfo,
-    //   },
-    //   'selectedSession': {
-    //     'sessionId': selectedSession.performanceSessionId,
-    //     'dateTime': selectedSession.dateTimeDisplay,
-    //     'availabilityText': selectedSession.availabilityText,
-    //     'remainingSeats': selectedSession.remainingSeats,
-    //   },
-    //   'scheduleData': _scheduleData,
-    // };
+    final selectionData = {
+      'performanceId': widget.performanceInfo['performance_id'],
+      'performanceSessionId': selectedSession.performanceSessionId,
+      'performaceInfo': widget.performanceInfo,
+      'selectedSession': {
+        'sessionId': selectedSession.performanceSessionId,
+        'dateTime': selectedSession.dateTimeDisplay,
+        'availabilityText': selectedSession.availabilityText,
+        'remainingSeats': selectedSession.remainingSeats,
+      },
+      'scheduleData': _scheduleData,
+    };
 
-    // Navigator.push(
-    //   context,
-    //   MaterialPageRoute(
-    //     builder: (_) => SeatSelectionScreen(data: selectionData),
-    //   ),
-    // );
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SeatSelectionScreen(data: selectionData),
+      ),
+    );
   }
 }
