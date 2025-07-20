@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:we_ticket/features/auth/presentation/providers/auth_provider.dart';
+import 'package:we_ticket/features/entry/screens/manual_entry_screen.dart'
+    show ManualEntryScreen;
+import 'package:we_ticket/features/entry/screens/nfc_entry_screen.dart';
 import 'package:we_ticket/features/shared/providers/api_provider.dart';
 import '../../../../core/constants/app_colors.dart';
 
@@ -630,6 +634,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   }
 
   // 액션 버튼 섹션
+  // 액션 버튼 섹션 (수정된 부분)
   Widget _buildActionButtonsSection() {
     final ticket = _ticketDetail!;
 
@@ -638,20 +643,56 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
       child: Column(
         children: [
           if (ticket['status'] == 'upcoming') ...[
-            // 입장하기 버튼 (공연 당일에 활성화)
+            // NFC 입장하기 버튼 (모바일 신분증 인증자만)
+            Consumer<AuthProvider>(
+              builder: (context, authProvider, child) {
+                final canUseNFC =
+                    authProvider.currentUserAuthLevel == 'mobile_id' ||
+                    authProvider.currentUserAuthLevel == 'mobile_id_totally';
+
+                return SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton.icon(
+                    onPressed: canUseNFC ? () => _handleNFCEntry() : null,
+                    icon: Icon(Icons.nfc, size: 24),
+                    label: Text(
+                      canUseNFC ? 'NFC 간편 입장' : 'NFC 입장 (모바일 신분증 필요)',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: canUseNFC
+                          ? AppColors.success
+                          : AppColors.gray400,
+                      foregroundColor: AppColors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+
+            SizedBox(height: 12),
+
+            // 수동 검표 버튼 (모든 사용자)
             SizedBox(
               width: double.infinity,
               height: 56,
-              child: ElevatedButton.icon(
-                onPressed: () => _handleEntry(),
-                icon: Icon(Icons.nfc, size: 24),
+              child: OutlinedButton.icon(
+                onPressed: () => _handleManualEntry(),
+                icon: Icon(Icons.person_pin, size: 24),
                 label: Text(
-                  '입장하기 (NFC 인증)',
+                  '수동 검표',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.success,
-                  foregroundColor: AppColors.white,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: BorderSide(color: AppColors.primary),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -736,6 +777,33 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  // 액션 핸들러들 (수정된 부분)
+  void _handleNFCEntry() {
+    // NFC 입장 화면으로 이동
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => NFCEntryScreen(
+          ticketId: _ticketDetail!['id'],
+          ticketData: _ticketDetail!,
+        ),
+      ),
+    );
+  }
+
+  void _handleManualEntry() {
+    // 수동 검표 화면으로 이동
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ManualEntryScreen(
+          ticketId: _ticketDetail!['id'],
+          ticketData: _ticketDetail!,
+        ),
       ),
     );
   }
@@ -907,33 +975,6 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     Clipboard.setData(ClipboardData(text: id));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('티켓 ID가 복사되었습니다'), duration: Duration(seconds: 2)),
-    );
-  }
-
-  // 액션 핸들러들
-  void _handleEntry() {
-    // TODO: NFC 입장 또는 일반 검표 입장 화면으로 이동
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('입장하기'),
-        content: Text('NFC 입장 또는 일반 검표 입장을 선택하세요.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('취소'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text('NFC 입장 활성화 화면으로 이동합니다')));
-            },
-            child: Text('NFC 입장'),
-          ),
-        ],
-      ),
     );
   }
 
