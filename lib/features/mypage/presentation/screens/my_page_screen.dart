@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:we_ticket/features/auth/data/user_models.dart';
+import 'package:we_ticket/features/contents/presentation/screens/dashboard_screen.dart';
 import 'package:we_ticket/features/mypage/presentation/screens/my_auth_screen.dart';
 import 'package:we_ticket/features/mypage/presentation/screens/my_tickets_screen.dart';
 import 'package:we_ticket/features/mypage/presentation/screens/purchase_history_screen.dart';
@@ -117,7 +119,7 @@ class MyPageScreen extends StatelessWidget {
           SizedBox(height: 16),
 
           Text(
-            '${user?.name} 님 안녕하세요!' ?? '사용자',
+            '${user?.userName} 님 안녕하세요!' ?? '사용자',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -155,7 +157,7 @@ class MyPageScreen extends StatelessWidget {
           SizedBox(height: 4),
 
           Text(
-            '@${user?.id ?? 'unknown'}',
+            '@${user?.loginId ?? 'unknown'}',
             style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
           ),
         ],
@@ -441,6 +443,10 @@ class MyPageScreen extends StatelessWidget {
             onPressed: () {
               Navigator.pop(context);
               _logout(context);
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => DashboardScreen()),
+                (Route<dynamic> route) => false,
+              );
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             child: Text('로그아웃', style: TextStyle(color: AppColors.white)),

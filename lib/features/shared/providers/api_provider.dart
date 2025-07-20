@@ -3,9 +3,6 @@ import '../services/api_service.dart';
 import '../../contents/data/models/performance_models.dart';
 
 /// API 서비스를 앱 전체에서 공유하기 위한 Provider
-///
-/// ChangeNotifier를 상속받아 상태 변화를 UI에 알릴 수 있음.
-/// Provider 패키지와 함께 사용하면 의존성 주입과 상태 관리가 편해진다고...
 class ApiProvider extends ChangeNotifier {
   late final ApiService _apiService;
 
@@ -18,14 +15,9 @@ class ApiProvider extends ChangeNotifier {
   List<PerformanceAvailableItem>? _cachedAvailablePerformances;
   DateTime? _lastDataLoadTime;
 
-  // // 사용자 상태
-  bool _isLoggedIn = false;
-  int? _currentUserId;
-
   /// 생성자
   ApiProvider() {
     _apiService = ApiService.create();
-
     _initializeProvider();
   }
 
@@ -33,8 +25,6 @@ class ApiProvider extends ChangeNotifier {
   ApiService get apiService => _apiService;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
-  bool get isLoggedIn => _isLoggedIn;
-  int? get currentUserId => _currentUserId;
 
   List<PerformanceHotItem>? get cachedHotPerformances => _cachedHotPerformances;
   List<PerformanceAvailableItem>? get cachedAvailablePerformances =>
@@ -51,19 +41,13 @@ class ApiProvider extends ChangeNotifier {
   /// Provider 초기화
   Future<void> _initializeProvider() async {
     try {
-      print('ApiProvider 초기화 시작');
+      print(' ApiProvider 초기화 시작');
 
       // 네트워크 연결 확인
       final isConnected = await _apiService.checkConnection();
       if (!isConnected) {
         _setError('네트워크 연결을 확인해주세요.');
         return;
-      }
-
-      // 로그인 상태 확인
-      _isLoggedIn = await _apiService.user.isLoggedIn();
-      if (_isLoggedIn) {
-        _currentUserId = await _apiService.user.getSavedUserId();
       }
 
       print('✅ ApiProvider 초기화 완료');
@@ -99,14 +83,14 @@ class ApiProvider extends ChangeNotifier {
           isCacheValid &&
           _cachedHotPerformances != null &&
           _cachedAvailablePerformances != null) {
-        print('캐시된 대시보드 데이터 사용');
+        print('📦 캐시된 대시보드 데이터 사용');
         return;
       }
 
       _setLoading(true);
       clearError();
 
-      print('대시보드 데이터 새로 로드');
+      print('🔄 대시보드 데이터 새로 로드');
 
       final dashboardData = await _apiService.loadDashboardData();
 
@@ -118,102 +102,6 @@ class ApiProvider extends ChangeNotifier {
     } catch (e) {
       print('❌ 대시보드 데이터 로드 실패: $e');
       _setError('공연 정보를 불러올 수 없습니다. 다시 시도해주세요.');
-    } finally {
-      _setLoading(false);
-    }
-  }
-
-  /// 로그인 처리
-  Future<bool> login(String loginId, String password) async {
-    try {
-      _setLoading(true);
-      clearError();
-
-      print('🔐 로그인 시도: $loginId');
-
-      final response = await _apiService.user.simpleLogin(loginId, password);
-
-      if (response.isSuccess) {
-        _isLoggedIn = true;
-        _currentUserId = response.userId;
-
-        // 로그인 정보 저장
-        await _apiService.user.saveUserInfo(response);
-
-        // 로그인 후 사용자 데이터 로드
-        await _apiService.loadUserInitialData(response.userId);
-
-        print('✅ 로그인 성공');
-        return true;
-      } else {
-        _setError(response.message);
-        print('❌ 로그인 실패: ${response.message}');
-        return false;
-      }
-    } catch (e) {
-      print('❌ 로그인 오류: $e');
-      _setError('로그인 중 오류가 발생했습니다. 다시 시도해주세요.');
-      return false;
-    } finally {
-      _setLoading(false);
-    }
-  }
-
-  /// 로그아웃 처리
-  Future<void> logout() async {
-    try {
-      print('🚪 로그아웃 시작');
-
-      await _apiService.user.logout();
-
-      _isLoggedIn = false;
-      _currentUserId = null;
-
-      // 캐시된 사용자 데이터 클리어
-      _cachedHotPerformances = null;
-      _cachedAvailablePerformances = null;
-      _lastDataLoadTime = null;
-
-      notifyListeners();
-      print('✅ 로그아웃 완료');
-    } catch (e) {
-      print('❌ 로그아웃 오류: $e');
-      _setError('로그아웃 중 오류가 발생했습니다.');
-    }
-  }
-
-  /// 회원가입 처리
-  Future<bool> signup({
-    required String fullName,
-    required String loginId,
-    required String phoneNumber,
-    required String password,
-  }) async {
-    try {
-      _setLoading(true);
-      clearError();
-
-      print('📝 회원가입 시도: $loginId');
-
-      final response = await _apiService.user.quickSignup(
-        fullName: fullName,
-        loginId: loginId,
-        phoneNumber: phoneNumber,
-        password: password,
-      );
-
-      if (response.isSuccess) {
-        print('✅ 회원가입 성공');
-        return true;
-      } else {
-        _setError(response.message);
-        print('❌ 회원가입 실패: ${response.message}');
-        return false;
-      }
-    } catch (e) {
-      print('❌ 회원가입 오류: $e');
-      _setError('회원가입 중 오류가 발생했습니다. 다시 시도해주세요.');
-      return false;
     } finally {
       _setLoading(false);
     }
@@ -247,6 +135,33 @@ class ApiProvider extends ChangeNotifier {
   /// 캐시 데이터 강제 새로고침
   Future<void> refreshData() async {
     await loadDashboardData(forceRefresh: true);
+  }
+
+  /// 캐시 데이터 클리어
+  void clearCache() {
+    _cachedHotPerformances = null;
+    _cachedAvailablePerformances = null;
+    _lastDataLoadTime = null;
+    print('🗑️ 캐시 데이터 클리어 완료');
+    notifyListeners();
+  }
+
+  /// API 서비스 상태 진단
+  Future<Map<String, bool>> diagnoseServices() async {
+    try {
+      _setLoading(true);
+      clearError();
+
+      final results = await _apiService.diagnoseServices();
+      print('🔍 API 서비스 진단 완료: $results');
+      return results;
+    } catch (e) {
+      print('❌ API 서비스 진단 실패: $e');
+      _setError('서비스 상태 확인 중 오류가 발생했습니다.');
+      return {};
+    } finally {
+      _setLoading(false);
+    }
   }
 
   /// Provider 리소스 정리

@@ -1,145 +1,136 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:we_ticket/features/auth/data/auth_service.dart';
+import 'package:we_ticket/features/auth/data/user_models.dart';
 
 class AuthProvider extends ChangeNotifier {
   bool _isLoggedIn = false;
   UserModel? _user;
   bool _isLoading = false;
+  String? _errorMessage;
 
+  // Getters
   bool get isLoggedIn => _isLoggedIn;
   UserModel? get user => _user;
   bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
 
-  // FIXME 더미 사용자 데이터 (호환성을 위해 유지)
-  static const Map<String, String> _dummyUsers = {
-    'testuser': 'password123',
-    'weticket': '1234',
-    'demo': 'demo',
+  static const Map<String, String> _authLevelNames = {
+    'none': '미인증',
+    'general': '일반 인증',
+    'mobile_id': '모바일 신분증 인증',
+    'mobile_id_totally': '안전 인증',
   };
 
-  /// 앱 시작 시 저장된 로그인 상태 확인
+  /// 앱 시작시 로그인 상태 확인
   Future<void> checkAuthStatus() async {
     try {
-      // //FIXME 무조건 지워야!!! (로그인 API 복구되면)
-      // _user = UserModel(id: "1", name: "테스트 사용자");
-      // _isLoggedIn = true;
-      // print('✅ 강제 로그인 상태 설정: 사용자 ID 1');
-      // notifyListeners();
-      // return; // 여기서 종료해서 아래 코드 실행 안 함
-
       final prefs = await SharedPreferences.getInstance();
       final isLoggedIn = prefs.getBool('is_logged_in') ?? false;
-      final savedId = prefs.getString('user_id');
-      final savedName = prefs.getString('user_name');
-      final loginType =
-          prefs.getString('login_type') ?? 'dummy'; // API 또는 더미 로그인 구분
 
-      if (isLoggedIn && savedId != null && savedName != null) {
-        _user = UserModel(id: savedId, name: savedName);
-        _isLoggedIn = true;
-        print('✅ 저장된 로그인 상태 복원: $savedId ($loginType)');
-        notifyListeners();
+      if (isLoggedIn) {
+        final userId = prefs.getInt('user_id');
+        final loginId = prefs.getString('login_id');
+        final userName = prefs.getString('user_name');
+        final userAuthLevel = prefs.getString('user_auth_level');
+
+        if (userId != null &&
+            loginId != null &&
+            userName != null &&
+            userAuthLevel != null) {
+          _user = UserModel(
+            userId: userId,
+            loginId: loginId,
+            userName: userName,
+            userAuthLevel: userAuthLevel,
+          );
+          _isLoggedIn = true;
+          print('✅ 저장된 로그인 상태 복원: $userName');
+          notifyListeners();
+        }
       }
     } catch (e) {
       print('❌ 로그인 상태 확인 오류: $e');
     }
   }
 
-  /// API 로그인 성공 후 상태 업데이트
-  Future<void> updateFromApiLogin({
-    required String userId,
-    required String userName,
-    String? token,
+  /// 로그인
+  Future<bool> login({
+    required String loginId,
+    required String password,
+    required AuthService authService,
   }) async {
-    try {
-      _user = UserModel(id: userId, name: userName);
-      _isLoggedIn = true;
-
-      // API 로그인 정보 저장
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('is_logged_in', true);
-      await prefs.setString('user_id', userId);
-      await prefs.setString('user_name', userName);
-      await prefs.setString('login_type', 'api');
-
-      if (token != null) {
-        await prefs.setString('auth_token', token);
-      }
-
-      print('✅ API 로그인 상태 업데이트 완료: $userId');
-      notifyListeners();
-    } catch (e) {
-      print('❌ API 로그인 상태 업데이트 오류: $e');
-    }
-  }
-
-  /// 더미 로그인 (개발용 - 호환성을 위해 유지)
-  Future<bool> login(String id, String password) async {
-    _isLoading = true;
-    notifyListeners();
+    _setLoading(true);
+    _clearError();
 
     try {
-      // 로딩 시뮬레이션
-      await Future.delayed(Duration(milliseconds: 500));
+      final result = await authService.login(
+        loginId: loginId,
+        password: password,
+      );
 
-      // 더미 사용자 확인
-      if (_dummyUsers.containsKey(id) && _dummyUsers[id] == password) {
-        _user = UserModel(id: id, name: _getNameFromId(id));
-        _isLoggedIn = true;
-
-        // 더미 로그인 상태 저장
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('is_logged_in', true);
-        await prefs.setString('user_id', id);
-        await prefs.setString('user_name', _user!.name);
-        await prefs.setString('login_type', 'dummy');
-
-        _isLoading = false;
-        print('✅ 더미 로그인 성공: $id');
-        notifyListeners();
+      if (result.isSuccess && result.data != null) {
+        final user = result.data!.toUserModel();
+        await _setLoggedInUser(user);
+        print('✅ 로그인 성공: ${user.userName}');
         return true;
       } else {
-        _isLoading = false;
-        print('❌ 더미 로그인 실패: $id');
-        notifyListeners();
+        _setError(result.errorMessage!);
+        print('❌ 로그인 실패: ${result.errorMessage}');
         return false;
       }
     } catch (e) {
-      _isLoading = false;
-      print('❌ 더미 로그인 오류: $e');
-      notifyListeners();
+      print('❌ 로그인 처리 오류: $e');
+      _setError('로그인 중 오류가 발생했습니다');
       return false;
+    } finally {
+      _setLoading(false);
     }
   }
 
-  /// 직접 로그인 상태 설정 (API 로그인 후 호출용)
-  Future<void> setLoggedIn({
-    required String userId,
-    required String userName,
-    String? token,
-    bool saveToStorage = true,
+  /// 회원가입
+  Future<bool> signup({
+    required String fullName,
+    required String loginId,
+    required String phoneNumber,
+    required String password,
+    required bool agreeTerms,
+    required bool agreePrivacy,
+    required AuthService authService,
   }) async {
+    _setLoading(true);
+    _clearError();
+
     try {
-      _user = UserModel(id: userId, name: userName);
-      _isLoggedIn = true;
+      final result = await authService.signup(
+        fullName: fullName,
+        loginId: loginId,
+        phoneNumber: phoneNumber,
+        password: password,
+        agreeTerms: agreeTerms,
+        agreePrivacy: agreePrivacy,
+      );
 
-      if (saveToStorage) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('is_logged_in', true);
-        await prefs.setString('user_id', userId);
-        await prefs.setString('user_name', userName);
-        await prefs.setString('login_type', 'api');
-
-        if (token != null) {
-          await prefs.setString('auth_token', token);
-        }
+      if (result.isSuccess) {
+        print('✅ 회원가입 성공');
+        return true;
+      } else {
+        _setError(result.errorMessage!);
+        print('❌ 회원가입 실패: ${result.errorMessage}');
+        return false;
       }
-
-      print('✅ 로그인 상태 설정 완료: $userId');
-      notifyListeners();
     } catch (e) {
-      print('❌ 로그인 상태 설정 오류: $e');
+      print('❌ 회원가입 처리 오류: $e');
+      _setError('회원가입 중 오류가 발생했습니다');
+      return false;
+    } finally {
+      _setLoading(false);
     }
+  }
+
+  /// API 로그인 성공 후 상태 업데이트
+  Future<void> updateFromApiLogin(UserModel user, {String? token}) async {
+    await _setLoggedInUser(user, token: token);
   }
 
   /// 로그아웃
@@ -147,6 +138,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       _user = null;
       _isLoggedIn = false;
+      _clearError();
 
       // 저장된 상태 삭제
       final prefs = await SharedPreferences.getInstance();
@@ -156,91 +148,73 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       print('❌ 로그아웃 오류: $e');
+      _setError('로그아웃 중 오류가 발생했습니다');
     }
   }
 
-  /// 토큰 가져오기
-  Future<String?> getAuthToken() async {
+  // Private methods
+
+  /// 로그인 사용자 설정 및 저장
+  Future<void> _setLoggedInUser(UserModel user, {String? token}) async {
     try {
+      _user = user;
+      _isLoggedIn = true;
+
+      // SharedPreferences에 저장
       final prefs = await SharedPreferences.getInstance();
-      return prefs.getString('auth_token');
+      await prefs.setBool('is_logged_in', true);
+      await prefs.setInt('user_id', user.userId);
+      await prefs.setString('login_id', user.loginId);
+      await prefs.setString('user_name', user.userName);
+      await prefs.setString('user_auth_level', user.userAuthLevel);
+
+      if (token != null) {
+        await prefs.setString('auth_token', token);
+      }
+
+      notifyListeners();
     } catch (e) {
-      print('❌ 토큰 조회 오류: $e');
-      return null;
+      print('❌ 사용자 정보 저장 오류: $e');
+      rethrow;
     }
   }
 
-  /// 로그인 타입 확인
-  Future<String> getLoginType() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      return prefs.getString('login_type') ?? 'dummy';
-    } catch (e) {
-      print('❌ 로그인 타입 조회 오류: $e');
-      return 'dummy';
-    }
+  void _setLoading(bool loading) {
+    _isLoading = loading;
+    notifyListeners();
   }
 
-  /// 사용자 ID만 가져오기
-  String? get userId => _user?.id;
+  void _setError(String error) {
+    _errorMessage = error;
+    notifyListeners();
+  }
 
-  /// 사용자 이름만 가져오기
-  String? get userName => _user?.name;
+  void _clearError() {
+    _errorMessage = null;
+    notifyListeners();
+  }
 
-  /// 로그인 여부 간단 확인
+  // 편의용 getter들
+  String? get userId => _user?.userId.toString();
+  String? get userName => _user?.userName;
   bool get hasValidSession => _isLoggedIn && _user != null;
+  int? get currentUserId => _user?.userId;
+  String? get currentUserName => _user?.userName;
+  String? get currentLoginId => _user?.loginId;
+  String? get currentUserAuthLevel => _user?.userAuthLevel;
 
-  // FIXME 더미 데이터 변환 함수 (호환성을 위해 유지)
-  String _getNameFromId(String id) {
-    switch (id) {
-      case 'testuser':
-        return '테스트 사용자';
-      case 'weticket':
-        return 'WE-Ticket 사용자';
-      case 'demo':
-        return '데모 사용자';
-      default:
-        return '${id} 님';
-    }
+  /// 권한 레벨 한국어 이름 반환
+  String get currentUserAuthLevelName {
+    if (_user?.userAuthLevel == null) return '미로그인';
+    return _authLevelNames[_user!.userAuthLevel] ?? '알 수 없음';
   }
 
-  /// 더미 사용자 목록 (디버그용)
-  Map<String, String> get dummyUsers => _dummyUsers;
-
-  /// 디버그 정보 출력
-  void printDebugInfo() {
-    print('=== AuthProvider Debug Info ===');
-    print('isLoggedIn: $_isLoggedIn');
-    print('user: $_user');
-    print('isLoading: $_isLoading');
-    print('================================');
-  }
-}
-
-/// 사용자 모델
-class UserModel {
-  final String id;
-  final String name;
-
-  UserModel({required this.id, required this.name});
-
-  @override
-  String toString() {
-    return 'UserModel(id: $id, name: $name)';
+  static String getAuthLevelName(String authLevel) {
+    return _authLevelNames[authLevel] ?? '알 수 없음';
   }
 
-  /// JSON 변환
-  Map<String, dynamic> toJson() {
-    return {'id': id, 'name': name};
-  }
-
-  /// JSON에서 생성
-  factory UserModel.fromJson(Map<String, dynamic> json) {
-    return UserModel(id: json['id'] ?? '', name: json['name'] ?? '');
-  }
-
-  /// 복사본 생성
-  UserModel copyWith({String? id, String? name}) {
-    return UserModel(id: id ?? this.id, name: name ?? this.name);
+  /// 에러 메시지 지우기
+  void clearError() {
+    _clearError();
   }
 }
