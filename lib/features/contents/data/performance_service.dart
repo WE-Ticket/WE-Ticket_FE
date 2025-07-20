@@ -1,6 +1,6 @@
-import '../../../../core/services/dio_client.dart';
-import '../../../../core/constants/api_endpoints.dart';
-import '../models/performance_models.dart';
+import '../../../core/services/dio_client.dart';
+import '../../../core/constants/api_endpoints.dart';
+import 'performance_models.dart';
 
 class PerformanceService {
   final DioClient _dioClient;

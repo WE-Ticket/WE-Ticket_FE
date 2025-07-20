@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:we_ticket/features/ticketing/presentation/screens/schedul_selection_screen.dart.dart';
 import 'package:we_ticket/features/shared/providers/api_provider.dart';
-import 'package:we_ticket/features/contents/data/models/performance_models.dart';
+import 'package:we_ticket/features/contents/data/performance_models.dart';
+import 'package:we_ticket/features/transfer/presentation/screens/transfer_market_screen.dart';
 import '../../../../core/constants/app_colors.dart';
 
 class ConcertDetailScreen extends StatefulWidget {
-  final Map<String, dynamic> concert;
+  final int performanceId;
 
-  const ConcertDetailScreen({Key? key, required this.concert})
+  const ConcertDetailScreen({Key? key, required this.performanceId})
     : super(key: key);
 
   @override
@@ -16,7 +17,7 @@ class ConcertDetailScreen extends StatefulWidget {
 }
 
 class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
-  PerformanceDetail? _detailFromApi;
+  PerformanceDetail? _performanceDetail;
   bool _isLoadingDetail = false;
   String? _errorMessage;
 
@@ -27,25 +28,6 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
   }
 
   Future<void> _loadPerformanceDetail() async {
-    // concert['id']에서 performanceId 추출
-    final concertId = widget.concert['id'].toString();
-    int? performanceId;
-
-    // ID에서 숫자 추출 (예: "featured_123" → 123, "upcoming_456" → 456)
-    if (concertId.contains('_')) {
-      final parts = concertId.split('_');
-      if (parts.length > 1) {
-        performanceId = int.tryParse(parts.last);
-      }
-    } else {
-      performanceId = int.tryParse(concertId);
-    }
-
-    if (performanceId == null) {
-      print('⚠️ Performance ID를 추출할 수 없습니다: $concertId');
-      return;
-    }
-
     setState(() {
       _isLoadingDetail = true;
       _errorMessage = null;
@@ -54,10 +36,10 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
     try {
       final apiProvider = context.read<ApiProvider>();
       final detail = await apiProvider.apiService.performance
-          .getPerformanceDetail(performanceId);
+          .getPerformanceDetail(widget.performanceId);
 
       setState(() {
-        _detailFromApi = detail;
+        _performanceDetail = detail;
         _isLoadingDetail = false;
       });
     } catch (e) {
@@ -179,18 +161,18 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
                               SizedBox(width: 8),
                               Container(
                                 padding: EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
+                                  horizontal: 12,
+                                  vertical: 6,
                                 ),
                                 decoration: BoxDecoration(
                                   color: AppColors.error,
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(16),
                                 ),
                                 child: Text(
                                   'HOT',
                                   style: TextStyle(
                                     color: AppColors.white,
-                                    fontSize: 10,
+                                    fontSize: 12,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -272,7 +254,11 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () {
-                    _showTransferMarketDialog(context);
+                    Navigator.push(
+                      context,
+                      //TODO 필터링 걸 것
+                      MaterialPageRoute(builder: (_) => TransferMarketScreen()),
+                    );
                   },
                   icon: Icon(
                     Icons.storefront,
@@ -305,11 +291,20 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
                 child: ElevatedButton(
                   onPressed: _getStatus() == 'available'
                       ? () {
+                          final Map<String, dynamic> _performanceInfo = {
+                            'performance_id': _performanceDetail!.performanceId,
+                            'title': _performanceDetail?.title ?? '제목 없음',
+                            'performer_name':
+                                _performanceDetail?.performerName ?? '미정',
+                            'venue_name':
+                                _performanceDetail?.venueName ?? '장소 미정',
+                            'main_image': _performanceDetail?.mainImage,
+                          };
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (_) => ScheduleSelectionScreen(
-                                concertInfo: widget.concert,
+                                performanceInfo: _performanceInfo,
                               ),
                             ),
                           );
@@ -338,90 +333,83 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
 
   // API 데이터 우선, 없으면 전달받은 데이터 사용
   String _getImageUrl() {
-    if (_detailFromApi != null) {
-      return _detailFromApi!.mainImage.isNotEmpty
-          ? _detailFromApi!.mainImage
-          : widget.concert['image'] ??
-                'https://via.placeholder.com/400x300?text=No+Image';
+    if (_performanceDetail != null) {
+      return _performanceDetail!.mainImage.isNotEmpty
+          ? _performanceDetail!.mainImage
+          : 'https://via.placeholder.com/400x300?text=No+Image';
     }
-    return widget.concert['image'] ??
-        'https://via.placeholder.com/400x300?text=No+Image';
+    return 'https://via.placeholder.com/400x300?text=No+Image';
   }
 
   String _getTitle() {
-    if (_detailFromApi != null) {
-      return _detailFromApi!.title.isNotEmpty ? _detailFromApi!.title : '제목 없음';
+    if (_performanceDetail != null) {
+      return _performanceDetail!.title.isNotEmpty
+          ? _performanceDetail!.title
+          : '제목 없음';
     }
-    return widget.concert['title'] ?? '제목 없음';
+    return '제목 없음';
   }
 
   String _getArtist() {
-    if (_detailFromApi != null) {
-      return _detailFromApi!.performerName.isNotEmpty
-          ? _detailFromApi!.performerName
+    if (_performanceDetail != null) {
+      return _performanceDetail!.performerName.isNotEmpty
+          ? _performanceDetail!.performerName
           : '아티스트';
     }
-    return widget.concert['artist'] ?? '아티스트';
+    return '아티스트';
   }
 
   String _getStatus() {
-    if (_detailFromApi != null) {
-      if (_detailFromApi!.isSoldOut) return 'soldout';
-      if (!_detailFromApi!.isTicketOpen) return 'coming_soon';
-      if (_detailFromApi!.isAvailable) return 'available';
+    if (_performanceDetail != null) {
+      if (_performanceDetail!.isSoldOut) return 'soldout';
+      if (!_performanceDetail!.isTicketOpen) return 'coming_soon';
+      if (_performanceDetail!.isAvailable) return 'available';
       return 'closed';
     }
-    return widget.concert['status'] ?? 'available';
+    return 'closed';
   }
 
   bool _getIsHot() {
-    if (_detailFromApi != null) {
-      return _detailFromApi!.isHot;
+    if (_performanceDetail != null) {
+      return _performanceDetail!.isHot;
     }
-    return widget.concert['isHot'] ?? false;
+    return false;
   }
 
   String _getPrice() {
-    if (_detailFromApi != null) {
-      return _detailFromApi!.minPrice > 0
-          ? _detailFromApi!.priceDisplay
+    if (_performanceDetail != null) {
+      return _performanceDetail!.minPrice > 0
+          ? _performanceDetail!.priceDisplay
           : '가격 미정';
     }
-    return widget.concert['price'] ?? '가격 미정';
+    return '가격 미정';
   }
 
   String _getGenre() {
-    if (_detailFromApi != null) {
-      return _detailFromApi!.genre.isNotEmpty ? _detailFromApi!.genre : 'K-POP';
+    if (_performanceDetail != null) {
+      return _performanceDetail!.genre.isNotEmpty
+          ? _performanceDetail!.genre
+          : '콘서트';
     }
-    return widget.concert['category'] ?? 'K-POP';
+    return '콘서트';
   }
 
   String _getVenue() {
-    if (_detailFromApi != null) {
-      return _detailFromApi!.venueName.isNotEmpty
-          ? _detailFromApi!.venueName
+    if (_performanceDetail != null) {
+      return _performanceDetail!.venueName.isNotEmpty
+          ? _performanceDetail!.venueName
           : '장소 미정';
     }
-    return widget.concert['venue'] ?? '장소 미정';
-  }
-
-  String _getDate() {
-    if (_detailFromApi != null) {
-      return _detailFromApi!.startDate.isNotEmpty
-          ? _detailFromApi!.startDate
-          : '날짜 미정';
-    }
-    return widget.concert['date'] ?? '날짜 미정';
+    return '장소 미정';
   }
 
   List<String> _getTags() {
-    if (_detailFromApi != null) {
-      return _detailFromApi!.tags.isNotEmpty ? _detailFromApi!.tags : ['공연'];
+    if (_performanceDetail != null) {
+      return _performanceDetail!.tags.isNotEmpty
+          ? _performanceDetail!.tags
+          : ['공연'];
     }
-    if (widget.concert['tags'] != null) {
-      return List<String>.from(widget.concert['tags']);
-    }
+
     return ['공연'];
   }
 
@@ -516,16 +504,18 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
           _buildDetailInfoRow(
             Icons.calendar_today,
             '공연일시',
-            '${_getDate()} ${widget.concert['time'] ?? '시간 미정'}',
+            '${_performanceDetail?.startDate} ~ ${_performanceDetail?.endDate} ',
           ),
           Divider(color: AppColors.gray200, height: 24),
-          _buildDetailInfoRow(
-            Icons.location_on,
-            '공연장소',
-            '${_getVenue()} (${widget.concert['location'] ?? '위치 미정'})',
-          ),
+          _buildDetailInfoRow(Icons.location_on, '공연장소', '${_getVenue()} '),
           Divider(color: AppColors.gray200, height: 24),
           _buildDetailInfoRow(Icons.local_offer, '가격', _getPrice()),
+          Divider(color: AppColors.gray200, height: 24),
+          _buildDetailInfoRow(
+            Icons.child_care,
+            '연령',
+            '${_performanceDetail?.ageRating ?? '미정'}',
+          ),
           Divider(color: AppColors.gray200, height: 24),
           _buildDetailInfoRow(Icons.category, '장르', _getGenre()),
         ],
@@ -628,8 +618,8 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
               ],
             ),
           )
-        else if (_detailFromApi?.detailImage != null &&
-            _detailFromApi!.detailImage.isNotEmpty)
+        else if (_performanceDetail?.detailImage != null &&
+            _performanceDetail!.detailImage.isNotEmpty)
           Container(
             width: double.infinity,
             decoration: BoxDecoration(
@@ -637,9 +627,8 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
               border: Border.all(color: AppColors.gray200),
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
               child: Image.network(
-                _detailFromApi!.detailImage,
+                _performanceDetail!.detailImage,
                 fit: BoxFit.cover,
                 loadingBuilder: (context, child, loadingProgress) {
                   if (loadingProgress == null) return child;
@@ -740,30 +729,5 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
       default:
         return '예매하기';
     }
-  }
-
-  void _showTransferMarketDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('양도 마켓'),
-        content: Text('${_getTitle()} 양도 티켓을 확인하시겠습니까?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('취소'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text('양도 마켓으로 이동합니다.')));
-            },
-            child: Text('확인'),
-          ),
-        ],
-      ),
-    );
   }
 }

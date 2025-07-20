@@ -1,4 +1,4 @@
-import '../../../../core/utils/json_parser.dart';
+import '../../../core/utils/json_parser.dart';
 
 /// 대시보드의 HOT 공연 슬라이더용 모델
 class PerformanceHotItem {
@@ -62,8 +62,38 @@ class PerformanceHotItem {
   }
 }
 
-/// 대시보드의 예매 가능한 공연 리스트용 모델 (available과 hot 동일한 구조)
-typedef PerformanceAvailableItem = PerformanceHotItem;
+/// 대시보드의 예매 가능한 공연 리스트용 모델
+class PerformanceAvailableItem {
+  final int performanceId;
+  final String title;
+  final String startDate;
+  final String endDate;
+  final String mainImage;
+  final String venueName;
+  final String performerName;
+
+  PerformanceAvailableItem({
+    required this.performanceId,
+    required this.title,
+    required this.startDate,
+    required this.endDate,
+    required this.mainImage,
+    required this.venueName,
+    required this.performerName,
+  });
+
+  factory PerformanceAvailableItem.fromJson(Map<String, dynamic> json) {
+    return PerformanceAvailableItem(
+      performanceId: JsonParserUtils.parseInt(json['performance_id']),
+      title: JsonParserUtils.parseString(json['title']),
+      startDate: JsonParserUtils.parseString(json['start_date']),
+      endDate: JsonParserUtils.parseString(json['end_date']),
+      mainImage: JsonParserUtils.parseString(json['main_image']),
+      venueName: JsonParserUtils.parseString(json['venue_name']),
+      performerName: JsonParserUtils.parseString(json['performer_name']),
+    );
+  }
+}
 
 /// 페이지네이션을 포함한 전체 공연 목록 응답 모델
 class PerformanceListResponse {
@@ -157,36 +187,44 @@ class PerformanceListItem {
 class PerformanceDetail {
   final int performanceId;
   final String mainImage;
-  final bool isHot;
   final String title;
   final String performerName;
   final String startDate;
   final String endDate;
   final String venueName;
+  final String venueLocation;
   final int minPrice;
+  final String ageRating;
   final String genre;
   final List<String> tags;
   final String detailImage;
   final bool isTicketOpen;
+  final bool isHot;
   final bool isSoldOut;
   final bool isAvailable;
+  final String ticketOpenDatetime;
+  final List<String> sessionList;
 
   PerformanceDetail({
     required this.performanceId,
     required this.mainImage,
-    required this.isHot,
     required this.title,
     required this.performerName,
     required this.startDate,
     required this.endDate,
     required this.venueName,
+    required this.venueLocation,
     required this.minPrice,
+    required this.ageRating,
     required this.genre,
     required this.tags,
     required this.detailImage,
     required this.isTicketOpen,
+    required this.isHot,
     required this.isSoldOut,
     required this.isAvailable,
+    required this.ticketOpenDatetime,
+    required this.sessionList,
   });
 
   factory PerformanceDetail.fromJson(Map<String, dynamic> json) {
@@ -199,27 +237,26 @@ class PerformanceDetail {
       startDate: JsonParserUtils.parseString(json['start_date']),
       endDate: JsonParserUtils.parseString(json['end_date']),
       venueName: JsonParserUtils.parseString(json['venue_name']),
+      venueLocation: JsonParserUtils.parseString(json['venue_location']),
       minPrice: JsonParserUtils.parseInt(json['min_price']),
+      ageRating: JsonParserUtils.parseString(json['age_rating']),
       genre: JsonParserUtils.parseString(json['genre']),
       tags: JsonParserUtils.parseStringList(json['tags']),
       detailImage: JsonParserUtils.parseString(json['detail_image']),
       isTicketOpen: JsonParserUtils.parseBool(json['is_ticket_open']),
       isSoldOut: JsonParserUtils.parseBool(json['is_sold_out']),
       isAvailable: JsonParserUtils.parseBool(json['is_available']),
+      ticketOpenDatetime: JsonParserUtils.parseString(
+        json['ticket_open_datetime'],
+      ),
+      sessionList: JsonParserUtils.parseStringList(json['sessions']),
     );
   }
 
-  // 편의 메서드들
+  /// 가격 표시 문자열
   String get priceDisplay =>
       '${minPrice.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}원부터';
 
-  // FIXME 여기 좀 애매함. 더미 데이터 많이 쌓아보고 다시 테스트 해보기
-  String get bookingStatus {
-    if (isSoldOut) return '매진';
-    if (!isTicketOpen) return '오픈 예정';
-    if (isAvailable) return '예매 가능';
-    return '예매 불가능';
-  }
-
+  /// 예매 가능 여부
   bool get canBook => isAvailable && isTicketOpen && !isSoldOut;
 }

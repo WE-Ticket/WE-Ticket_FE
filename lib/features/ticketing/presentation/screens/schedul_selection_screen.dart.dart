@@ -8,9 +8,10 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/json_parser.dart';
 
 class ScheduleSelectionScreen extends StatefulWidget {
-  final Map<String, dynamic>? concertInfo;
+  final Map<String, dynamic> performanceInfo;
 
-  const ScheduleSelectionScreen({Key? key, this.concertInfo}) : super(key: key);
+  const ScheduleSelectionScreen({Key? key, required this.performanceInfo})
+    : super(key: key);
 
   @override
   _ScheduleSelectionScreenState createState() =>
@@ -29,7 +30,6 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
     _loadScheduleData();
   }
 
-  /// 공연 스케줄 데이터 로드
   Future<void> _loadScheduleData() async {
     try {
       setState(() {
@@ -39,21 +39,12 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
 
       final apiProvider = context.read<ApiProvider>();
 
-      // JsonParserUtils를 사용하여 안전하게 ID 추출
-      final performanceId = JsonParserUtils.extractPerformanceIdWithDebug(
-        widget.concertInfo,
+      print(
+        '🎫 공연 스케줄 로딩 시작 - 공연 ID: ${widget.performanceInfo['performace_id']}',
       );
 
-      if (performanceId == null) {
-        throw Exception(
-          '유효한 공연 ID를 찾을 수 없습니다.\n전달받은 데이터: ${widget.concertInfo}',
-        );
-      }
-
-      print('🎫 공연 스케줄 로딩 시작 - 공연 ID: $performanceId');
-
       final schedule = await apiProvider.apiService.ticket
-          .getPerformanceSchedule(performanceId);
+          .getPerformanceSchedule(widget.performanceInfo['performance_id']);
 
       setState(() {
         _scheduleData = schedule;
@@ -214,14 +205,10 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
   }
 
   Widget _buildConcertHeader() {
-    // API 데이터가 있으면 해당 데이터 사용, 없으면 기존 concertInfo 사용
-    final title =
-        _scheduleData?.title ?? widget.concertInfo?['title'] ?? '공연 제목';
-    final artist =
-        _scheduleData?.performerName ?? widget.concertInfo?['artist'] ?? '아티스트';
-    final venue =
-        _scheduleData?.venueName ?? widget.concertInfo?['venue'] ?? '공연장';
-    final poster = widget.concertInfo?['poster'] ?? '';
+    final title = widget.performanceInfo['title'] ?? '공연 제목';
+    final performerName = widget.performanceInfo['performer_name'] ?? '아티스트';
+    final venue = widget.performanceInfo['venue_name'] ?? '공연장';
+    final poster = widget.performanceInfo['main_image'] ?? '';
 
     return Container(
       color: AppColors.surface,
@@ -233,9 +220,9 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
             children: [
               Container(
                 width: 60,
-                height: 60,
+                height: 75,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(2),
                   color: AppColors.gray200,
                   image: poster.isNotEmpty
                       ? DecorationImage(
@@ -265,7 +252,7 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
                     ),
                     SizedBox(height: 4),
                     Text(
-                      artist,
+                      performerName,
                       style: TextStyle(
                         fontSize: 14,
                         color: AppColors.primary,
@@ -361,7 +348,7 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
           runSpacing: 8,
           children: _scheduleData!.seatPricings.map<Widget>((pricing) {
             return Text(
-              '${pricing.seatGrade}석 ${pricing.priceDisplay}',
+              '${pricing.seatGrade} ${pricing.priceDisplay}',
               style: TextStyle(
                 fontSize: 13,
                 color: AppColors.primary,
@@ -369,11 +356,6 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
               ),
             );
           }).toList(),
-        ),
-        SizedBox(height: 8),
-        Text(
-          '최저 ${_scheduleData!.minPrice.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}원 ~ 최고 ${_scheduleData!.maxPrice.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}원',
-          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
         ),
       ],
     );
@@ -552,6 +534,7 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
               ),
             ),
           ),
+          SizedBox(height: 40),
         ],
       ),
     );
@@ -633,15 +616,9 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
     );
 
     final selectionData = {
-      'performanceId': _scheduleData!.performanceId,
+      'performanceId': widget.performanceInfo['performance_id'],
       'performanceSessionId': selectedSession.performanceSessionId,
-      'concertInfo': {
-        'title': _scheduleData!.title,
-        'artist': _scheduleData!.performerName,
-        'venue': _scheduleData!.venueName,
-        'poster': widget.concertInfo?['poster'] ?? '',
-        ...?widget.concertInfo,
-      },
+      'performaceInfo': widget.performanceInfo,
       'selectedSession': {
         'sessionId': selectedSession.performanceSessionId,
         'dateTime': selectedSession.dateTimeDisplay,

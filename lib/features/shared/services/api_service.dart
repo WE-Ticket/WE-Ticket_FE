@@ -1,8 +1,9 @@
-import 'package:we_ticket/features/mypage/my_ticket_service.dart';
+import 'package:we_ticket/features/auth/data/auth_service.dart';
+import 'package:we_ticket/features/mypage/data/my_ticket_service.dart';
+import 'package:we_ticket/features/mypage/data/payment_history_model.dart';
 import '../../../core/services/dio_client.dart';
-import '../../contents/data/services/performance_service.dart';
+import '../../contents/data/performance_service.dart';
 import '../../ticketing/data/services/ticket_service.dart';
-import '../../auth/data/services/user_service.dart';
 import '../../transfer/data/services/transfer_service.dart';
 
 /// [ 모든 API 서비스를 통합 관리하는 클래스 ]
@@ -11,17 +12,17 @@ import '../../transfer/data/services/transfer_service.dart';
 class ApiService {
   final DioClient _dioClient;
 
+  late final AuthService auth;
   late final PerformanceService performance;
   late final TicketService ticket;
   late final TransferService transfer;
-  late final UserService user;
   late final MyTicketService myTicket;
 
   /// 생성자
   ApiService(this._dioClient) {
+    auth = AuthService(_dioClient);
     performance = PerformanceService(_dioClient);
     ticket = TicketService(_dioClient);
-    user = UserService(_dioClient);
     transfer = TransferService(_dioClient);
     myTicket = MyTicketService(_dioClient);
   }
@@ -124,6 +125,7 @@ class ApiService {
     }
   }
 
+  /// 내 티켓 목록 조회
   Future<List<Map<String, dynamic>>> getOwnedTickets(
     int userId, {
     String? state,
@@ -184,7 +186,7 @@ class ApiService {
     }
   }
 
-  /// 사용자별 티켓 관리 데이터 로드 (새로 추가)
+  /// 사용자별 티켓 관리 데이터 로드
   ///
   /// 내 티켓 목록과 구매 이력을 동시에 로드합니다.
   Future<Map<String, dynamic>> loadUserTicketData(int userId) async {
@@ -267,14 +269,14 @@ class ApiService {
       final results = await Future.wait([
         loadDashboardData(),
         loadUserTransferData(userId),
-        loadUserTicketData(userId), // 새로 추가
+        loadUserTicketData(userId),
       ]);
 
       final initialData = {
         'userId': userId,
         'dashboardData': results[0],
         'transferData': results[1],
-        'ticketData': results[2], // 새로 추가
+        'ticketData': results[2],
         'loginTime': DateTime.now(),
       };
 
@@ -283,6 +285,83 @@ class ApiService {
     } catch (e) {
       print('❌ 사용자 초기 데이터 로딩 실패: $e');
       rethrow;
+    }
+  }
+
+  // ApiService 클래스에 추가할 메서드들
+
+  /// 사용자별 결제 이력 데이터 로드
+  ///
+  /// 결제 이력과 기본 사용자 정보를 동시에 로드합니다.
+  Future<Map<String, dynamic>> loadUserPaymentData(
+    int userId, {
+    String? filter,
+  }) async {
+    try {
+      print('💳 사용자 결제 데이터 로딩 시작 (사용자 ID: $userId, 필터: $filter)');
+
+      // 필터별 결제 이력 조회
+      final paymentHistories = await myTicket.getFilteredPaymentHistory(
+        userId,
+        filter ?? '전체 거래',
+      );
+
+      final paymentData = {
+        'userId': userId,
+        'filter': filter ?? '전체 거래',
+        'paymentHistories': paymentHistories,
+        'totalCount': paymentHistories.length,
+        'loadedAt': DateTime.now(),
+      };
+
+      print('✅ 사용자 결제 데이터 로딩 완료 (${paymentHistories.length}개)');
+      return paymentData;
+    } catch (e) {
+      print('❌ 사용자 결제 데이터 로딩 실패: $e');
+      rethrow;
+    }
+  }
+
+  /// 결제 이력 통계 데이터 생성
+  ///
+  /// 결제 이력을 바탕으로 통계 정보를 생성합니다.
+  Map<String, dynamic> generatePaymentStatistics(
+    List<PaymentHistory> histories,
+  ) {
+    try {
+      print('📊 결제 이력 통계 생성 시작');
+
+      final stats = {
+        'totalCount': histories.length,
+        'purchaseCount': histories
+            .where((h) => h.isPurchase || h.isTransferBuy)
+            .length,
+        'sellCount': histories.where((h) => h.isTransferSell).length,
+        'cancelCount': histories.where((h) => h.isCancel).length,
+        'completedCount': histories.where((h) => h.isCompleted).length,
+        'pendingCount': histories.where((h) => h.isPending).length,
+        'totalAmount': histories.fold<int>(0, (sum, h) => sum + h.price),
+        'averageAmount': histories.isEmpty
+            ? 0
+            : histories.fold<int>(0, (sum, h) => sum + h.price) ~/
+                  histories.length,
+        'lastPaymentDate': histories.isEmpty
+            ? null
+            : histories
+                  .map((h) => h.paymentDate)
+                  .reduce((a, b) => a.isAfter(b) ? a : b),
+        'generatedAt': DateTime.now(),
+      };
+
+      print('✅ 결제 이력 통계 생성 완료');
+      return stats;
+    } catch (e) {
+      print('❌ 결제 이력 통계 생성 실패: $e');
+      return {
+        'totalCount': 0,
+        'error': e.toString(),
+        'generatedAt': DateTime.now(),
+      };
     }
   }
 
@@ -314,18 +393,17 @@ class ApiService {
       print('❌ Transfer Service 오류: $e');
     }
 
-    // MyTicket Service 테스트 (새로 추가)
-    // 사용자 ID가 필요해서 스킵
+    // Auth Service 테스트 (로그인은 위험하므로 스킵)
+    results['auth'] = true;
+    print('⚠️ Auth Service 테스트 스킵 (실제 로그인 위험)');
+
+    // MyTicket Service 테스트 (사용자 ID가 필요해서 스킵)
     results['myTicket'] = true;
     print('⚠️ MyTicket Service 테스트 스킵 (user_id 필요)');
 
     // Ticket Service 테스트 (스케줄 조회는 performance_id가 필요해서 스킵)
     results['ticket'] = true;
     print('⚠️ Ticket Service 테스트 스킵 (performance_id 필요)');
-
-    // User Service 테스트 (실제 로그인은 위험해서 스킵)
-    results['user'] = true;
-    print('⚠️ User Service 테스트 스킵 (실제 로그인 위험)');
 
     print('🔍 API 서비스 상태 진단 완료');
     return results;
@@ -338,11 +416,11 @@ class ApiService {
     print('🔄 API 서비스 리셋 중...');
 
     // 새로운 DioClient로 각 서비스 재생성
+    auth = AuthService(_dioClient);
     performance = PerformanceService(_dioClient);
     ticket = TicketService(_dioClient);
-    user = UserService(_dioClient);
     transfer = TransferService(_dioClient);
-    myTicket = MyTicketService(_dioClient); // 새로 추가
+    myTicket = MyTicketService(_dioClient);
 
     print('✅ API 서비스 리셋 완료');
   }

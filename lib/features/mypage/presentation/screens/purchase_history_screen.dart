@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:we_ticket/features/auth/presentation/providers/auth_provider.dart';
+import 'package:we_ticket/features/mypage/data/payment_history_model.dart';
 import 'package:we_ticket/features/mypage/presentation/screens/ticket_detail_screen.dart';
+import 'package:we_ticket/features/shared/providers/api_provider.dart';
 import '../../../../core/constants/app_colors.dart';
 
 class PurchaseHistoryScreen extends StatefulWidget {
@@ -11,6 +15,9 @@ class PurchaseHistoryScreen extends StatefulWidget {
 
 class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
   String _selectedFilter = '전체 거래';
+  List<PaymentHistory> _paymentHistories = [];
+  bool _isLoading = false;
+  String? _errorMessage;
 
   final List<String> _filterOptions = [
     '전체 거래',
@@ -19,145 +26,63 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
     '취소/환불',
   ];
 
-  // FIXME: 더미 데이터 - 실제로는 API에서 가져올 예정
-  final List<Map<String, dynamic>> _purchaseHistory = [
-    // 티켓 예매 - 결제 완료 (구매 내역)
-    {
-      'id': 'order_001',
-      'ticketId': 'ticket_1',
-      'title': '2025 RIIZE CONCERT TOUR',
-      'artist': 'RIIZE',
-      'date': '2025.07.04',
-      'time': '20:00',
-      'venue': 'KSPO DOME',
-      'seat': 'S석 1층 A구역 3열 15번',
-      'poster':
-          'https://talkimg.imbc.com/TVianUpload/tvian/TViews/image/2025/05/22/0be8f4e2-5e79-4a67-b80c-b14654cf908c.jpg',
-      'purchaseDate': '2025.06.20',
-      'purchaseTime': '14:30',
-      'price': 154000,
-      'paymentMethod': '카카오페이',
-      'type': 'purchase',
-      'status': 'payment_completed',
-      'orderNumber': 'ORD202506201430001',
-    },
+  @override
+  void initState() {
+    super.initState();
+    _loadPaymentHistory();
+  }
 
-    // 무통장 입금 - 입금 대기 중 (구매 내역)
-    {
-      'id': 'order_002',
-      'ticketId': 'ticket_2',
-      'title': 'NewJeans Fan Meeting',
-      'artist': 'NewJeans',
-      'date': '2025.07.25',
-      'time': '19:00',
-      'venue': '올림픽공원 체조경기장',
-      'seat': 'VIP석 1층 B구역 5열 8번',
-      'poster':
-          'https://img4.yna.co.kr/etc/inner/KR/2024/06/25/AKR20240625045000005_01_i_P4.jpg',
-      'purchaseDate': '2025.06.15',
-      'purchaseTime': '10:45',
-      'price': 88000,
-      'paymentMethod': '무통장입금',
-      'type': 'purchase',
-      'status': 'payment_pending',
-      'orderNumber': 'ORD202506151045002',
-      'depositAccount': '신한은행 100-123-456789',
-      'depositDeadline': '2025.06.17 23:59',
-    },
+  /// 결제 이력 로드
+  Future<void> _loadPaymentHistory() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
-    // 양도 구매 - 완료 (구매 내역)
-    {
-      'id': 'order_003',
-      'ticketId': 'ticket_3',
-      'title': 'aespa MY WORLD TOUR',
-      'artist': 'aespa',
-      'date': '2025.08.10',
-      'time': '19:00',
-      'venue': 'KSPO DOME',
-      'seat': 'VIP석 1층 B구역 2열 10번',
-      'poster': 'https://example.com/aespa_poster.jpg',
-      'purchaseDate': '2025.06.25',
-      'purchaseTime': '16:20',
-      'price': 165000,
-      'paymentMethod': '신용카드',
-      'type': 'transfer_buy',
-      'status': 'payment_completed',
-      'orderNumber': 'TRF202506251620003',
-    },
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final apiProvider = Provider.of<ApiProvider>(context, listen: false);
 
-    // 양도 판매 - 완료 (판매 내역)
-    {
-      'id': 'order_004',
-      'ticketId': 'ticket_4',
-      'title': 'SEVENTEEN CONCERT',
-      'artist': 'SEVENTEEN',
-      'date': '2025.05.10',
-      'time': '18:00',
-      'venue': 'KSPO DOME',
-      'seat': 'R석 2층 C구역 10열 20번',
-      'poster': 'https://newsimg.sedaily.com/2024/08/14/2DD0HP41GF_1.jpg',
-      'purchaseDate': '2025.04.01',
-      'purchaseTime': '09:00',
-      'transferDate': '2025.04.25',
-      'transferTime': '15:30',
-      'price': 132000,
-      'paymentMethod': '네이버페이',
-      'type': 'transfer_sell',
-      'status': 'transferred',
-      'orderNumber': 'ORD202504010900004',
-      'transferOrderNumber': 'TRF202504251530004',
-    },
+      // 현재 사용자 ID 가져오기
+      final userId = authProvider.currentUserId;
+      if (userId == null) {
+        throw Exception('사용자 정보를 찾을 수 없습니다.');
+      }
 
-    // 취소/환불 - 환불 완료
-    {
-      'id': 'order_005',
-      'ticketId': 'ticket_5',
-      'title': 'IU CONCERT 2025',
-      'artist': 'IU',
-      'date': '2025.08.15',
-      'time': '19:00',
-      'venue': '잠실실내체육관',
-      'seat': 'VIP석 1층 A구역 1열 5번',
-      'poster': 'https://example.com/iu_poster.jpg',
-      'purchaseDate': '2025.06.01',
-      'purchaseTime': '11:00',
-      'cancelDate': '2025.06.10',
-      'cancelTime': '16:20',
-      'refundDate': '2025.06.12',
-      'refundTime': '14:30',
-      'price': 220000,
-      'refundAmount': 198000,
-      'paymentMethod': '신용카드',
-      'type': 'cancel',
-      'status': 'refund_completed',
-      'orderNumber': 'ORD202506011100005',
-      'cancelReason': '개인 사정',
-    },
+      // API에서 결제 이력 가져오기
+      final histories = await apiProvider.apiService.myTicket
+          .getFilteredPaymentHistory(userId, _selectedFilter);
 
-    // 취소/환불 - 환불 대기 중
-    {
-      'id': 'order_006',
-      'ticketId': 'ticket_6',
-      'title': 'BTS CONCERT 2025',
-      'artist': 'BTS',
-      'date': '2025.09.20',
-      'time': '19:00',
-      'venue': '월드컵경기장',
-      'seat': 'S석 1층 A구역 5열 12번',
-      'poster': 'https://example.com/bts_poster.jpg',
-      'purchaseDate': '2025.06.05',
-      'purchaseTime': '15:20',
-      'cancelDate': '2025.06.22',
-      'cancelTime': '10:15',
-      'price': 280000,
-      'refundAmount': 252000,
-      'paymentMethod': '신용카드',
-      'type': 'cancel',
-      'status': 'refund_pending',
-      'orderNumber': 'ORD202506051520006',
-      'cancelReason': '일정 변경',
-    },
-  ];
+      setState(() {
+        _paymentHistories = histories;
+        _isLoading = false;
+      });
+
+      print('✅ 결제 이력 로드 완료: ${histories.length}개');
+    } catch (e) {
+      setState(() {
+        _errorMessage = '결제 이력을 불러올 수 없습니다: $e';
+        _isLoading = false;
+      });
+      print('❌ 결제 이력 로드 실패: $e');
+    }
+  }
+
+  /// 필터 변경 시 데이터 다시 로드
+  Future<void> _onFilterChanged(String filter) async {
+    if (_selectedFilter == filter) return;
+
+    setState(() {
+      _selectedFilter = filter;
+    });
+
+    await _loadPaymentHistory();
+  }
+
+  /// 새로고침
+  Future<void> _refreshData() async {
+    await _loadPaymentHistory();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -178,25 +103,83 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
             fontWeight: FontWeight.w600,
           ),
         ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.refresh, color: AppColors.textPrimary),
+            onPressed: _refreshData,
+          ),
+        ],
       ),
       body: Column(
         children: [
           _buildFilterTabs(),
 
           // 구매 이력 리스트
-          Expanded(
-            child: _filteredHistory.isEmpty
-                ? _buildEmptyState()
-                : ListView.builder(
-                    padding: EdgeInsets.all(16),
-                    itemCount: _filteredHistory.length,
-                    itemBuilder: (context, index) {
-                      final purchase = _filteredHistory[index];
-                      return _buildPurchaseCard(purchase);
-                    },
-                  ),
-          ),
+          Expanded(child: _buildContent()),
+
+          SizedBox(height: 40),
         ],
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    if (_isLoading) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(color: AppColors.primary),
+            SizedBox(height: 16),
+            Text(
+              '결제 이력을 불러오는 중...',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 64, color: AppColors.error),
+            SizedBox(height: 16),
+            Text(
+              _errorMessage!,
+              style: TextStyle(color: AppColors.error, fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _refreshData,
+              icon: Icon(Icons.refresh),
+              label: Text('다시 시도'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.white,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_paymentHistories.isEmpty) {
+      return _buildEmptyState();
+    }
+
+    return RefreshIndicator(
+      onRefresh: _refreshData,
+      child: ListView.builder(
+        padding: EdgeInsets.all(16),
+        itemCount: _paymentHistories.length,
+        itemBuilder: (context, index) {
+          final history = _paymentHistories[index];
+          return _buildPaymentCard(history);
+        },
       ),
     );
   }
@@ -211,11 +194,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
           children: _filterOptions.map((filter) {
             bool isSelected = _selectedFilter == filter;
             return GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedFilter = filter;
-                });
-              },
+              onTap: () => _onFilterChanged(filter),
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 decoration: BoxDecoration(
@@ -248,29 +227,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
     );
   }
 
-  List<Map<String, dynamic>> get _filteredHistory {
-    switch (_selectedFilter) {
-      case '구매 내역':
-        return _purchaseHistory
-            .where(
-              (item) =>
-                  item['type'] == 'purchase' || item['type'] == 'transfer_buy',
-            )
-            .toList();
-      case '판매 내역':
-        return _purchaseHistory
-            .where((item) => item['type'] == 'transfer_sell')
-            .toList();
-      case '취소/환불':
-        return _purchaseHistory
-            .where((item) => item['type'] == 'cancel')
-            .toList();
-      default: // 전체 거래
-        return _purchaseHistory;
-    }
-  }
-
-  Widget _buildPurchaseCard(Map<String, dynamic> purchase) {
+  Widget _buildPaymentCard(PaymentHistory history) {
     return Container(
       margin: EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -299,7 +256,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
                     image: DecorationImage(
-                      image: NetworkImage(purchase['poster']),
+                      image: NetworkImage(history.performanceMainImage),
                       fit: BoxFit.cover,
                     ),
                   ),
@@ -312,7 +269,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        purchase['title'],
+                        history.performanceTitle,
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -325,7 +282,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
                       SizedBox(height: 4),
 
                       Text(
-                        purchase['artist'],
+                        history.performerName,
                         style: TextStyle(
                           fontSize: 14,
                           color: AppColors.primary,
@@ -344,7 +301,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
                           ),
                           SizedBox(width: 4),
                           Text(
-                            '${purchase['date']} ${purchase['time']}',
+                            '${history.sessionDateDisplay} ${history.sessionTimeDisplay}',
                             style: TextStyle(
                               fontSize: 12,
                               color: AppColors.textSecondary,
@@ -365,7 +322,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
                           SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              purchase['venue'],
+                              history.venueName,
                               style: TextStyle(
                                 fontSize: 12,
                                 color: AppColors.textSecondary,
@@ -379,10 +336,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
                   ),
                 ),
 
-                _buildTransactionStatusBadge(
-                  purchase['status'],
-                  purchase['type'],
-                ),
+                _buildTransactionStatusBadge(history),
               ],
             ),
           ),
@@ -406,7 +360,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
                       ),
                     ),
                     Text(
-                      purchase['orderNumber'],
+                      history.paymentNumber,
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textPrimary,
@@ -418,7 +372,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
 
                 SizedBox(height: 8),
 
-                if (purchase['type'] != 'cancel') ...[
+                if (!history.isCancel) ...[
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -430,7 +384,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
                         ),
                       ),
                       Text(
-                        purchase['seat'],
+                        history.seatNumber,
                         style: TextStyle(
                           fontSize: 12,
                           color: AppColors.textPrimary,
@@ -445,14 +399,14 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      _getPriceLabel(purchase['status']),
+                      _getPriceLabel(history),
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,
                       ),
                     ),
                     Text(
-                      _getFormattedPrice(purchase),
+                      history.priceDisplay,
                       style: TextStyle(
                         fontSize: 14,
                         color: AppColors.textPrimary,
@@ -475,7 +429,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
                       ),
                     ),
                     Text(
-                      purchase['paymentMethod'],
+                      history.method,
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textPrimary,
@@ -490,14 +444,14 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      _getDateLabel(purchase['status']),
+                      _getDateLabel(history),
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,
                       ),
                     ),
                     Text(
-                      _getFormattedDate(purchase),
+                      '${history.paymentDateDisplay} ${history.paymentTimeDisplay}',
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textPrimary,
@@ -507,7 +461,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
                 ),
 
                 // 거래 상태별 추가 정보
-                ..._buildAdditionalInfo(purchase),
+                ..._buildAdditionalInfo(history),
 
                 SizedBox(height: 16),
 
@@ -516,7 +470,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
                   children: [
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: () => _showTransactionDetail(purchase),
+                        onPressed: () => _showTransactionDetail(history),
                         icon: Icon(Icons.receipt_long, size: 16),
                         label: Text('거래 상세', style: TextStyle(fontSize: 12)),
                         style: OutlinedButton.styleFrom(
@@ -529,12 +483,11 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
 
                     SizedBox(width: 8),
 
-                    if (purchase['type'] == 'purchase' ||
-                        purchase['type'] == 'transfer_buy')
-                      if (purchase['status'] == 'payment_completed')
+                    if (history.isPurchase || history.isTransferBuy)
+                      if (history.isCompleted)
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: () => _showTicketDetail(purchase),
+                            onPressed: () => _showTicketDetail(history),
                             icon: Icon(Icons.confirmation_number, size: 16),
                             label: Text(
                               '티켓 보기',
@@ -547,10 +500,11 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
                             ),
                           ),
                         )
-                      else if (purchase['status'] == 'payment_pending')
+                      else if (history.isInProgress &&
+                          history.hasDepositDeadline)
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: () => _showDepositInfo(purchase),
+                            onPressed: () => _showDepositInfo(history),
                             icon: Icon(Icons.account_balance, size: 16),
                             label: Text(
                               '입금 안내',
@@ -573,51 +527,22 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
     );
   }
 
-  Widget _buildTransactionStatusBadge(String status, String type) {
+  Widget _buildTransactionStatusBadge(PaymentHistory history) {
     Color backgroundColor;
-    String text;
     IconData icon;
 
-    // 상태별 배지 설정
-    switch (status) {
-      case 'payment_pending':
-        backgroundColor = AppColors.warning;
-        text = '입금 대기';
-        icon = Icons.schedule;
-        break;
-      case 'payment_completed':
-        backgroundColor = AppColors.success;
-        text = type == 'purchase'
-            ? '예매 완료'
-            : type == 'transfer_buy'
-            ? '양도구매 완료'
-            : '완료';
-        icon = Icons.check_circle;
-        break;
-      case 'used':
-        backgroundColor = AppColors.primary;
-        text = '사용 완료';
-        icon = Icons.confirmation_number;
-        break;
-      case 'transferred':
-        backgroundColor = AppColors.info;
-        text = '양도 완료';
-        icon = Icons.swap_horiz;
-        break;
-      case 'refund_pending':
-        backgroundColor = AppColors.warning;
-        text = '환불 대기';
-        icon = Icons.hourglass_empty;
-        break;
-      case 'refund_completed':
-        backgroundColor = AppColors.error;
-        text = '환불 완료';
-        icon = Icons.money_off;
-        break;
-      default:
-        backgroundColor = AppColors.gray400;
-        text = '알 수 없음';
-        icon = Icons.help;
+    // 새로운 STATUS_CHOICES에 따른 상태별 배지 설정
+    if (history.isCompleted) {
+      backgroundColor = AppColors.success;
+      icon = Icons.check_circle;
+    } else if (history.isInProgress) {
+      backgroundColor = AppColors.warning;
+      icon = history.hasDepositDeadline
+          ? Icons.schedule
+          : Icons.hourglass_empty;
+    } else {
+      backgroundColor = AppColors.gray400;
+      icon = Icons.help;
     }
 
     return Container(
@@ -632,7 +557,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
           Icon(icon, size: 12, color: AppColors.white),
           SizedBox(width: 4),
           Text(
-            text,
+            history.statusDisplay,
             style: TextStyle(
               color: AppColors.white,
               fontSize: 10,
@@ -644,192 +569,92 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
     );
   }
 
-  List<Widget> _buildAdditionalInfo(Map<String, dynamic> purchase) {
+  List<Widget> _buildAdditionalInfo(PaymentHistory history) {
     List<Widget> widgets = [];
 
-    switch (purchase['status']) {
-      case 'payment_pending':
-        if (purchase['depositAccount'] != null &&
-            purchase['depositDeadline'] != null) {
-          widgets.addAll([
-            SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '입금 계좌',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                Text(
-                  purchase['depositAccount'],
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textPrimary,
-                    fontFamily: 'monospace',
-                  ),
-                ),
-              ],
+    // 입금 대기 상태 (isInProgress로 수정)
+    if (history.isInProgress && history.hasDepositDeadline) {
+      widgets.addAll([
+        SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              '입금 계좌',
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
             ),
-            SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '입금 마감',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                Text(
-                  purchase['depositDeadline'],
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.error,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+            Text(
+              history.depositAccount!,
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.textPrimary,
+                fontFamily: 'monospace',
+              ),
             ),
-          ]);
-        }
-        break;
+          ],
+        ),
+        SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              '입금 마감',
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            ),
+            Text(
+              history.depositDeadline!,
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.error,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ]);
+    }
 
-      case 'transferred':
-        if (purchase['transferDate'] != null) {
-          widgets.addAll([
-            SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '양도 완료일',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                Text(
-                  '${purchase['transferDate']} ${purchase['transferTime']}',
-                  style: TextStyle(fontSize: 12, color: AppColors.info),
-                ),
-              ],
+    // 양도 완료 상태
+    if (history.isTransferSell && history.hasTransferInfo) {
+      widgets.addAll([
+        SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              '양도 완료일',
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
             ),
-            if (purchase['transferOrderNumber'] != null) ...[
-              SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '양도 주문번호',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  Text(
-                    purchase['transferOrderNumber'],
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textPrimary,
-                      fontFamily: 'monospace',
-                    ),
-                  ),
-                ],
+            Text(
+              history.transferFinishedDatetime!,
+              style: TextStyle(fontSize: 12, color: AppColors.info),
+            ),
+          ],
+        ),
+      ]);
+    }
+
+    // 취소/환불 정보
+    if (history.isCancel) {
+      if (history.hasCancelInfo) {
+        widgets.addAll([
+          SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '취소 신청일',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+              Text(
+                history.cancelRequestDatetime!,
+                style: TextStyle(fontSize: 12, color: AppColors.textPrimary),
               ),
             ],
-          ]);
-        }
-        break;
+          ),
+        ]);
 
-      case 'refund_pending':
-        if (purchase['cancelDate'] != null) {
-          widgets.addAll([
-            SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '취소 신청일',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                Text(
-                  '${purchase['cancelDate']} ${purchase['cancelTime']}',
-                  style: TextStyle(fontSize: 12, color: AppColors.textPrimary),
-                ),
-              ],
-            ),
-            SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '처리 상태',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                Text(
-                  '환불 처리 중',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.warning,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ]);
-        }
-        break;
-
-      case 'refund_completed':
-        if (purchase['cancelDate'] != null && purchase['refundDate'] != null) {
-          widgets.addAll([
-            SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '취소 신청일',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                Text(
-                  '${purchase['cancelDate']} ${purchase['cancelTime']}',
-                  style: TextStyle(fontSize: 12, color: AppColors.textPrimary),
-                ),
-              ],
-            ),
-            SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '환불 완료일',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                Text(
-                  '${purchase['refundDate']} ${purchase['refundTime']}',
-                  style: TextStyle(fontSize: 12, color: AppColors.error),
-                ),
-              ],
-            ),
-          ]);
-        }
-        if (purchase['cancelReason'] != null) {
+        if (history.cancelRequestReason != null) {
           widgets.addAll([
             SizedBox(height: 8),
             Row(
@@ -843,57 +668,48 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
                   ),
                 ),
                 Text(
-                  purchase['cancelReason'],
+                  history.cancelRequestReason!,
                   style: TextStyle(fontSize: 12, color: AppColors.textPrimary),
                 ),
               ],
             ),
           ]);
         }
-        break;
+      }
+
+      if (history.hasRefundInfo) {
+        widgets.addAll([
+          SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '환불 완료일',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+              Text(
+                history.refundFinishDatetime!, // 올바른 필드명 사용
+                style: TextStyle(fontSize: 12, color: AppColors.error),
+              ),
+            ],
+          ),
+        ]);
+      }
     }
 
     return widgets;
   }
 
-  String _getPriceLabel(String status) {
-    switch (status) {
-      case 'transferred':
-        return '판매 금액';
-      case 'refund_pending':
-      case 'refund_completed':
-        return '환불 금액';
-      default:
-        return '결제 금액';
-    }
+  String _getPriceLabel(PaymentHistory history) {
+    if (history.isTransferSell) return '판매 금액';
+    if (history.isCancel) return '환불 금액';
+    return '결제 금액';
   }
 
-  String _getFormattedPrice(Map<String, dynamic> purchase) {
-    int amount;
-    if ((purchase['status'] == 'refund_pending' ||
-            purchase['status'] == 'refund_completed') &&
-        purchase['refundAmount'] != null) {
-      amount = purchase['refundAmount'];
-    } else {
-      amount = purchase['price'];
-    }
-    return '${_formatPrice(amount)}원';
-  }
-
-  String _getDateLabel(String status) {
-    switch (status) {
-      case 'transferred':
-        return '원 구매일';
-      case 'refund_pending':
-      case 'refund_completed':
-        return '구매일';
-      default:
-        return '거래일';
-    }
-  }
-
-  String _getFormattedDate(Map<String, dynamic> purchase) {
-    return '${purchase['purchaseDate']} ${purchase['purchaseTime']}';
+  String _getDateLabel(PaymentHistory history) {
+    if (history.isTransferSell) return '원 구매일';
+    if (history.isCancel) return '구매일';
+    return '거래일';
   }
 
   Widget _buildEmptyState() {
@@ -940,14 +756,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
     );
   }
 
-  String _formatPrice(int price) {
-    return price.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]},',
-    );
-  }
-
-  void _showTransactionDetail(Map<String, dynamic> purchase) {
+  void _showTransactionDetail(PaymentHistory history) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -991,38 +800,30 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildDetailSection('공연 정보', [
-                        _buildDetailRow('공연명', purchase['title']),
-                        _buildDetailRow('아티스트', purchase['artist']),
+                        _buildDetailRow('공연명', history.performanceTitle),
+                        _buildDetailRow('아티스트', history.performerName),
                         _buildDetailRow(
                           '공연 일시',
-                          '${purchase['date']} ${purchase['time']}',
+                          '${history.sessionDateDisplay} ${history.sessionTimeDisplay}',
                         ),
-                        _buildDetailRow('공연 장소', purchase['venue']),
-                        if (purchase['type'] != 'cancel')
-                          _buildDetailRow('좌석 정보', purchase['seat']),
+                        _buildDetailRow('공연 장소', history.venueName),
+                        if (!history.isCancel)
+                          _buildDetailRow('좌석 정보', history.seatNumber),
                       ]),
 
                       SizedBox(height: 24),
 
                       _buildDetailSection('거래 정보', [
+                        _buildDetailRow('거래 상태', history.statusDisplay),
+                        _buildDetailRow('거래 유형', history.typeDisplay),
+                        _buildDetailRow('주문번호', history.paymentNumber),
+                        _buildDetailRow('결제 금액', history.priceDisplay),
+                        _buildDetailRow('결제 방법', history.method),
                         _buildDetailRow(
-                          '거래 상태',
-                          _getTransactionStatusText(
-                            purchase['status'],
-                            purchase['type'],
-                          ),
+                          '결제일',
+                          '${history.paymentDateDisplay} ${history.paymentTimeDisplay}',
                         ),
-                        _buildDetailRow('주문번호', purchase['orderNumber']),
-                        _buildDetailRow(
-                          _getPriceLabel(purchase['status']),
-                          _getFormattedPrice(purchase),
-                        ),
-                        _buildDetailRow('결제 방법', purchase['paymentMethod']),
-                        _buildDetailRow(
-                          _getDateLabel(purchase['status']),
-                          _getFormattedDate(purchase),
-                        ),
-                        ..._buildDetailAdditionalInfo(purchase),
+                        ..._buildDetailAdditionalInfo(history),
                       ]),
 
                       SizedBox(height: 40),
@@ -1090,93 +891,42 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
     );
   }
 
-  List<Widget> _buildDetailAdditionalInfo(Map<String, dynamic> purchase) {
+  List<Widget> _buildDetailAdditionalInfo(PaymentHistory history) {
     List<Widget> widgets = [];
 
-    switch (purchase['status']) {
-      case 'payment_pending':
-        if (purchase['depositAccount'] != null) {
-          widgets.addAll([
-            _buildDetailRow('입금 계좌', purchase['depositAccount']),
-            _buildDetailRow('입금 마감', purchase['depositDeadline']),
-          ]);
-        }
-        break;
+    // 입금 정보
+    if (history.hasDepositDeadline) {
+      widgets.addAll([
+        _buildDetailRow('입금 계좌', history.depositAccount!),
+        _buildDetailRow('입금 마감', history.depositDeadline!),
+      ]);
+    }
 
-      case 'transferred':
-        if (purchase['transferDate'] != null) {
-          widgets.addAll([
-            _buildDetailRow(
-              '양도 완료일',
-              '${purchase['transferDate']} ${purchase['transferTime']}',
-            ),
-            if (purchase['transferOrderNumber'] != null)
-              _buildDetailRow('양도 주문번호', purchase['transferOrderNumber']),
-          ]);
-        }
-        break;
+    // 양도 정보
+    if (history.hasTransferInfo) {
+      widgets.add(_buildDetailRow('양도 완료일', history.transferFinishedDatetime!));
+    }
 
-      case 'refund_pending':
-        if (purchase['cancelDate'] != null) {
-          widgets.addAll([
-            _buildDetailRow(
-              '취소 신청일',
-              '${purchase['cancelDate']} ${purchase['cancelTime']}',
-            ),
-            _buildDetailRow('처리 상태', '환불 처리 중'),
-            if (purchase['cancelReason'] != null)
-              _buildDetailRow('취소 사유', purchase['cancelReason']),
-          ]);
-        }
-        break;
+    // 취소/환불 정보
+    if (history.hasCancelInfo) {
+      widgets.add(_buildDetailRow('취소 신청일', history.cancelRequestDatetime!));
+      if (history.cancelRequestReason != null) {
+        widgets.add(_buildDetailRow('취소 사유', history.cancelRequestReason!));
+      }
+    }
 
-      case 'refund_completed':
-        if (purchase['cancelDate'] != null) {
-          widgets.addAll([
-            _buildDetailRow(
-              '취소 신청일',
-              '${purchase['cancelDate']} ${purchase['cancelTime']}',
-            ),
-            if (purchase['refundDate'] != null)
-              _buildDetailRow(
-                '환불 완료일',
-                '${purchase['refundDate']} ${purchase['refundTime']}',
-              ),
-            if (purchase['cancelReason'] != null)
-              _buildDetailRow('취소 사유', purchase['cancelReason']),
-            _buildDetailRow('원 결제금액', '${_formatPrice(purchase['price'])}원'),
-          ]);
-        }
-        break;
+    if (history.hasRefundInfo) {
+      widgets.add(
+        _buildDetailRow('환불 완료일', history.refundFinishDatetime!), // 올바른 필드명 사용
+      );
     }
 
     return widgets;
   }
 
-  String _getTransactionStatusText(String status, String type) {
-    switch (status) {
-      case 'payment_pending':
-        return '입금 대기 중';
-      case 'payment_completed':
-        return type == 'purchase'
-            ? '티켓 예매'
-            : type == 'transfer_buy'
-            ? '양도 구매'
-            : '거래 완료';
-      case 'used':
-        return '티켓 사용 완료';
-      case 'transferred':
-        return '양도 판매 완료';
-      case 'refund_pending':
-        return '환불 처리 중';
-      case 'refund_completed':
-        return '취소/환불 완료';
-      default:
-        return '알 수 없음';
-    }
-  }
+  void _showDepositInfo(PaymentHistory history) {
+    if (!history.hasDepositDeadline) return;
 
-  void _showDepositInfo(Map<String, dynamic> purchase) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -1244,7 +994,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
                         ),
                       ),
                       Text(
-                        purchase['depositAccount'],
+                        history.depositAccount!,
                         style: TextStyle(
                           fontSize: 12,
                           color: AppColors.textPrimary,
@@ -1266,7 +1016,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
                         ),
                       ),
                       Text(
-                        '${_formatPrice(purchase['price'])}원',
+                        history.priceDisplay,
                         style: TextStyle(
                           fontSize: 12,
                           color: AppColors.textPrimary,
@@ -1287,7 +1037,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
                         ),
                       ),
                       Text(
-                        purchase['depositDeadline'],
+                        history.depositDeadline!,
                         style: TextStyle(
                           fontSize: 12,
                           color: AppColors.error,
@@ -1316,19 +1066,21 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
     );
   }
 
-  void _showTicketDetail(Map<String, dynamic> purchase) {
+  void _showTicketDetail(PaymentHistory history) {
+    if (history.ticketId == null) return;
+
     // 티켓 상세 화면으로 이동
     final ticketData = {
-      'id': purchase['ticketId'],
-      'title': purchase['title'],
-      'artist': purchase['artist'],
-      'date': purchase['date'],
-      'time': purchase['time'],
-      'venue': purchase['venue'],
-      'seat': purchase['seat'],
-      'poster': purchase['poster'],
+      'id': history.ticketId.toString(),
+      'title': history.performanceTitle,
+      'artist': history.performerName,
+      'date': history.sessionDateDisplay,
+      'time': history.sessionTimeDisplay,
+      'venue': history.venueName,
+      'seat': history.seatNumber,
+      'poster': history.performanceMainImage,
       'status': 'upcoming',
-      'price': '${_formatPrice(purchase['price'])}원',
+      'price': history.priceDisplay,
     };
 
     Navigator.push(

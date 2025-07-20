@@ -451,7 +451,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
         ),
         SizedBox(height: 4),
         Text(
-          '원하는 구역을 선택해주세요 (1,2,3,4구역 고정 배치)',
+          '원하는 구역을 선택해주세요',
           style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
         ),
         SizedBox(height: 16),
@@ -584,16 +584,16 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
                   ),
                 ),
                 SizedBox(height: 8),
-                Text(
-                  zoneInfo.availabilityText,
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: zoneInfo.isSoldOut
-                        ? AppColors.error
-                        : AppColors.success,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                // Text(
+                //   zoneInfo.availabilityText,
+                //   style: TextStyle(
+                //     fontSize: 10,
+                //     color: zoneInfo.isSoldOut
+                //         ? AppColors.error
+                //         : AppColors.success,
+                //     fontWeight: FontWeight.w600,
+                //   ),
+                // ),
               ] else ...[
                 Text(
                   '구역 없음',
@@ -1016,6 +1016,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
     );
   }
 
+  //FIXME shared widget으로 분리 가능할 듯
   Widget _buildNextButton() {
     final canProceed =
         _selectedSeatNumber != null && _currentSeatLayout != null;
@@ -1056,6 +1057,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
               ),
             ),
           ),
+          SizedBox(height: 40),
         ],
       ),
     );
@@ -1177,23 +1179,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
         'totalSeats': _currentSeatLayout!.totalSeats,
         'availableSeats': _currentSeatLayout!.availableSeatsCount,
       },
-
-      // 디버깅용 정보
-      'debug': {
-        'dataSource': 'api_based_generation', // API 기반 자동 생성
-        'fixedZoneLayout': '1,2,3,4 구역 고정',
-        'timestamp': DateTime.now().toIso8601String(),
-      },
     };
-
-    print('💳 결제 화면으로 이동');
-    print('📋 전달 데이터: ${paymentData.keys.toList()}');
-    print(
-      '🎫 선택된 좌석: ${selectedZoneInfo.seatGrade} ${_selectedZone}구역 ${selectedSeat.seatNumber} (${selectedZoneInfo.priceDisplay})',
-    );
-    print(
-      '🏗️ 좌석 배치: ${_currentSeatLayout!.maxRow}행 × ${_currentSeatLayout!.maxCol}열',
-    );
 
     Navigator.push(
       context,

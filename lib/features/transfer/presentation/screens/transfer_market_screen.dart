@@ -75,9 +75,10 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
       body: Column(
         children: [
           _buildPurposeHeader(),
-          _buildSearchBar(),
+          // _buildSearchBar(),
           _buildFilterAndActions(),
           Expanded(child: _buildTransferTicketList()),
+          SizedBox(height: 40),
         ],
       ),
     );

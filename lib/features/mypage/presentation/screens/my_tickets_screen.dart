@@ -248,6 +248,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
 
           // 티켓 카드 리스트
           Expanded(child: _buildTicketList()),
+          SizedBox(height: 40),
         ],
       ),
     );

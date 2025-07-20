@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../shared/providers/api_provider.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/transfer_provider.dart';
 import '../../../transfer/data/models/transfer_models.dart';
 import 'transfer_dialogs.dart';
@@ -33,30 +34,43 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
 
   /// 초기 데이터 로드
   Future<void> _loadInitialData() async {
-    print('🔥 DEBUG: _loadInitialData 시작'); // 이거 추가
-    final apiProvider = Provider.of<ApiProvider>(context, listen: false);
+    print('🔥 DEBUG: _loadInitialData 시작');
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final transferProvider = Provider.of<TransferProvider>(
       context,
       listen: false,
     );
 
-    //FIXME 로그인 정보 하드 코딩 수정!!!
-    final currentId = 2;
+    // AuthProvider에서 현재 사용자 ID 가져오기
+    final currentUserId = authProvider.user?.userId;
 
-    print('🔥 DEBUG: currentUserId = ${apiProvider.currentUserId}'); // 이거 추가
+    print('🔥 DEBUG: currentUserId = $currentUserId');
 
-    if (currentId != null) {
-      print('🔥 DEBUG: Future.wait 시작'); // 이거 추가
+    if (currentUserId != null) {
+      print('🔥 DEBUG: Future.wait 시작');
       await Future.wait([
         transferProvider.loadMyRegisteredTickets(
-          userId: currentId,
+          userId: currentUserId,
           forceRefresh: true,
         ),
         transferProvider.loadMyTransferableTickets(
-          userId: currentId,
+          userId: currentUserId,
           forceRefresh: true,
         ),
       ]);
+    } else {
+      // 로그인되지 않은 경우 처리
+      print('❌ 로그인된 사용자가 없습니다');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('로그인이 필요합니다'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+        Navigator.pop(context);
+      }
     }
   }
 
@@ -388,7 +402,7 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
                 // 포스터
                 Container(
                   width: 60,
-                  height: 60,
+                  height: 75,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
                     color: AppColors.gray300,
@@ -756,6 +770,7 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
           SizedBox(height: 4),
 
           Row(
+            mainAxisAlignment: MainAxisAlignment.end,
             children: [
               if (daysUntilSession >= 0) ...[
                 Icon(Icons.timer, size: 16, color: AppColors.warning),
@@ -970,14 +985,15 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
 
   /// 데이터 새로고침
   Future<void> _refreshData() async {
-    final apiProvider = Provider.of<ApiProvider>(context, listen: false);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final transferProvider = Provider.of<TransferProvider>(
       context,
       listen: false,
     );
 
-    if (apiProvider.currentUserId != null) {
-      await transferProvider.refreshData(userId: apiProvider.currentUserId!);
+    final currentUserId = authProvider.user?.userId;
+    if (currentUserId != null) {
+      await transferProvider.refreshData(userId: currentUserId);
     }
   }
 
