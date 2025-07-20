@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../services/api_service.dart';
-import '../../contents/data/models/performance_models.dart';
+import '../../contents/data/performance_models.dart';
 
 /// API 서비스를 앱 전체에서 공유하기 위한 Provider
 class ApiProvider extends ChangeNotifier {

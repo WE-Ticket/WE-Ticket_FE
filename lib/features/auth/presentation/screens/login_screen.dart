@@ -75,6 +75,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     _buildIdField(),
                     SizedBox(height: 16),
                     _buildPasswordField(),
+                    SizedBox(height: 12),
+                    _buildFindPassword(),
                     SizedBox(height: 24),
                     _buildLoginButton(),
                   ],
@@ -205,6 +207,28 @@ class _LoginScreenState extends State<LoginScreen> {
         }
         return null;
       },
+    );
+  }
+
+  //아이디/패스워드 찾기
+  Widget _buildFindPassword() {
+    return Container(
+      alignment: Alignment.centerRight,
+      child: TextButton(
+        onPressed: () {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('아이디/비밀번호 찾기 기능은 추후 구현 예정')));
+        },
+        child: Text(
+          '아이디/비밀번호 찾기',
+          style: TextStyle(
+            fontSize: 14,
+            color: AppColors.primary,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
     );
   }
 
@@ -364,7 +388,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // 🔥 AuthResult를 사용하는 로그인 처리
+  // AuthResult를 사용하는 로그인 처리
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) {
       return;

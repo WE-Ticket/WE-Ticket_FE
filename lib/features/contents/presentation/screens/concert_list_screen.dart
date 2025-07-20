@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:we_ticket/features/shared/providers/api_provider.dart';
-import 'package:we_ticket/features/contents/data/models/performance_models.dart';
+import 'package:we_ticket/features/contents/data/performance_models.dart';
 import '../../../../core/constants/app_colors.dart';
 import 'concert_detail_screen.dart';
 
@@ -50,67 +50,13 @@ class _ConcertListScreenState extends State<ConcertListScreen> {
     }
   }
 
-  // FIXME API 연동 후 삭제 - 기존 호환성을 위해 유지
-  String _getArtistFromTitle(String title) {
-    if (title.contains('RIIZE')) return 'RIIZE';
-    if (title.contains('ATEEZ')) return 'ATEEZ';
-    if (title.contains('키스오브라이프') || title.contains('Kiss'))
-      return 'Kiss Of Life';
-    if (title.contains('NewJeans')) return 'NewJeans';
-    if (title.contains('SEVENTEEN')) return 'SEVENTEEN';
-    if (title.contains('KAI')) return 'KAI';
-    return '아티스트';
-  }
-
-  // FIXME API 연동 후 삭제 - 기존 호환성을 위해 유지
-  String _getLocationFromVenue(String venue) {
-    if (venue.contains('KSPO') || venue.contains('잠실') || venue.contains('올림픽'))
-      return '서울';
-    if (venue.contains('인스파이어')) return '인천';
-    if (venue.contains('서울월드컵')) return '서울';
-    return '서울';
-  }
-
-  // API 데이터를 기존 형식으로 변환
-  Map<String, dynamic> _convertToLegacyFormat(PerformanceListItem performance) {
-    return {
-      'id': 'performance_${performance.performanceId}',
-      'title': performance.title.isNotEmpty ? performance.title : '제목 없음',
-      'artist': performance.performerName.isNotEmpty
-          ? performance.performerName
-          : _getArtistFromTitle(performance.title),
-      'date': performance.startDate.isNotEmpty
-          ? performance.startDate
-          : '날짜 미정',
-      'time': '19:30', // 기본값 (API에서 시간 정보 없음)
-      'venue': performance.venueName.isNotEmpty
-          ? performance.venueName
-          : '장소 미정',
-      'location': _getLocationFromVenue(performance.venueName),
-      'image': performance.mainImage.isNotEmpty
-          ? performance.mainImage
-          : 'https://via.placeholder.com/400x300?text=No+Image',
-      'price': performance.minPrice > 0 ? performance.priceDisplay : '가격 미정',
-      'category': performance.genre.isNotEmpty ? performance.genre : 'K-POP',
-      'status': performance.isSoldOut
-          ? 'soldout'
-          : (performance.isTicketOpen ? 'available' : 'coming_soon'),
-      'isHot': performance.isHot,
-      'tags': performance.tags.isNotEmpty
-          ? performance.tags
-          : [performance.statusText],
-    };
-  }
-
-  List<Map<String, dynamic>> get _filteredConcerts {
-    List<Map<String, dynamic>> converted = _allPerformances
-        .map((performance) => _convertToLegacyFormat(performance))
-        .toList();
+  List<PerformanceListItem> get _filteredConcerts {
+    List<PerformanceListItem> converted = _allPerformances;
 
     // 카테고리 필터링
     if (_selectedCategory != '전체') {
       converted = converted
-          .where((concert) => concert['category'] == _selectedCategory)
+          .where((performance) => performance.genre == _selectedCategory)
           .toList();
     }
 
@@ -120,16 +66,16 @@ class _ConcertListScreenState extends State<ConcertListScreen> {
         // 기본 순서 유지
         break;
       case '인기순':
-        converted.sort((a, b) => (b['isHot'] ? 1 : 0) - (a['isHot'] ? 1 : 0));
+        converted.sort((a, b) => (b.isHot ? 1 : 0) - (a.isHot ? 1 : 0));
         break;
       case '가격순':
         converted.sort((a, b) {
           // 가격 문자열에서 숫자만 추출해서 비교
-          String priceA = a['price'].toString().replaceAll(
+          String priceA = a.minPrice.toString().replaceAll(
             RegExp(r'[^0-9]'),
             '',
           );
-          String priceB = b['price'].toString().replaceAll(
+          String priceB = b.minPrice.toString().replaceAll(
             RegExp(r'[^0-9]'),
             '',
           );
@@ -140,7 +86,7 @@ class _ConcertListScreenState extends State<ConcertListScreen> {
         break;
       case '날짜순':
         converted.sort(
-          (a, b) => a['date'].toString().compareTo(b['date'].toString()),
+          (a, b) => a.startDate.toString().compareTo(b.startDate.toString()),
         );
         break;
     }
@@ -170,16 +116,16 @@ class _ConcertListScreenState extends State<ConcertListScreen> {
         actions: [
           IconButton(
             icon: Icon(Icons.search, color: AppColors.textPrimary),
-            onPressed: () {},
+            onPressed: () {
+              //TODO search
+            },
           ),
         ],
       ),
       body: Column(
         children: [
-          // 카테고리 및 정렬 필터
           _buildFilterSection(),
 
-          // 공연 목록
           Expanded(child: _buildContentSection()),
         ],
       ),
@@ -419,13 +365,14 @@ class _ConcertListScreenState extends State<ConcertListScreen> {
     );
   }
 
-  Widget _buildConcertCard(Map<String, dynamic> concert) {
+  Widget _buildConcertCard(PerformanceListItem performance) {
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ConcertDetailScreen(concert: concert),
+            builder: (context) =>
+                ConcertDetailScreen(performanceId: performance.performanceId),
           ),
         );
       },
@@ -457,7 +404,7 @@ class _ConcertListScreenState extends State<ConcertListScreen> {
                       top: Radius.circular(16),
                     ),
                     child: Image.network(
-                      concert['image'],
+                      performance.mainImage,
                       fit: BoxFit.cover,
                       loadingBuilder: (context, child, loadingProgress) {
                         if (loadingProgress == null) return child;
@@ -483,9 +430,9 @@ class _ConcertListScreenState extends State<ConcertListScreen> {
                               ),
                               SizedBox(height: 8),
                               Text(
-                                concert['title'].toString().length > 20
-                                    ? '${concert['title'].toString().substring(0, 20)}...'
-                                    : concert['title'].toString(),
+                                performance.title.toString().length > 20
+                                    ? '${performance.title.toString().substring(0, 20)}...'
+                                    : performance.title.toString(),
                                 style: TextStyle(
                                   color: AppColors.gray600,
                                   fontSize: 12,
@@ -501,14 +448,18 @@ class _ConcertListScreenState extends State<ConcertListScreen> {
                 ),
 
                 // 상태 배지
+                //FIXME status 정의?
                 Positioned(
                   top: 12,
                   right: 12,
-                  child: _buildStatusBadge(concert['status']),
+                  child: _buildStatusBadge(
+                    performance.isSoldOut,
+                    performance.isTicketOpen,
+                  ),
                 ),
 
                 // HOT 배지
-                if (concert['isHot'])
+                if (performance.isHot)
                   Positioned(
                     top: 12,
                     left: 12,
@@ -538,7 +489,7 @@ class _ConcertListScreenState extends State<ConcertListScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    concert['title'],
+                    performance.title,
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -549,7 +500,7 @@ class _ConcertListScreenState extends State<ConcertListScreen> {
                   ),
                   SizedBox(height: 4),
                   Text(
-                    concert['artist'],
+                    performance.performerName,
                     style: TextStyle(
                       fontSize: 14,
                       color: AppColors.primary,
@@ -561,44 +512,14 @@ class _ConcertListScreenState extends State<ConcertListScreen> {
 
                   _buildInfoRow(
                     Icons.calendar_today,
-                    '${concert['date']} ${concert['time']}',
+                    '${performance.startDate} ~ ${performance.endDate}',
                   ),
+                  SizedBox(height: 6),
+                  _buildInfoRow(Icons.location_on, '${performance.venueName}'),
                   SizedBox(height: 6),
                   _buildInfoRow(
-                    Icons.location_on,
-                    '${concert['venue']} (${concert['location']})',
-                  ),
-                  SizedBox(height: 6),
-                  _buildInfoRow(Icons.local_offer, concert['price']),
-
-                  SizedBox(height: 12),
-
-                  // 태그들
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: (concert['tags'] as List<dynamic>).map<Widget>((
-                      tag,
-                    ) {
-                      return Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          tag.toString(),
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                    Icons.local_offer,
+                    '${performance.minPrice}원 부터',
                   ),
                 ],
               ),
@@ -609,22 +530,19 @@ class _ConcertListScreenState extends State<ConcertListScreen> {
     );
   }
 
-  Widget _buildStatusBadge(String status) {
+  // FIXME status를 따로 정의해서 넣을 수 있도록
+  Widget _buildStatusBadge(bool isSoldOut, bool isTicketOpen) {
     Color backgroundColor;
     String text;
-
-    switch (status) {
-      case 'soldout':
-        backgroundColor = AppColors.error;
-        text = 'SOLD OUT';
-        break;
-      case 'coming_soon':
-        backgroundColor = AppColors.warning;
-        text = '오픈 예정';
-        break;
-      default:
-        backgroundColor = AppColors.success;
-        text = '예매 가능';
+    if (isSoldOut) {
+      backgroundColor = AppColors.error;
+      text = 'SOLD OUT';
+    } else if (!isTicketOpen) {
+      backgroundColor = AppColors.warning;
+      text = '오픈 예정';
+    } else {
+      backgroundColor = AppColors.success;
+      text = '예매 가능';
     }
 
     return Container(

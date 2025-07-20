@@ -1,7 +1,7 @@
 import 'package:we_ticket/features/auth/data/auth_service.dart';
-import 'package:we_ticket/features/mypage/my_ticket_service.dart';
+import 'package:we_ticket/features/mypage/data/my_ticket_service.dart';
 import '../../../core/services/dio_client.dart';
-import '../../contents/data/services/performance_service.dart';
+import '../../contents/data/performance_service.dart';
 import '../../ticketing/data/services/ticket_service.dart';
 import '../../transfer/data/services/transfer_service.dart';
 

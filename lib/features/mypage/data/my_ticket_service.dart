@@ -1,5 +1,5 @@
-import '../../../../core/services/dio_client.dart';
-import '../../../../core/constants/api_endpoints.dart';
+import '../../../../../core/services/dio_client.dart';
+import '../../../../../core/constants/api_endpoints.dart';
 
 /// 내 티켓 관련 API 서비스
 class MyTicketService {

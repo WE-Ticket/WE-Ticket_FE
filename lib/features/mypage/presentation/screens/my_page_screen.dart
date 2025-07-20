@@ -62,13 +62,13 @@ class MyPageScreen extends StatelessWidget {
 
                   SizedBox(height: 24),
 
-                  _buildInquirySection(),
+                  _buildInquirySection(context),
 
                   SizedBox(height: 24),
 
                   _buildLogoutButton(context),
 
-                  SizedBox(height: 20),
+                  SizedBox(height: 40),
                 ],
               ),
             ),
@@ -79,7 +79,18 @@ class MyPageScreen extends StatelessWidget {
   }
 
   // 사용자 프로필 영역
+  // FIXME 인증별 네이밍이나 색상을 상수로 관리하기
   Widget _buildUserProfileSection(UserModel? user) {
+    final authLevel = user?.userAuthLevel ?? 'none';
+    final authLevelName = AuthProvider.getAuthLevelName(authLevel);
+
+    // 인증 색상 매핑
+    final Map<String, Color> levelColor = {
+      'none': AppColors.gray500,
+      'general': AppColors.info,
+      'mobile_id': AppColors.primary,
+      'mobile_id_totally': AppColors.success,
+    };
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(24),
@@ -113,13 +124,13 @@ class MyPageScreen extends StatelessWidget {
                 ),
               ],
             ),
-            child: Icon(Icons.person, size: 50, color: AppColors.white),
+            child: Icon(Icons.emoji_emotions, size: 50, color: AppColors.white),
           ),
 
           SizedBox(height: 16),
 
           Text(
-            '${user?.userName} 님 안녕하세요!' ?? '사용자',
+            '${user?.userName} 님 안녕하세요!',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -130,23 +141,26 @@ class MyPageScreen extends StatelessWidget {
           SizedBox(height: 8),
 
           // 인증 상태 배지
-          //FIXME DID 인증 되었다는 전제 하에, 추후 맞춤화 개발
           Container(
             padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: AppColors.success.withOpacity(0.1),
+              color: levelColor[authLevel]?.withOpacity(0.1),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.verified_user, size: 16, color: AppColors.success),
+                Icon(
+                  Icons.verified_user,
+                  size: 16,
+                  color: levelColor[authLevel],
+                ),
                 SizedBox(width: 4),
                 Text(
-                  '모바일 신분증 인증자',
+                  '$authLevelName 회원',
                   style: TextStyle(
                     fontSize: 12,
-                    color: AppColors.success,
+                    color: levelColor[authLevel],
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -187,7 +201,6 @@ class MyPageScreen extends StatelessWidget {
               child: _buildMenuCard(
                 icon: Icons.account_circle_outlined,
                 title: '본인 인증 관리',
-                subtitle: '더 강화된 본인인증으로 어쩌구',
                 color: AppColors.primary,
                 onTap: () {
                   Navigator.push(
@@ -202,7 +215,6 @@ class MyPageScreen extends StatelessWidget {
               child: _buildMenuCard(
                 icon: Icons.confirmation_number,
                 title: '내 티켓 관리',
-                subtitle: '보유 개수',
                 color: AppColors.info,
                 onTap: () {
                   Navigator.push(
@@ -223,7 +235,6 @@ class MyPageScreen extends StatelessWidget {
               child: _buildMenuCard(
                 icon: Icons.history,
                 title: '구매 이력',
-                subtitle: '전체 이력',
                 color: AppColors.warning,
                 onTap: () {
                   Navigator.push(
@@ -240,10 +251,12 @@ class MyPageScreen extends StatelessWidget {
               child: _buildMenuCard(
                 icon: Icons.settings,
                 title: '설정 및 계정 관리',
-                subtitle: '',
                 color: AppColors.secondary,
                 onTap: () {
                   // TODO: 설정 및 계정 관리 화면으로 이동
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('설정 및 계정 관리 기능은 추후 구현 예정')),
+                  );
                 },
               ),
             ),
@@ -257,14 +270,12 @@ class MyPageScreen extends StatelessWidget {
   Widget _buildMenuCard({
     required IconData icon,
     required String title,
-    required String subtitle,
     required Color color,
     required VoidCallback onTap,
   }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 140,
         padding: EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: AppColors.surface,
@@ -304,14 +315,6 @@ class MyPageScreen extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-
-            if (subtitle.isNotEmpty) ...[
-              SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-              ),
-            ],
           ],
         ),
       ),
@@ -319,7 +322,7 @@ class MyPageScreen extends StatelessWidget {
   }
 
   // 1:1 문의 섹션
-  Widget _buildInquirySection() {
+  Widget _buildInquirySection(BuildContext context) {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(20),
@@ -367,7 +370,7 @@ class MyPageScreen extends StatelessWidget {
                 ),
                 SizedBox(height: 4),
                 Text(
-                  '궁금한 점이 있으시면 ~~~',
+                  '궁금한 점이 있으시면 문의 주세요.',
                   style: TextStyle(
                     fontSize: 12,
                     color: AppColors.textSecondary,
@@ -380,6 +383,9 @@ class MyPageScreen extends StatelessWidget {
           GestureDetector(
             onTap: () {
               // TODO: 1:1 문의 화면으로 이동
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text('문의 기능은 추후 구현 예정')));
             },
             child: Container(
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),

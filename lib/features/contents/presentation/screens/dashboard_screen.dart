@@ -7,7 +7,7 @@ import 'package:we_ticket/features/mypage/presentation/screens/my_tickets_screen
 import 'package:we_ticket/features/transfer/presentation/screens/transfer_market_screen.dart';
 import 'package:we_ticket/features/auth/presentation/providers/auth_guard.dart';
 import 'package:we_ticket/features/shared/providers/api_provider.dart';
-import 'package:we_ticket/features/contents/data/models/performance_models.dart';
+import 'package:we_ticket/features/contents/data/performance_models.dart';
 import 'dart:async';
 import '../../../../core/constants/app_colors.dart';
 
@@ -51,23 +51,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }
       });
     }
-  }
-
-  // API 연동 후 삭제 예정 - 기존 호환성을 위해 유지
-  String _getArtistFromTitle(String title) {
-    if (title.contains('RIIZE')) return 'RIIZE';
-    if (title.contains('ATEEZ')) return 'ATEEZ';
-    if (title.contains('키스오프라이프')) return 'Kiss Of Life';
-    return '아티스트';
-  }
-
-  // API 연동 후 삭제 예정 - 기존 호환성을 위해 유지
-  String _getLocationFromVenue(String venue) {
-    if (venue.contains('KSPO') || venue.contains('잠실') || venue.contains('올림픽'))
-      return '서울';
-    if (venue.contains('인스파이어')) return '인천';
-    if (venue.contains('서울월드컵')) return '서울';
-    return '서울';
   }
 
   @override
@@ -123,17 +106,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 추천 공연 슬라이더 (API: HOT 공연)
+                  SizedBox(height: 7),
                   _buildFeaturedSlider(apiProvider),
-
                   SizedBox(height: 20),
-
-                  // 빠른 액세스 메뉴 (내 티켓, 양도 마켓)
                   _buildQuickAccess(),
-
                   SizedBox(height: 20),
 
-                  // 예매 가능한 공연 목록 (API: Available 공연)
                   _buildUpcomingConcerts(apiProvider),
                 ],
               ),
@@ -343,42 +321,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 final performance = hotPerformances[index];
                 return GestureDetector(
                   onTap: () {
-                    // API 데이터를 기존 상세 화면 형식에 맞게 변환
-                    final detailConcert = {
-                      'id': 'featured_${performance.performanceId}',
-                      'title': performance.title.isNotEmpty
-                          ? performance.title
-                          : '제목 없음',
-                      'artist': _getArtistFromTitle(performance.title),
-                      'date': performance.startDate.isNotEmpty
-                          ? performance.startDate
-                          : '날짜 미정',
-                      'time': '20:00', // 기본값
-                      'venue': performance.venueName.isNotEmpty
-                          ? performance.venueName
-                          : '장소 미정',
-                      'location': performance.venueLocation.isNotEmpty
-                          ? performance.venueLocation
-                          : _getLocationFromVenue(performance.venueName),
-                      'image': performance.mainImage.isNotEmpty
-                          ? performance.mainImage
-                          : 'https://via.placeholder.com/400x300?text=No+Image',
-                      'price': '가격 미정', // API에서 가격 정보 없음
-                      'category': performance.genre.isNotEmpty
-                          ? performance.genre
-                          : 'K-POP',
-                      'status': 'available',
-                      'isHot': performance.isHot,
-                      'tags': performance.tags.isNotEmpty
-                          ? performance.tags
-                          : ['추천'],
-                    };
-
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) =>
-                            ConcertDetailScreen(concert: detailConcert),
+                        builder: (context) => ConcertDetailScreen(
+                          performanceId: performance.performanceId,
+                        ),
                       ),
                     );
                   },
@@ -796,37 +744,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildConcertCard(PerformanceAvailableItem performance) {
     return GestureDetector(
       onTap: () {
-        // API 데이터를 상세 화면 형식에 맞게 변환
-        final detailConcert = {
-          'id': 'upcoming_${performance.performanceId}',
-          'title': performance.title.isNotEmpty ? performance.title : '제목 없음',
-          'artist': _getArtistFromTitle(performance.title),
-          'date': performance.startDate.isNotEmpty
-              ? performance.startDate
-              : '날짜 미정',
-          'time': '19:30', // 기본값
-          'venue': performance.venueName.isNotEmpty
-              ? performance.venueName
-              : '장소 미정',
-          'location': performance.venueLocation.isNotEmpty
-              ? performance.venueLocation
-              : _getLocationFromVenue(performance.venueName),
-          'image': performance.mainImage.isNotEmpty
-              ? performance.mainImage
-              : 'https://via.placeholder.com/400x300?text=No+Image',
-          'price': '가격 미정', // API에서 가격 정보 없음
-          'category': performance.genre.isNotEmpty
-              ? performance.genre
-              : 'K-POP',
-          'status': 'available',
-          'isHot': performance.isHot,
-          'tags': performance.tags.isNotEmpty ? performance.tags : ['예매 가능'],
-        };
-
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ConcertDetailScreen(concert: detailConcert),
+            builder: (context) =>
+                ConcertDetailScreen(performanceId: performance.performanceId),
           ),
         );
       },
@@ -848,11 +770,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Row(
           children: [
             Container(
+              height: 70,
               width: 60,
-              height: 60,
               decoration: BoxDecoration(borderRadius: BorderRadius.circular(8)),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(4),
                 child: Image.network(
                   performance.mainImage.isNotEmpty
                       ? performance.mainImage
@@ -914,6 +836,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    performance.performerName,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                   SizedBox(height: 4),
                   Text(
