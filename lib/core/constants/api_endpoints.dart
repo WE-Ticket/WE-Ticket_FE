@@ -39,6 +39,8 @@ class ApiConstants {
   static const String transferIdentityVerificationRecord =
       '/transfers/identity-verification-record/';
 
+  static const String paymentHistory = '/tickets/my-page/payment-history/';
+
   // User
   static const String login = '/users/login/';
   static const String signup = '/users/signup/';

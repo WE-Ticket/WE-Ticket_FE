@@ -68,6 +68,7 @@ class JsonParserUtils {
     return {};
   }
 
+  /// DateTime 파싱 (통합된 버전 - dynamic과 String 모두 지원)
   static DateTime parseDateTime(dynamic value, {DateTime? defaultValue}) {
     defaultValue ??= DateTime.now();
 
@@ -75,15 +76,32 @@ class JsonParserUtils {
     if (value is DateTime) return value;
     if (value is String) {
       try {
+        // ISO 8601 형식 파싱 시도
         return DateTime.parse(value);
       } catch (e) {
         try {
+          // "2025-07-01 10:30:00" 형식
+          if (value.contains(' ')) {
+            return DateTime.parse(value.replaceAll(' ', 'T'));
+          }
+
+          // "2025.07.01" 형식
+          if (value.contains('.')) {
+            final parts = value.split('.');
+            if (parts.length >= 3) {
+              final year = int.parse(parts[0]);
+              final month = int.parse(parts[1]);
+              final day = int.parse(parts[2]);
+              return DateTime(year, month, day);
+            }
+          }
+
           // "2025-07-13" 형태
           if (RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(value)) {
             return DateTime.parse('${value}T00:00:00Z');
           }
-        } catch (e) {
-          // 파싱 실패시 기본값 반환
+        } catch (e2) {
+          print('❌ DateTime 파싱 실패: $value, 오류: $e2');
         }
       }
     }
@@ -94,6 +112,18 @@ class JsonParserUtils {
   static DateTime parseDateOnly(dynamic value, {DateTime? defaultValue}) {
     final dateTime = parseDateTime(value, defaultValue: defaultValue);
     return DateTime(dateTime.year, dateTime.month, dateTime.day);
+  }
+
+  /// Nullable DateTime 파싱
+  static DateTime? parseDateTimeNullable(dynamic value) {
+    if (value == null) return null;
+    if (value is String && value.isEmpty) return null;
+    try {
+      return parseDateTime(value);
+    } catch (e) {
+      print('❌ Nullable DateTime 파싱 실패: $value, 오류: $e');
+      return null;
+    }
   }
 
   /// null 체크
@@ -305,5 +335,24 @@ class JsonParserUtils {
 
     print('❌ 공연 ID 추출 실패: 유효한 ID 필드를 찾을 수 없음');
     return null;
+  }
+
+  /// Nullable Int 파싱
+  static int? parseIntNullable(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is String) {
+      final parsed = int.tryParse(value);
+      return parsed;
+    }
+    if (value is double) return value.toInt();
+    return null;
+  }
+
+  /// Nullable String 파싱
+  static String? parseStringNullable(dynamic value) {
+    if (value == null) return null;
+    if (value is String) return value.isEmpty ? null : value;
+    return value.toString();
   }
 }

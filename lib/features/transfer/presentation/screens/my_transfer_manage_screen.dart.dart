@@ -402,7 +402,7 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
                 // 포스터
                 Container(
                   width: 60,
-                  height: 60,
+                  height: 75,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
                     color: AppColors.gray300,
@@ -770,6 +770,7 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
           SizedBox(height: 4),
 
           Row(
+            mainAxisAlignment: MainAxisAlignment.end,
             children: [
               if (daysUntilSession >= 0) ...[
                 Icon(Icons.timer, size: 16, color: AppColors.warning),
