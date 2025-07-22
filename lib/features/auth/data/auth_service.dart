@@ -132,6 +132,34 @@ class AuthService {
     }
   }
 
+  Future<AuthResult<Map<String, dynamic>>> loadUserAuthLevel(int userId) async {
+    try {
+      print('인증 사용자 - 아이디: $userId');
+
+      final response = await _dioClient.post(
+        ApiConstants.loadUserAuthLevel,
+        data: {'user_id': userId},
+      );
+
+      if (response.statusCode == 200) {
+        // 응답 데이터를 Map으로 직접 반환
+        final Map<String, dynamic> responseData =
+            response.data as Map<String, dynamic>;
+
+        print('✅ 인증 레벨 조회 성공: $responseData');
+
+        return AuthResult.success(responseData);
+      } else {
+        return AuthResult.failure('인증 조회 실패: ${response.statusCode}');
+      }
+    } on DioException catch (e) {
+      return _handleDioError(e, '인증 조회');
+    } catch (e) {
+      print('❌ 인증 조회 오류: $e');
+      return AuthResult.failure('알 수 없는 오류가 발생했습니다: $e');
+    }
+  }
+
   AuthResult<T> _handleDioError<T>(DioException e, String action) {
     print('❌ $action DioException: ${e.response?.statusCode}');
 

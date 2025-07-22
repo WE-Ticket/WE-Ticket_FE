@@ -1,10 +1,13 @@
 import 'package:flutter/foundation.dart';
 import '../services/api_service.dart';
 import '../../contents/data/performance_models.dart';
+import '../../auth/data/auth_service.dart';
+import '../../../core/services/dio_client.dart';
 
 /// API 서비스를 앱 전체에서 공유하기 위한 Provider
 class ApiProvider extends ChangeNotifier {
   late final ApiService _apiService;
+  late final AuthService _authService; // AuthService 추가
 
   // 로딩 상태 관리
   bool _isLoading = false;
@@ -17,12 +20,15 @@ class ApiProvider extends ChangeNotifier {
 
   /// 생성자
   ApiProvider() {
+    final dioClient = DioClient(); // DioClient 생성
     _apiService = ApiService.create();
+    _authService = AuthService(dioClient); // AuthService 초기화
     _initializeProvider();
   }
 
   /// Getter들
   ApiService get apiService => _apiService;
+  AuthService get authService => _authService; // AuthService getter 추가
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 

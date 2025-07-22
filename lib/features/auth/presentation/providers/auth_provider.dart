@@ -179,6 +179,30 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// 사용자 인증 레벨 업데이트
+  Future<void> updateAuthLevel(String? newAuthLevel) async {
+    if (_user == null || newAuthLevel == null) return;
+
+    try {
+      // 현재 사용자 정보에서 인증 레벨만 업데이트
+      _user = UserModel(
+        userId: _user!.userId,
+        loginId: _user!.loginId,
+        userName: _user!.userName,
+        userAuthLevel: newAuthLevel,
+      );
+
+      // SharedPreferences에도 업데이트
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_auth_level', newAuthLevel);
+
+      print('✅ 인증 레벨 업데이트: $newAuthLevel');
+      notifyListeners();
+    } catch (e) {
+      print('❌ 인증 레벨 업데이트 오류: $e');
+    }
+  }
+
   void _setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();

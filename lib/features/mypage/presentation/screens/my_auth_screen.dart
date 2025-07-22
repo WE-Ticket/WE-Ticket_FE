@@ -3,14 +3,73 @@ import 'package:provider/provider.dart';
 import 'package:we_ticket/core/constants/app_colors.dart';
 import 'package:we_ticket/features/auth/presentation/providers/auth_provider.dart';
 import 'package:we_ticket/features/auth/presentation/screens/omnione_cx_auth_screen.dart';
+import 'package:we_ticket/features/shared/providers/api_provider.dart';
 
-class MyAuthScreen extends StatelessWidget {
+class MyAuthScreen extends StatefulWidget {
+  @override
+  _MyAuthScreenState createState() => _MyAuthScreenState();
+}
+
+class _MyAuthScreenState extends State<MyAuthScreen> {
+  bool _isLoadingAuth = false;
+  String? _errorMessage;
+  Map<String, dynamic>? _authData;
+
   final Map<String, int> _authLevelOrder = {
     'none': 0,
     'general': 1,
     'mobile_id': 2,
     'mobile_id_totally': 3,
   };
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserAuthLevel();
+  }
+
+  /// 사용자 인증 레벨 API 호출
+  Future<void> _loadUserAuthLevel() async {
+    final authProvider = context.read<AuthProvider>();
+    final userId = authProvider.currentUserId; // 현재 로그인한 사용자 ID
+
+    if (userId == null) {
+      print('❌ 사용자 ID가 없습니다');
+      return;
+    }
+
+    setState(() {
+      _isLoadingAuth = true;
+      _errorMessage = null;
+    });
+
+    try {
+      // API 호출
+      final apiProvider = context.read<ApiProvider>();
+      final result = await apiProvider.authService.loadUserAuthLevel(userId);
+
+      if (result.isSuccess) {
+        print('✅ API 성공: ${result.data}');
+        setState(() {
+          _authData = result.data; // 응답 데이터 저장
+        });
+
+        await authProvider.updateAuthLevel(result.data?['verification_level']);
+      } else {
+        setState(() {
+          _errorMessage = result.errorMessage;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = '오류: $e';
+      });
+    } finally {
+      setState(() {
+        _isLoadingAuth = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +95,21 @@ class MyAuthScreen extends StatelessWidget {
           icon: Icon(Icons.arrow_back_ios, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          IconButton(
+            icon: _isLoadingAuth
+                ? SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.primary,
+                    ),
+                  )
+                : Icon(Icons.refresh, color: AppColors.textPrimary),
+            onPressed: _isLoadingAuth ? null : _loadUserAuthLevel, // 새로고침 버튼
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(20),

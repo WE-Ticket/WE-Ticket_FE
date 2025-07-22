@@ -43,8 +43,7 @@ class ApiConstants {
   // User
   static const String login = '/users/login/';
   static const String signup = '/users/signup/';
-  static const String userIdentityVerificationMethod =
-      '/users/identity-verification-method/';
+  static const String loadUserAuthLevel = '/users/identity-verification-level/';
   static const String userIdentityVerificationRecord =
       '/users/identity-verification-record/';
   static const String userMyPage = '/users/my-page/';
