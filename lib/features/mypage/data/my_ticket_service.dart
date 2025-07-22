@@ -207,19 +207,19 @@ class MyTicketService {
           filteredHistories = allHistories
               .where(
                 (history) =>
-                    history.type == 'buy_ticket' ||
-                    history.type == 'buy_transfer_ticket',
+                    history.paymentType == 'buy_ticket' ||
+                    history.paymentType == 'buy_transfer_ticket',
               )
               .toList();
           break;
         case '판매 내역':
           filteredHistories = allHistories
-              .where((history) => history.type == 'sell_transfer_ticket')
+              .where((history) => history.paymentType == 'sell_transfer_ticket')
               .toList();
           break;
         case '취소/환불':
           filteredHistories = allHistories
-              .where((history) => history.type == 'cancel_ticket')
+              .where((history) => history.paymentType == 'cancel_ticket')
               .toList();
           break;
         default: // 전체 거래

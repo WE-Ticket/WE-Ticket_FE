@@ -18,11 +18,6 @@ class ApiConstants {
       '/tickets/performance/{performance_id}/session/{performance_session_id}/zone/{seat_zone}/layout/';
   static const String createTicket = '/tickets/create/';
 
-  // My Tickets
-  static const String myTickets = '/tickets/my-page/owned-ticket-list/';
-  static const String myPurchases = '/tickets/my-page/touched-ticket-list/';
-  static const String myTicketDetail = '/tickets/my-ticket-detail/';
-
   // Transfer
   static const String transferTicketList = '/transfers/ticket-list/';
   static const String transferTicketDetail =
@@ -39,6 +34,10 @@ class ApiConstants {
   static const String transferIdentityVerificationRecord =
       '/transfers/identity-verification-record/';
 
+  // My Page
+  static const String myTickets = '/tickets/my-page/owned-ticket-list/';
+  static const String myPurchases = '/tickets/my-page/touched-ticket-list/';
+  static const String myTicketDetail = '/tickets/my-ticket-detail/';
   static const String paymentHistory = '/tickets/my-page/payment-history/';
 
   // User

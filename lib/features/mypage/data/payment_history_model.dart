@@ -1,11 +1,12 @@
 import '../../../../core/utils/json_parser.dart';
 
 /// 결제 이력 응답 모델
+/// createdAt 백엔드로 인해 일단은 nullable이지만 추후 수정 필요
 class PaymentHistory {
   final int paymentId;
-  final String type;
-  final String status;
-  final String createdAt;
+  final String paymentType;
+  final String paymentStatus;
+  final String? createdAt;
   final int? ticketId;
   final int? transferTicketId;
   final int performanceId;
@@ -28,8 +29,8 @@ class PaymentHistory {
 
   PaymentHistory({
     required this.paymentId,
-    required this.type,
-    required this.status,
+    required this.paymentType,
+    required this.paymentStatus,
     required this.createdAt,
     this.ticketId,
     this.transferTicketId,
@@ -55,9 +56,11 @@ class PaymentHistory {
   factory PaymentHistory.fromJson(Map<String, dynamic> json) {
     return PaymentHistory(
       paymentId: JsonParserUtils.parseInt(json['payment_id']),
-      type: JsonParserUtils.parseString(json['type']),
-      status: JsonParserUtils.parseString(json['status']),
-      createdAt: JsonParserUtils.parseString(json['created_at']),
+      paymentType: JsonParserUtils.parseString(json['payment_type']),
+      paymentStatus: JsonParserUtils.parseString(json['payment_status']),
+      createdAt: JsonParserUtils.parseStringNullable(
+        json['payment_created_at'],
+      ),
       ticketId: JsonParserUtils.parseIntNullable(json['ticket_id']),
       transferTicketId: JsonParserUtils.parseIntNullable(
         json['transfer_ticket_id'],
@@ -99,21 +102,21 @@ class PaymentHistory {
   }
 
   /// 거래 타입별 분류 메서드 (새로운 TYPE_CHOICES 반영)
-  bool get isPurchase => type == 'buy_ticket';
-  bool get isTransferBuy => type == 'buy_transfer_ticket';
-  bool get isTransferSell => type == 'sell_transfer_ticket';
-  bool get isCancel => type == 'cancel_ticket';
+  bool get isPurchase => paymentType == 'buy_ticket';
+  bool get isTransferBuy => paymentType == 'buy_transfer_ticket';
+  bool get isTransferSell => paymentType == 'sell_transfer_ticket';
+  bool get isCancel => paymentType == 'cancel_ticket';
 
   /// 상태별 분류 메서드 (새로운 STATUS_CHOICES 반영)
-  bool get isCompleted => status == 'completed';
-  bool get isInProgress => status == 'in_progress';
+  bool get isCompleted => paymentStatus == 'completed';
+  bool get isInProgress => paymentStatus == 'in_progress';
 
   /// 하위 호환성을 위한 별칭 (기존 코드에서 isPending 사용하는 경우)
   bool get isPending => isInProgress;
 
   /// UI 표시용 타입 텍스트
   String get typeDisplay {
-    switch (type) {
+    switch (paymentType) {
       case 'buy_ticket':
         return '티켓 구매';
       case 'cancel_ticket':
@@ -123,13 +126,13 @@ class PaymentHistory {
       case 'sell_transfer_ticket':
         return '양도 판매';
       default:
-        return type;
+        return paymentType;
     }
   }
 
   /// UI 표시용 상태 텍스트
   String get statusDisplay {
-    switch (status) {
+    switch (paymentStatus) {
       case 'completed':
         if (isPurchase || isTransferBuy) return '구매 완료';
         if (isTransferSell) return '판매 완료';
@@ -141,7 +144,7 @@ class PaymentHistory {
         if (isTransferSell) return '판매 진행 중';
         return '대기 중';
       default:
-        return status;
+        return paymentStatus;
     }
   }
 
