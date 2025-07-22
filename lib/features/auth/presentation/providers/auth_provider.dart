@@ -9,11 +9,17 @@ class AuthProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
 
+  // 인증 처리 관련 상태 추가
+  bool _isProcessingAuth = false;
+  String? _currentAuthType;
+
   // Getters
   bool get isLoggedIn => _isLoggedIn;
   UserModel? get user => _user;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  bool get isProcessingAuth => _isProcessingAuth;
+  String? get currentAuthType => _currentAuthType;
 
   static const Map<String, String> _authLevelNames = {
     'none': '미인증',
@@ -128,6 +134,105 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// OmniOne CX 인증 결과 처리 (NEW)
+  Future<bool> processOmniOneAuthentication({
+    required Map<String, dynamic> omniOneResult,
+    required AuthService authService,
+  }) async {
+    if (_user == null) {
+      _setError('로그인이 필요합니다');
+      return false;
+    }
+
+    _setAuthProcessing(true, omniOneResult['authType']);
+    _clearError();
+
+    try {
+      print('🔐 OmniOne 인증 결과 처리 시작');
+
+      // 1. 서버에 인증 결과 기록
+      final recordResult = await authService.processOmniOneResult(
+        userId: _user!.userId,
+        omniOneResult: omniOneResult,
+      );
+
+      if (recordResult.isSuccess) {
+        // 2. 새로운 인증 레벨이 있다면 업데이트
+        final newLevel = recordResult.data?.newVerificationLevel;
+        if (newLevel != null) {
+          await updateAuthLevel(newLevel);
+        }
+
+        // 3. 현재 사용자의 최신 인증 레벨 재조회
+        await refreshUserAuthLevel(authService);
+
+        print('✅ OmniOne 인증 처리 완료');
+        return true;
+      } else {
+        _setError(recordResult.errorMessage!);
+        print('❌ OmniOne 인증 처리 실패: ${recordResult.errorMessage}');
+        return false;
+      }
+    } catch (e) {
+      print('❌ OmniOne 인증 처리 오류: $e');
+      _setError('인증 처리 중 오류가 발생했습니다');
+      return false;
+    } finally {
+      _setAuthProcessing(false, null);
+    }
+  }
+
+  /// 사용자 인증 레벨 새로고침 (NEW)
+  Future<void> refreshUserAuthLevel(AuthService authService) async {
+    if (_user == null) return;
+
+    try {
+      print('🔄 사용자 인증 레벨 새로고침');
+
+      final result = await authService.loadUserAuthLevel(_user!.userId);
+
+      if (result.isSuccess && result.data != null) {
+        final authLevel = result.data!['auth_level'] as String?;
+        if (authLevel != null) {
+          await updateAuthLevel(authLevel);
+          print('✅ 인증 레벨 새로고침 완료: $authLevel');
+        }
+      }
+    } catch (e) {
+      print('❌ 인증 레벨 새로고침 오류: $e');
+    }
+  }
+
+  /// 간편 인증 처리 (NEW)
+  Future<bool> processSimpleAuthentication({
+    required Map<String, dynamic> authResult,
+    required AuthService authService,
+  }) async {
+    return await processOmniOneAuthentication(
+      omniOneResult: {
+        'authType': 'simple',
+        'success': authResult['success'] ?? false,
+        'data': authResult['data'] ?? {},
+      },
+      authService: authService,
+    );
+  }
+
+  /// 모바일 신분증 인증 처리 (NEW)
+  Future<bool> processMobileIdAuthentication({
+    required Map<String, dynamic> authResult,
+    required AuthService authService,
+  }) async {
+    return await processOmniOneAuthentication(
+      omniOneResult: {
+        'authType': 'mobile_id',
+        'success': authResult['success'] ?? false,
+        'data': authResult['data'] ?? {},
+      },
+      authService: authService,
+    );
+  }
+
   /// API 로그인 성공 후 상태 업데이트
   Future<void> updateFromApiLogin(UserModel user, {String? token}) async {
     await _setLoggedInUser(user, token: token);
@@ -139,6 +244,7 @@ class AuthProvider extends ChangeNotifier {
       _user = null;
       _isLoggedIn = false;
       _clearError();
+      _setAuthProcessing(false, null);
 
       // 저장된 상태 삭제
       final prefs = await SharedPreferences.getInstance();
@@ -218,6 +324,13 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 인증 처리 상태 설정 (NEW)
+  void _setAuthProcessing(bool processing, String? authType) {
+    _isProcessingAuth = processing;
+    _currentAuthType = authType;
+    notifyListeners();
+  }
+
   // 편의용 getter들
   String? get userId => _user?.userId.toString();
   String? get userName => _user?.userName;
@@ -240,5 +353,44 @@ class AuthProvider extends ChangeNotifier {
   /// 에러 메시지 지우기
   void clearError() {
     _clearError();
+  }
+
+  /// 인증 가능 여부 확인 (NEW)
+  bool canUpgradeAuth() {
+    if (_user == null) return false;
+    return _user!.userAuthLevel != 'mobile_id_totally';
+  }
+
+  /// 다음 인증 단계 반환 (NEW)
+  String? getNextAuthStep() {
+    if (_user == null) return null;
+
+    switch (_user!.userAuthLevel) {
+      case 'none':
+        return 'simple'; // 간편 인증 또는 모바일 신분증
+      case 'general':
+        return 'mobile_id'; // 모바일 신분증
+      case 'mobile_id':
+        return 'totally'; // 안전 인증
+      default:
+        return null;
+    }
+  }
+
+  int get currentAuthLevelStep {
+    if (_user == null) return 0;
+
+    switch (_user!.userAuthLevel) {
+      case 'none':
+        return 0;
+      case 'general':
+        return 1;
+      case 'mobile_id':
+        return 2;
+      case 'mobile_id_totally':
+        return 3;
+      default:
+        return 0;
+    }
   }
 }

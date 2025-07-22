@@ -158,3 +158,121 @@ class Agreement {
   bool get isServiceTerms => termType == 'SERVICE_TERMS';
   bool get isPrivacyPolicy => termType == 'PRIVACY_POLICY';
 }
+
+class VerificationResult {
+  final String? did;
+  final String provider;
+  final String name;
+  final String phone;
+  final String birthday;
+  final String sex;
+
+  VerificationResult({
+    this.did,
+    required this.provider,
+    required this.name,
+    required this.phone,
+    required this.birthday,
+    required this.sex,
+  });
+
+  factory VerificationResult.fromJson(Map<String, dynamic> json) {
+    return VerificationResult(
+      did: json['did'],
+      provider: JsonParserUtils.parseString(json['provider']),
+      name: JsonParserUtils.parseString(json['name']),
+      phone: JsonParserUtils.parseString(json['phone']),
+      birthday: JsonParserUtils.parseString(json['birthday']),
+      sex: JsonParserUtils.parseString(json['sex']),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'did': did,
+      'provider': provider,
+      'name': name,
+      'phone': phone,
+      'birthday': birthday,
+      'sex': sex,
+    };
+  }
+
+  /// 성별 한국어 반환
+  String get genderKr => sex == 'M' ? '남성' : '여성';
+
+  /// 생년월일 포맷팅 (YYYY-MM-DD)
+  String get formattedBirthday {
+    if (birthday.length == 8) {
+      return '${birthday.substring(0, 4)}-${birthday.substring(4, 6)}-${birthday.substring(6, 8)}';
+    }
+    return birthday;
+  }
+
+  /// 전화번호 포맷팅
+  String get formattedPhone {
+    if (phone.startsWith('010')) {
+      return '${phone.substring(0, 3)}-${phone.substring(3, 7)}-${phone.substring(7)}';
+    }
+    return phone;
+  }
+
+  @override
+  String toString() {
+    return 'VerificationResult(did: $did, provider: $provider, name: $name, phone: $phone, birthday: $birthday, sex: $sex)';
+  }
+}
+
+/// 본인인증 기록 요청 모델
+class IdentityVerificationRequest {
+  final int userId;
+  final String verificationMethod;
+  final bool isSuccess;
+  final VerificationResult verificationResult;
+
+  IdentityVerificationRequest({
+    required this.userId,
+    required this.verificationMethod,
+    required this.isSuccess,
+    required this.verificationResult,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'user_id': userId,
+      'verification_method': verificationMethod,
+      'is_success': isSuccess,
+      'verification_result': verificationResult.toJson(),
+    };
+  }
+
+  @override
+  String toString() {
+    return 'IdentityVerificationRequest(userId: $userId, method: $verificationMethod, success: $isSuccess, result: $verificationResult)';
+  }
+}
+
+/// 본인인증 기록 응답 모델
+class IdentityVerificationResponse {
+  final String message;
+  final String? newVerificationLevel;
+
+  IdentityVerificationResponse({
+    required this.message,
+    this.newVerificationLevel,
+  });
+
+  factory IdentityVerificationResponse.fromJson(Map<String, dynamic> json) {
+    return IdentityVerificationResponse(
+      message: JsonParserUtils.parseString(json['message']),
+      newVerificationLevel: json['new_verification_level'],
+    );
+  }
+
+  bool get isSuccess => message.contains('성공') || message.contains('완료');
+
+  @override
+  String toString() {
+    return 'IdentityVerificationResponse(message: $message, newLevel: $newVerificationLevel)';
+  }
+}

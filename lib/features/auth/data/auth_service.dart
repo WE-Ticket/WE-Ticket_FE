@@ -205,3 +205,93 @@ class AuthResult<T> {
     }
   }
 }
+
+//FIXME
+extension AuthServiceExtension on AuthService {
+  /// 본인인증 결과 기록
+  Future<AuthResult<IdentityVerificationResponse>> recordIdentityVerification({
+    required int userId,
+    required String verificationMethod,
+    required bool isSuccess,
+    required VerificationResult verificationResult,
+  }) async {
+    try {
+      print('🔐 본인인증 결과 기록 시작 (사용자 ID: $userId, 방법: $verificationMethod)');
+
+      final request = IdentityVerificationRequest(
+        userId: userId,
+        verificationMethod: verificationMethod,
+        isSuccess: isSuccess,
+        verificationResult: verificationResult,
+      );
+
+      final response = await _dioClient.post(
+        '/users/identity-verification-record/',
+        data: request.toJson(),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final verificationResponse = IdentityVerificationResponse.fromJson(
+          response.data,
+        );
+        print('✅ 본인인증 기록 성공: ${verificationResponse.message}');
+        return AuthResult.success(verificationResponse);
+      } else {
+        return AuthResult.failure('본인인증 기록 실패: ${response.statusCode}');
+      }
+    } on DioException catch (e) {
+      return _handleDioError(e, '본인인증 기록');
+    } catch (e) {
+      print('❌ 본인인증 기록 오류: $e');
+      return AuthResult.failure('알 수 없는 오류가 발생했습니다');
+    }
+  }
+
+  /// OmniOne CX 인증 결과 처리
+  Future<AuthResult<IdentityVerificationResponse>> processOmniOneResult({
+    required int userId,
+    required Map<String, dynamic> omniOneResult,
+  }) async {
+    try {
+      print('🔐 OmniOne CX 결과 처리 시작');
+
+      // OmniOne 결과에서 필요한 정보 추출
+      final authType = omniOneResult['authType'] as String? ?? 'unknown';
+      final success = omniOneResult['success'] as bool? ?? false;
+      final data = omniOneResult['data'] as Map<String, dynamic>? ?? {};
+
+      // 검증 방법 결정
+      String verificationMethod;
+      switch (authType) {
+        case 'simple':
+          verificationMethod = 'omni_simple';
+          break;
+        case 'mobile_id':
+          verificationMethod = 'omni_mobile_id';
+          break;
+        default:
+          verificationMethod = 'omni_unknown';
+      }
+
+      // 인증 결과 데이터 구성
+      final verificationResult = VerificationResult(
+        did: data['did'],
+        provider: data['provider'] ?? authType,
+        name: data['name'] ?? '인증됨',
+        phone: data['phone'] ?? '',
+        birthday: data['birthday'] ?? '',
+        sex: data['sex'] ?? '',
+      );
+
+      return await recordIdentityVerification(
+        userId: userId,
+        verificationMethod: verificationMethod,
+        isSuccess: success,
+        verificationResult: verificationResult,
+      );
+    } catch (e) {
+      print('❌ OmniOne 결과 처리 오류: $e');
+      return AuthResult.failure('인증 결과 처리 중 오류가 발생했습니다');
+    }
+  }
+}
