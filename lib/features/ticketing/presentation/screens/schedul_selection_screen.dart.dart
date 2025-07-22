@@ -5,7 +5,6 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../shared/providers/api_provider.dart';
 import '../../data/models/ticket_models.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/utils/json_parser.dart';
 
 class ScheduleSelectionScreen extends StatefulWidget {
   final Map<String, dynamic> performanceInfo;

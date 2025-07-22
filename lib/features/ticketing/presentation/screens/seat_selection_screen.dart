@@ -17,7 +17,8 @@ class SeatSelectionScreen extends StatefulWidget {
 
 class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
   String? _selectedZone;
-  String? _selectedSeatNumber;
+  int? _selectedSeatId; // 실제 seat_id 저장
+  String? _selectedSeatNumber; // 표시용 좌석 번호 (A1, B2 등)
 
   // API 데이터
   SessionSeatInfo? _sessionSeatInfo;
@@ -133,7 +134,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
     }
   }
 
-  /// API 응답을 기반으로 좌석 배치 생성
+  /// API 응답을 기반으로 좌석 배치 생성 (실제 API에서 받아야 하지만 실패 시 더미 생성)
   SeatLayout _generateSeatLayoutFromAPI(String seatZone) {
     if (_sessionSeatInfo == null) {
       return _generateDefaultSeatLayout(seatZone);
@@ -171,19 +172,27 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
     seatStatuses.addAll(List.filled(soldCount, 'sold'));
     seatStatuses.shuffle(); // 랜덤하게 섞기
 
-    // 좌석 행 생성
+    // 좌석 행 생성 (새로운 API 형태에 맞게)
     List<SeatRow> seatRows = [];
     int seatIndex = 0;
+    int seatIdCounter = 1000; // 임시 seat_id 시작값
 
     for (String row in rows) {
       List<Seat> seats = [];
       for (int col = 1; col <= maxCol; col++) {
-        final seatNumber = '$row$col';
         final status = seatIndex < seatStatuses.length
             ? seatStatuses[seatIndex]
             : 'sold';
 
-        seats.add(Seat(seatNumber: seatNumber, reservationStatus: status));
+        // 새로운 API 형태에 맞게 Seat 객체 생성
+        seats.add(
+          Seat(
+            seatId: seatIdCounter++, // 실제 API에서는 진짜 seat_id가 옴
+            seatRow: row,
+            seatCol: col,
+            reservationStatus: status,
+          ),
+        );
         seatIndex++;
       }
       seatRows.add(SeatRow(row: row, seats: seats));
@@ -204,7 +213,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
   Map<String, dynamic> _getZoneConfiguration(String zone) {
     switch (zone) {
       case '1':
-        return {'maxRow': 'F', 'maxCol': 8}; // VIP석
+        return {'maxRow': 'F', 'maxCol': 10}; // API와 동일하게 수정
       case '2':
         return {'maxRow': 'E', 'maxCol': 10}; // R석
       case '3':
@@ -237,14 +246,21 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
 
     final rows = _generateRowNames(maxRow);
     List<SeatRow> seatRows = [];
+    int seatIdCounter = 1000; // 임시 seat_id 시작값
 
     for (String row in rows) {
       List<Seat> seats = [];
       for (int col = 1; col <= maxCol; col++) {
-        final seatNumber = '$row$col';
         // 기본적으로 절반은 available, 절반은 sold
         final status = (col % 2 == 0) ? 'available' : 'sold';
-        seats.add(Seat(seatNumber: seatNumber, reservationStatus: status));
+        seats.add(
+          Seat(
+            seatId: seatIdCounter++,
+            seatRow: row,
+            seatCol: col,
+            reservationStatus: status,
+          ),
+        );
       }
       seatRows.add(SeatRow(row: row, seats: seats));
     }
@@ -273,6 +289,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
   void _onZoneSelected(String zone) {
     setState(() {
       _selectedZone = zone;
+      _selectedSeatId = null;
       _selectedSeatNumber = null;
       _currentSeatLayout = null;
     });
@@ -584,16 +601,6 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
                   ),
                 ),
                 SizedBox(height: 8),
-                // Text(
-                //   zoneInfo.availabilityText,
-                //   style: TextStyle(
-                //     fontSize: 10,
-                //     color: zoneInfo.isSoldOut
-                //         ? AppColors.error
-                //         : AppColors.success,
-                //     fontWeight: FontWeight.w600,
-                //   ),
-                // ),
               ] else ...[
                 Text(
                   '구역 없음',
@@ -735,7 +742,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
   }
 
   Widget _buildSeatButton(Seat seat) {
-    final isSelected = _selectedSeatNumber == seat.seatNumber;
+    final isSelected = _selectedSeatId == seat.seatId; // seat_id로 비교
     final isAvailable = seat.isAvailable;
 
     Color backgroundColor;
@@ -753,7 +760,8 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
         onTap: isAvailable
             ? () {
                 setState(() {
-                  _selectedSeatNumber = seat.seatNumber;
+                  _selectedSeatId = seat.seatId; // seat_id 저장
+                  _selectedSeatNumber = seat.seatNumber; // 표시용 좌석 번호 저장
                 });
               }
             : null,
@@ -1018,8 +1026,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
 
   //FIXME shared widget으로 분리 가능할 듯
   Widget _buildNextButton() {
-    final canProceed =
-        _selectedSeatNumber != null && _currentSeatLayout != null;
+    final canProceed = _selectedSeatId != null && _currentSeatLayout != null;
 
     return Container(
       padding: EdgeInsets.all(16),
@@ -1064,12 +1071,13 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
   }
 
   Widget _buildSelectedSeatSummary() {
-    if (_selectedSeatNumber == null || _currentSeatLayout == null) {
+    if (_selectedSeatId == null || _currentSeatLayout == null) {
       return SizedBox.shrink();
     }
 
+    // seat_id로 선택된 좌석 찾기
     final selectedSeat = _currentSeatLayout!.allSeats.firstWhere(
-      (seat) => seat.seatNumber == _selectedSeatNumber,
+      (seat) => seat.seatId == _selectedSeatId,
     );
 
     return Container(
@@ -1102,7 +1110,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '${_selectedZone}구역 ${selectedSeat.row}행 ${selectedSeat.column}번',
+                '${_selectedZone}구역 ${selectedSeat.seatRow}행 ${selectedSeat.seatCol}번',
                 style: TextStyle(
                   fontSize: 14,
                   color: AppColors.textPrimary,
@@ -1125,21 +1133,19 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
   }
 
   void _goToPayment() {
-    if (_selectedSeatNumber == null ||
+    if (_selectedSeatId == null ||
         _selectedZone == null ||
         _currentSeatLayout == null ||
         _sessionSeatInfo == null)
       return;
 
+    // seat_id로 선택된 좌석 찾기
     final selectedSeat = _currentSeatLayout!.allSeats.firstWhere(
-      (seat) => seat.seatNumber == _selectedSeatNumber,
+      (seat) => seat.seatId == _selectedSeatId,
     );
 
     final selectedZoneInfo = _getZoneInfo(_selectedZone!);
     if (selectedZoneInfo == null) return;
-
-    // 임시: 좌석 ID는 좌석 번호를 기반으로 생성 (실제로는 API에서 받아야 함)
-    final tempSeatId = _generateSeatId(selectedSeat.seatNumber, _selectedZone!);
 
     final paymentData = {
       // 기본 정보
@@ -1156,13 +1162,13 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
         'sessionDatetime': _sessionSeatInfo!.sessionDatetime,
       },
 
-      // 선택한 좌석 정보
+      // 선택한 좌석 정보 (새로운 API 형태)
       'selectedZone': _selectedZone,
       'selectedSeat': {
-        'seatId': tempSeatId, // 임시 생성된 ID
-        'seatNumber': selectedSeat.seatNumber,
-        'row': selectedSeat.row,
-        'column': selectedSeat.column,
+        'seatId': selectedSeat.seatId, // 실제 seat_id 사용
+        'seatNumber': selectedSeat.seatNumber, // A1, B2 형태
+        'seatRow': selectedSeat.seatRow, // A, B, C...
+        'seatCol': selectedSeat.seatCol, // 1, 2, 3...
         'status': selectedSeat.reservationStatus,
         'zone': _selectedZone,
       },
@@ -1187,12 +1193,5 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
         builder: (_) => PaymentWebViewScreen(paymentData: paymentData),
       ),
     );
-  }
-
-  /// 임시 좌석 ID 생성 (실제로는 API에서 받아야 함)
-  int _generateSeatId(String seatNumber, String zone) {
-    // 간단한 해시 기반 ID 생성 (실제 환경에서는 사용하지 말 것)
-    final combined = '$_performanceId-$_sessionId-$zone-$seatNumber';
-    return combined.hashCode.abs() % 100000;
   }
 }

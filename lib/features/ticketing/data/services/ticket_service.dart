@@ -136,19 +136,20 @@ class TicketService {
     int performanceId,
     int sessionId,
     String seatZone,
-    String seatNumber,
+    int seatId,
   ) async {
     try {
-      print('!!! 좌석 예약 가능 여부 확인 (좌석: $seatNumber)');
+      print('!!! 좌석 예약 가능 여부 확인 (좌석 ID: $seatId)');
 
       final seatLayout = await getSeatLayout(
         performanceId,
         sessionId,
         seatZone,
       );
+
       final targetSeat = seatLayout.allSeats.firstWhere(
-        (seat) => seat.seatNumber == seatNumber,
-        orElse: () => throw Exception('좌석을 찾을 수 없습니다: $seatNumber'),
+        (seat) => seat.seatId == seatId,
+        orElse: () => throw Exception('좌석을 찾을 수 없습니다: ID $seatId'),
       );
 
       final isAvailable = targetSeat.isAvailable;

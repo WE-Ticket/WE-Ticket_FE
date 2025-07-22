@@ -75,11 +75,13 @@ class PerformanceSession {
   final int performanceSessionId;
   final String sessionDatetime;
   final int remainingSeats;
+  final bool isAvailable;
 
   PerformanceSession({
     required this.performanceSessionId,
     required this.sessionDatetime,
     required this.remainingSeats,
+    required this.isAvailable,
   });
 
   factory PerformanceSession.fromJson(Map<String, dynamic> json) {
@@ -89,6 +91,7 @@ class PerformanceSession {
       ),
       sessionDatetime: JsonParserUtils.parseString(json['session_datetime']),
       remainingSeats: JsonParserUtils.parseInt(json['remaining_seats']),
+      isAvailable: JsonParserUtils.parseBool(json['is_available']),
     );
   }
 
@@ -108,7 +111,6 @@ class PerformanceSession {
   String get dateTimeDisplay => '$dateDisplay $timeDisplay';
 
   bool get isSoldOut => remainingSeats == 0;
-  bool get isAvailable => remainingSeats > 0;
 
   String get availabilityText {
     if (isSoldOut) return '매진';
@@ -274,16 +276,25 @@ class SeatRow {
   }
 }
 
-/// 개별 좌석 정보 모델
+/// 개별 좌석 정보 모델 (새 API 응답 형태에 맞게 수정)
 class Seat {
-  final String seatNumber;
+  final int seatId;
+  final String seatRow;
+  final int seatCol;
   final String reservationStatus;
 
-  Seat({required this.seatNumber, required this.reservationStatus});
+  Seat({
+    required this.seatId,
+    required this.seatRow,
+    required this.seatCol,
+    required this.reservationStatus,
+  });
 
   factory Seat.fromJson(Map<String, dynamic> json) {
     return Seat(
-      seatNumber: JsonParserUtils.parseString(json['seat_number']),
+      seatId: JsonParserUtils.parseInt(json['seat_id']),
+      seatRow: JsonParserUtils.parseString(json['seat_row']),
+      seatCol: JsonParserUtils.parseInt(json['seat_column']),
       reservationStatus: JsonParserUtils.parseString(
         json['reservation_status'],
       ),
@@ -308,10 +319,12 @@ class Seat {
     }
   }
 
-  // FIXME 좌석 번호에서 행과 열 추출 -> 일단 구축은 하는데,, 필요 없으면 지워야
-  String get row => seatNumber.replaceAll(RegExp(r'\d'), '');
-  int get column =>
-      int.tryParse(seatNumber.replaceAll(RegExp(r'[A-Z]'), '')) ?? 0;
+  // 좌석 번호 (A1, B2 형태)
+  String get seatNumber => '$seatRow$seatCol';
+
+  // 기존 코드와의 호환성을 위한 getter들
+  String get row => seatRow;
+  int get column => seatCol;
 }
 
 // FIXME 모델 위치 고민
