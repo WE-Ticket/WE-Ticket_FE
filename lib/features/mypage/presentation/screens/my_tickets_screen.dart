@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:we_ticket/features/auth/presentation/providers/auth_provider.dart';
 import 'package:we_ticket/features/mypage/presentation/screens/ticket_detail_screen.dart';
 import 'package:we_ticket/features/shared/providers/api_provider.dart';
 import '../../../../core/constants/app_colors.dart';
@@ -25,6 +26,25 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
     _loadMyTickets();
   }
 
+  List<Map<String, dynamic>> get _filteredTickets {
+    switch (_selectedFilter) {
+      case '입장 예정':
+        return _myTickets
+            .where((ticket) => ticket['status'] == 'pending')
+            .toList();
+      case '양도 등록 중':
+        return _myTickets
+            .where((ticket) => ticket['status'] == 'transferring')
+            .toList();
+      case '사용 완료':
+        return _myTickets
+            .where((ticket) => ticket['status'] == 'completed')
+            .toList();
+      default: // 전체 보유
+        return _myTickets;
+    }
+  }
+
   /// 내 티켓 목록 API 호출
   Future<void> _loadMyTickets() async {
     setState(() {
@@ -33,19 +53,15 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
     });
 
     try {
+      final authProvider = context.read<AuthProvider>();
       final apiProvider = context.read<ApiProvider>();
 
       // 사용자 ID 확인
-      // final userId = apiProvider.currentUserId;
-      //FIXME 하드코딩 무조건 지우기!!
-      final userId = 2;
-      if (userId == null) {
-        throw Exception('로그인이 필요합니다.');
-      }
+      // FIXME ?? 0 이거 수정 필요
+      final int userId = authProvider.currentUserId ?? 0;
 
       print('내 티켓 목록 조회 요청: 사용자 ID $userId, 필터: $_selectedFilter');
 
-      // API 호출 (임시로 직접 호출)
       final tickets = await apiProvider.apiService.getOwnedTickets(
         userId,
         state: _getStateFromFilter(_selectedFilter),
@@ -84,21 +100,9 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
   }
 
   /// API 응답 데이터를 화면에서 사용하는 형식으로 변환
+  ///
+  /// FIXME 모델이랑 서비스 파일 새로 만들기
   Map<String, dynamic> _convertApiToLocalFormat(Map<String, dynamic> apiData) {
-    // API 응답 형식:
-    // {
-    //   "nft_ticket_id": "22222",
-    //   "performance_id": 1,
-    //   "performance_main_image": null,
-    //   "performance_title": "NMIXX 1ST FAN MEETING 'NSWER VACATION'",
-    //   "performer_name": "NMIXX",
-    //   "session_datetime": "2025-07-12T11:00:00Z",
-    //   "venue_name": "고려대학교 화정체육관",
-    //   "seat_number": "FLOOR층 M구역 1열 10번",
-    //   "owned_ticket_state": "transferring",
-    //   "transfer_ticket_id": 2
-    // }
-
     try {
       final sessionDateTimeStr = apiData['session_datetime'];
       DateTime sessionDateTime;
@@ -119,21 +123,22 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
       final dday = sessionDateTime.difference(now).inDays;
 
       return {
-        'id': (apiData['nft_ticket_id'] ?? 'unknown').toString(),
+        'id': (apiData['ticket_id'] ?? 'unknown').toString(),
         'performanceId': apiData['performance_id'] ?? 0,
         'title': (apiData['performance_title'] ?? '제목 없음').toString(),
-        'artist': (apiData['performer_name'] ?? '아티스트 미정').toString(),
+        'performerName': (apiData['performer_name'] ?? '아티스트 미정').toString(),
         'date': _formatDate(sessionDateTime),
         'time': _formatTime(sessionDateTime),
         'venue': (apiData['venue_name'] ?? '장소 미정').toString(),
-        'seat': (apiData['seat_number'] ?? '좌석 미정').toString(),
+        'seatNumber': (apiData['seat_number'] ?? '좌석 미정').toString(),
+        'seatZone': (apiData['seat_zone'] ?? 1).toString(),
+        'seatGrade': (apiData['seat_grade'] ?? 1).toString(),
+        'satus': (apiData['ticket_status'] ?? 'transferring').toString(),
         'poster': _getSafeImageUrl(apiData['performance_main_image']),
-        'status': _convertApiStatusToLocal(
-          (apiData['owned_ticket_state'] ?? 'pending').toString(),
-        ),
         'dday': dday,
         'transferTicketId': apiData['transfer_ticket_id'],
         'sessionDateTime': sessionDateTime,
+        'completeDatetime': apiData['complete_datetime'],
       };
     } catch (e) {
       print('❌ 티켓 데이터 변환 오류: $e');
@@ -179,22 +184,6 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
     } catch (e) {
       print('❌ 이미지 URL 파싱 오류: $e');
       return 'https://via.placeholder.com/300x400?text=No+Image';
-    }
-  }
-
-  /// API 상태를 로컬 상태로 변환
-  String _convertApiStatusToLocal(String? apiStatus) {
-    if (apiStatus == null) return 'upcoming';
-
-    switch (apiStatus.toLowerCase()) {
-      case 'pending':
-        return 'upcoming';
-      case 'transferring':
-        return 'transferring';
-      case 'completed':
-        return 'used';
-      default:
-        return 'upcoming';
     }
   }
 
@@ -617,7 +606,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
     String text;
 
     switch (status ?? 'upcoming') {
-      case 'upcoming':
+      case 'pending':
         backgroundColor = AppColors.success;
         text = '입장 예정';
         break;
@@ -625,9 +614,13 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
         backgroundColor = AppColors.warning;
         text = '양도 중';
         break;
-      case 'used':
-        backgroundColor = AppColors.primary;
+      case 'completed':
+        backgroundColor = AppColors.secondary;
         text = '사용 완료';
+        break;
+      case 'expired':
+        backgroundColor = AppColors.secondary;
+        text = '만료';
         break;
       default:
         backgroundColor = AppColors.gray400;
