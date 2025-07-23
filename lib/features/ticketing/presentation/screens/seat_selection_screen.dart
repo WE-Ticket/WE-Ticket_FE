@@ -1148,6 +1148,8 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
     if (selectedZoneInfo == null) return;
 
     final paymentData = {
+      'paymentType': 'ticketing',
+
       // 기본 정보
       'concertInfo': widget.data['concertInfo'] ?? {},
       'selectedSession': widget.data['selectedSession'] ?? {},
@@ -1162,10 +1164,9 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
         'sessionDatetime': _sessionSeatInfo!.sessionDatetime,
       },
 
-      // 선택한 좌석 정보 (새로운 API 형태)
       'selectedZone': _selectedZone,
       'selectedSeat': {
-        'seatId': selectedSeat.seatId, // 실제 seat_id 사용
+        'seatId': selectedSeat.seatId,
         'seatNumber': selectedSeat.seatNumber, // A1, B2 형태
         'seatRow': selectedSeat.seatRow, // A, B, C...
         'seatCol': selectedSeat.seatCol, // 1, 2, 3...

@@ -333,13 +333,11 @@ class CreateTicketRequest {
   final int performanceSessionId;
   final int seatId;
   final int userId;
-  final Map<String, dynamic> paymentInfo;
 
   CreateTicketRequest({
     required this.performanceSessionId,
     required this.seatId,
     required this.userId,
-    required this.paymentInfo,
   });
 
   Map<String, dynamic> toJson() {
@@ -347,7 +345,6 @@ class CreateTicketRequest {
       'performance_session_id': performanceSessionId,
       'seat_id': seatId,
       'user_id': userId,
-      'payment_info': paymentInfo,
     };
   }
 }

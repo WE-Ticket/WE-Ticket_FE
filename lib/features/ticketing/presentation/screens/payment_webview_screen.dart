@@ -58,8 +58,9 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
       ..loadHtmlString(_generatePaymentHTML());
   }
 
+  //FIXME paymentData 정리(model로 )
   String _generatePaymentHTML() {
-    final name = widget.paymentData['name'] ?? '공연 티켓';
+    final name = widget.paymentData['sessionSeatInfo']['title'] ?? '공연 티켓';
     final amount = widget.paymentData['amount'] ?? 0;
     final merchantUid = widget.paymentData['merchant_uid'] ?? 'unknown';
 
@@ -125,7 +126,7 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
         <div class="payment-container">
             <h2>결제 정보</h2>
             <div class="payment-info">
-                <p><strong>상품명:</strong> $name</p>
+                <p><strong>상품명:</strong> Ticketing : $name</p>
                 <p><strong>결제금액:</strong> ${_formatPrice(amount)}원</p>
                 <p><strong>주문번호:</strong> $merchantUid</p>
             </div>
@@ -230,10 +231,15 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
           children: [
             Icon(Icons.check_circle, color: AppColors.white, size: 20),
             SizedBox(width: 12),
-            Text(
-              '결제가 완료되었습니다! NFT 티켓을 발행합니다.',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
+            (widget.paymentData['paymentType'] == 'ticketing')
+                ? Text(
+                    '결제가 완료되었습니다! NFT 티켓을 발행합니다.',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  )
+                : Text(
+                    '결제가 완료되었습니다! 양도를 진행합니다.',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
           ],
         ),
         backgroundColor: AppColors.success,
