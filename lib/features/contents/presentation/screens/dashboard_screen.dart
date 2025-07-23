@@ -40,7 +40,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _startAutoSlide(int itemCount) {
     _timer?.cancel();
     if (itemCount > 1) {
-      _timer = Timer.periodic(Duration(seconds: 3), (timer) {
+      _timer = Timer.periodic(Duration(seconds: 5), (timer) {
         if (_pageController.hasClients && mounted) {
           int nextPage = (_currentSlide + 1) % itemCount;
           _pageController.animateToPage(

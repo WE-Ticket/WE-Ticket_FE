@@ -203,6 +203,18 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
 
                         SizedBox(height: 20),
 
+                        if (_performanceDetail?.isTicketOpen == false)
+                          Text(
+                            '티켓 오픈 예정일 : ${_performanceDetail!.ticketOpenDatetime}',
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: AppColors.warning,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+
+                        SizedBox(height: 20),
+
                         _buildDetailInfoCard(),
 
                         SizedBox(height: 20),

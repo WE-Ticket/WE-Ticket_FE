@@ -54,7 +54,7 @@ class MyPageScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildUserProfileSection(user),
+                  _buildUserProfileSection(context, user),
 
                   SizedBox(height: 24),
 
@@ -80,7 +80,7 @@ class MyPageScreen extends StatelessWidget {
 
   // 사용자 프로필 영역
   // FIXME 인증별 네이밍이나 색상을 상수로 관리하기
-  Widget _buildUserProfileSection(UserModel? user) {
+  Widget _buildUserProfileSection(BuildContext context, UserModel? user) {
     final authLevel = user?.userAuthLevel ?? 'none';
     final authLevelName = AuthProvider.getAuthLevelName(authLevel);
 
@@ -141,30 +141,38 @@ class MyPageScreen extends StatelessWidget {
           SizedBox(height: 8),
 
           // 인증 상태 배지
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: levelColor[authLevel]?.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.verified_user,
-                  size: 16,
-                  color: levelColor[authLevel],
-                ),
-                SizedBox(width: 4),
-                Text(
-                  '$authLevelName 회원',
-                  style: TextStyle(
-                    fontSize: 12,
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => MyAuthScreen()),
+              );
+            },
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: levelColor[authLevel]?.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.verified_user,
+                    size: 16,
                     color: levelColor[authLevel],
-                    fontWeight: FontWeight.w600,
                   ),
-                ),
-              ],
+                  SizedBox(width: 4),
+                  Text(
+                    '$authLevelName 회원',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: levelColor[authLevel],
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
 
