@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:we_ticket/features/auth/presentation/providers/auth_guard.dart';
 import 'package:we_ticket/features/ticketing/presentation/screens/schedul_selection_screen.dart.dart';
 import 'package:we_ticket/features/shared/providers/api_provider.dart';
 import 'package:we_ticket/features/contents/data/performance_models.dart';
@@ -262,6 +263,7 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
         child: SafeArea(
           child: Row(
             children: [
+              // 양도 마켓 버튼
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () {
@@ -296,28 +298,37 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
 
               SizedBox(width: 12),
 
-              // 예매 버튼
+              // 예매 버튼 - AuthGuard 적용
               Expanded(
                 flex: 2,
                 child: ElevatedButton(
                   onPressed: _getStatus() == 'available'
                       ? () {
-                          final Map<String, dynamic> _performanceInfo = {
-                            'performance_id': _performanceDetail!.performanceId,
-                            'title': _performanceDetail?.title ?? '제목 없음',
-                            'performer_name':
-                                _performanceDetail?.performerName ?? '미정',
-                            'venue_name':
-                                _performanceDetail?.venueName ?? '장소 미정',
-                            'main_image': _performanceDetail?.mainImage,
-                          };
-                          Navigator.push(
+                          // AuthGuard를 사용하여 로그인 + 인증 레벨 확인
+                          AuthGuard.requireAuthForTicketing(
                             context,
-                            MaterialPageRoute(
-                              builder: (_) => ScheduleSelectionScreen(
-                                performanceInfo: _performanceInfo,
-                              ),
-                            ),
+                            onAuthenticated: () {
+                              // 인증 완료 후 예매 진행
+                              final Map<String, dynamic> _performanceInfo = {
+                                'performance_id':
+                                    _performanceDetail!.performanceId,
+                                'title': _performanceDetail?.title ?? '제목 없음',
+                                'performer_name':
+                                    _performanceDetail?.performerName ?? '미정',
+                                'venue_name':
+                                    _performanceDetail?.venueName ?? '장소 미정',
+                                'main_image': _performanceDetail?.mainImage,
+                              };
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ScheduleSelectionScreen(
+                                    performanceInfo: _performanceInfo,
+                                  ),
+                                ),
+                              );
+                            },
+                            message: '안전한 티켓 예매를 위해 로그인과 본인 인증이 필요합니다.',
                           );
                         }
                       : null,

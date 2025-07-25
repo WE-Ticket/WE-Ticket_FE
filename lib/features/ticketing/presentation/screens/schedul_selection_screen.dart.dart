@@ -62,9 +62,6 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = context.watch<AuthProvider>();
-    final isAuthenticated = authProvider.user != null;
-
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -93,7 +90,7 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
         children: [
           _buildConcertHeader(),
           Expanded(child: _buildMainContent()),
-          _buildNextButton(isAuthenticated),
+          _buildNextButton(),
         ],
       ),
     );
@@ -487,9 +484,8 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
     );
   }
 
-  Widget _buildNextButton(bool isAuthenticated) {
-    final canProceed =
-        _selectedSessionId != null && isAuthenticated && _scheduleData != null;
+  Widget _buildNextButton() {
+    final canProceed = _selectedSessionId != null && _scheduleData != null;
 
     return Container(
       padding: EdgeInsets.all(16),
@@ -524,11 +520,7 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
                 ),
               ),
               child: Text(
-                !isAuthenticated
-                    ? '본인 인증 후 예매 가능'
-                    : _selectedSessionId == null
-                    ? '회차를 선택해주세요'
-                    : '좌석 선택하기',
+                _selectedSessionId == null ? '회차를 선택해주세요' : '좌석 선택하기',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
             ),

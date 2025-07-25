@@ -158,6 +158,7 @@ class _ConcertListScreenState extends State<ConcertListScreen> {
         children: [
           _buildFilterSection(),
           Expanded(child: _buildContentSection()),
+          SizedBox(height: 40),
         ],
       ),
     );
@@ -323,7 +324,7 @@ class _ConcertListScreenState extends State<ConcertListScreen> {
           padding: EdgeInsets.all(16),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
-            childAspectRatio: 0.6,
+            childAspectRatio: 0.55,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
           ),
