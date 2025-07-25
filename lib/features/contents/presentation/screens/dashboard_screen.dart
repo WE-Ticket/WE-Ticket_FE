@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:we_ticket/features/contents/presentation/screens/concert_list_screen.dart';
 import 'package:we_ticket/features/contents/presentation/screens/concert_detail_screen.dart';
-import 'package:we_ticket/features/contents/presentation/widgets/performace_list_card.dart';
+import 'package:we_ticket/features/contents/presentation/widgets/performace_view_card.dart';
 import 'package:we_ticket/features/mypage/presentation/screens/my_page_screen.dart';
 import 'package:we_ticket/features/mypage/presentation/screens/my_tickets_screen.dart';
 import 'package:we_ticket/features/transfer/presentation/screens/transfer_market_screen.dart';
@@ -737,7 +737,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       itemCount: performances.length,
       itemBuilder: (context, index) {
         final performance = performances[index];
-        return buildPerformanceListCard(context, performance);
+        return buildPerformanceDashboardListCard(context, performance);
       },
     );
   }
