@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:we_ticket/features/mypage/presentation/screens/my_tickets_screen.dart';
 import '../../../../core/constants/app_colors.dart';
@@ -269,7 +270,7 @@ class _NFTTicketCompleteScreenState extends State<NFTTicketCompleteScreen>
 
             _buildTicketDetailRow(
               Icons.event_seat,
-              '${zone}구역 ${seat['row'] ?? ''}행 ${seat['col'] ?? ''}번 ($grade)',
+              '$grade ${zone}구역 ${seat['row'] ?? ''}행 ${seat['col'] ?? ''}번',
             ),
           ],
         ),
@@ -345,7 +346,10 @@ class _NFTTicketCompleteScreenState extends State<NFTTicketCompleteScreen>
               widget.nftData['blockchainNetwork'] ?? 'OmniOne Chain',
             ),
             _buildInfoRow('발행 일시', _formatDateTime(widget.nftData['issuedAt'])),
-            _buildInfoRow('소유자', '모바일 신분증 연동됨'),
+            _buildInfoRow(
+              '소유자',
+              _formatAuthLevel(widget.nftData['verificationLevel'].toString()),
+            ),
           ],
         ),
       ),
@@ -369,6 +373,7 @@ class _NFTTicketCompleteScreenState extends State<NFTTicketCompleteScreen>
               ),
             ),
           ),
+          SizedBox(width: 4),
           Expanded(
             child: GestureDetector(
               onTap: () => _copyToClipboard(value),
@@ -470,6 +475,22 @@ class _NFTTicketCompleteScreenState extends State<NFTTicketCompleteScreen>
           '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     } catch (e) {
       return 'N/A';
+    }
+  }
+
+  String _formatAuthLevel(String? authLevel) {
+    if (authLevel == null) return '인증자';
+    try {
+      if (authLevel == 'general')
+        return '일반 인증자';
+      else if (authLevel == 'mobile_id')
+        return '모바일 신분증 인증자';
+      else if (authLevel == 'mobile_id_totally')
+        return '안전 인증자';
+      else
+        return '인증자';
+    } catch (e) {
+      return '인증자';
     }
   }
 

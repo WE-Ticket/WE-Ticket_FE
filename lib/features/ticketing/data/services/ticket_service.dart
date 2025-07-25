@@ -117,7 +117,7 @@ class TicketService {
       if (response.statusCode == 201) {
         final ticketResponse = CreateTicketResponse.fromJson(response.data);
         print(
-          '✅ 티켓 생성 성공: ${ticketResponse.nftTicketId} (상태: ${ticketResponse.statusDisplay})',
+          '✅ 티켓 생성 성공: ${ticketResponse.ticketId} (상태: ${ticketResponse.statusDisplay})',
         );
         return ticketResponse;
       } else {

@@ -4,7 +4,6 @@ import 'package:we_ticket/features/ticketing/data/models/ticket_models.dart';
 import 'package:we_ticket/features/ticketing/data/services/ticket_service.dart';
 import 'package:we_ticket/features/ticketing/presentation/screens/nft_ticket_complete_screen.dart.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/services/dio_client.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../shared/providers/api_provider.dart';
 
@@ -137,12 +136,11 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
       );
 
       ticketResponse = await _ticketService.createTicket(request);
-      print('✅ NFT 티켓 생성 요청 완료: ${ticketResponse?.nftTicketId}');
+      print('✅ NFT 티켓 생성 요청 완료: ${ticketResponse?.ticketId}');
     });
 
     // 3단계: 블록체인 등록 처리
     await _executeStep(2, () async {
-      // 블록체인 처리 대기 (실제 상황에서는 더 오래 걸릴 수 있음)
       await Future.delayed(Duration(milliseconds: 2000));
       print('✅ 블록체인 등록 완료');
     });
@@ -225,20 +223,17 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
         'type': 'transfer',
       };
     } else if (ticketResponse != null) {
-      // 실제 API 응답 데이터 사용
-      resultData = {
-        'ticketId': ticketResponse.nftTicketId,
-        'nftStatus': ticketResponse.nftStatus,
-        'type': 'ticketing',
-        'issuedAt': DateTime.now().toIso8601String(),
-        'performanceTitle':
-            widget.paymentData['performanceTitle'] ?? 'Unknown Performance',
-        'performerName':
-            widget.paymentData['performerName'] ?? 'Unknown Performer',
-        'venueName': widget.paymentData['venueName'] ?? 'Unknown Venue',
-        'seatInfo': widget.paymentData['seatInfo'] ?? {},
-        ...widget.paymentData,
-      };
+      // ✅ 실제 API 응답 데이터를 Complete 화면 형식으로 변환
+      resultData = ticketResponse.toCompleteScreenData();
+
+      // paymentData의 추가 정보도 포함 (API에 없는 경우를 위해)
+      resultData.addAll({
+        'paymentAmount': widget.paymentData['paymentAmount'],
+        'paymentMethod': widget.paymentData['paymentMethod'],
+        'orderId': widget.paymentData['orderId'],
+      });
+
+      print('✅ Complete 화면으로 전달할 데이터: $resultData');
     } else {
       // 더미 데이터 (API 응답이 없는 경우)
       resultData = {
