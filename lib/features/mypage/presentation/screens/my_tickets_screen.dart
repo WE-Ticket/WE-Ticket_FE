@@ -133,7 +133,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
         'seatNumber': (apiData['seat_number'] ?? '좌석 미정').toString(),
         'seatZone': (apiData['seat_zone'] ?? 1).toString(),
         'seatGrade': (apiData['seat_grade'] ?? 1).toString(),
-        'satus': (apiData['ticket_status'] ?? 'transferring').toString(),
+        'status': (apiData['ticket_status'] ?? 'pending').toString(),
         'poster': _getSafeImageUrl(apiData['performance_main_image']),
         'dday': dday,
         'transferTicketId': apiData['transfer_ticket_id'],
@@ -155,7 +155,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
         'venue': '장소 미정',
         'seat': '좌석 미정',
         'poster': 'https://via.placeholder.com/300x400?text=No+Image',
-        'status': 'upcoming',
+        'status': 'pending',
         'dday': 0,
         'transferTicketId': null,
         'sessionDateTime': DateTime.now(),
@@ -406,7 +406,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
                       SizedBox(height: 4),
 
                       Text(
-                        ticket['artist'] ?? '아티스트 미정',
+                        ticket['performerName'] ?? '아티스트 미정',
                         style: TextStyle(
                           fontSize: 14,
                           color: AppColors.primary,
@@ -462,7 +462,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
 
                 Column(
                   children: [
-                    _buildStatusBadge(ticket['status'] ?? 'upcoming'),
+                    _buildStatusBadge(ticket['status'] ?? 'pending'),
                     SizedBox(height: 8),
                     Container(
                       padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -475,7 +475,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
                       child: Text(
                         _getDdayText(
                           ticket['dday'] ?? 0,
-                          ticket['status'] ?? 'upcoming',
+                          ticket['status'] ?? 'pending',
                         ),
                         style: TextStyle(
                           fontSize: 12,
@@ -520,11 +520,11 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
                 SizedBox(height: 4),
 
                 Text(
-                  ticket['seat'] ?? '좌석 미정',
+                  '${ticket['seatGrade']} ${ticket['seatZone']}구역 ${ticket['seatNumber']}',
                   style: TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 18,
+                    color: AppColors.warning,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
 
@@ -560,10 +560,10 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
   }
 
   Widget _buildSecondaryActionButton(Map<String, dynamic> ticket) {
-    final status = ticket['status'] ?? 'upcoming';
+    final status = ticket['status'];
 
     switch (status) {
-      case 'upcoming':
+      case 'pending':
         return ElevatedButton.icon(
           onPressed: () => _handleTransfer(ticket),
           icon: Icon(Icons.swap_horiz, size: 16),
@@ -585,7 +585,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
             padding: EdgeInsets.symmetric(vertical: 8),
           ),
         );
-      case 'used':
+      case 'completed':
         return ElevatedButton.icon(
           onPressed: () => _showUsedTicketInfo(ticket),
           icon: Icon(Icons.history, size: 16),
@@ -605,7 +605,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
     Color backgroundColor;
     String text;
 
-    switch (status ?? 'upcoming') {
+    switch (status) {
       case 'pending':
         backgroundColor = AppColors.success;
         text = '입장 예정';
@@ -654,9 +654,9 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
 
   String _getDdayText(int? dday, String? status) {
     final d = dday ?? 0;
-    final s = status ?? 'upcoming';
+    final s = status ?? 'pending';
 
-    if (s == 'used') return '사용 완료';
+    if (s == 'completed') return '사용 완료';
     if (d < 0) return '종료';
     if (d == 0) return 'D-Day';
     return 'D-$d';
