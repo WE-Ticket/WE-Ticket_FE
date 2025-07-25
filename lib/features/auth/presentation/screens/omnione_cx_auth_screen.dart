@@ -1,14 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:we_ticket/core/constants/app_colors.dart';
+import 'package:we_ticket/features/auth/data/auth_service.dart';
+import 'package:we_ticket/features/auth/data/user_models.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:convert';
 
 class OmniOneCXAuthScreen extends StatefulWidget {
   final int currentAuthLevel;
+  final int userId;
+  final AuthService authService;
 
-  const OmniOneCXAuthScreen({Key? key, required this.currentAuthLevel})
-    : super(key: key);
+  const OmniOneCXAuthScreen({
+    Key? key,
+    required this.currentAuthLevel,
+    required this.userId,
+    required this.authService,
+  }) : super(key: key);
 
   @override
   _OmniOneCXAuthScreenState createState() => _OmniOneCXAuthScreenState();
@@ -17,6 +25,7 @@ class OmniOneCXAuthScreen extends StatefulWidget {
 class _OmniOneCXAuthScreenState extends State<OmniOneCXAuthScreen> {
   late final WebViewController _controller;
   bool _isLoading = true;
+  bool _isProcessingResult = false;
   String _authStatus = '인증을 준비하고 있습니다...';
 
   @override
@@ -48,8 +57,6 @@ class _OmniOneCXAuthScreenState extends State<OmniOneCXAuthScreen> {
               _isLoading = false;
               _authStatus = '인증을 진행해주세요';
             });
-
-            // 페이지 로드 완료 후 바로 인증 시작
             _startAuthenticationImmediately();
           },
           onWebResourceError: (WebResourceError error) {
@@ -58,29 +65,22 @@ class _OmniOneCXAuthScreenState extends State<OmniOneCXAuthScreen> {
               _isLoading = false;
             });
           },
-
-          // 앱 스킴 처리
           onNavigationRequest: (NavigationRequest request) {
             print('네비게이션 요청: ${request.url}');
-
-            // 앱 스킴 감지 및 처리
             if (_shouldLaunchExternalApp(request.url)) {
               _launchExternalApp(request.url);
               return NavigationDecision.prevent;
             }
-
             return NavigationDecision.navigate;
           },
         ),
       );
 
-    // 바로 OmniOne CX 페이지 로드
     _loadOmniOnePage();
   }
 
   @override
   Widget build(BuildContext context) {
-    // FIXME 앱바 삭제 + 웹뷰 X 누르면 바로 네비.pop 되도록
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -99,60 +99,92 @@ class _OmniOneCXAuthScreenState extends State<OmniOneCXAuthScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: Column(
+      body: Stack(
         children: [
-          // 상태 표시 헤더
-          // Container(
-          //   width: double.infinity,
-          //   padding: EdgeInsets.all(16),
-          //   decoration: BoxDecoration(
-          //     color: AppColors.surface,
-          //     boxShadow: [
-          //       BoxShadow(
-          //         color: AppColors.shadowLight,
-          //         spreadRadius: 1,
-          //         blurRadius: 4,
-          //         offset: Offset(0, 2),
-          //       ),
-          //     ],
-          //   ),
-          //   child: Row(
-          //     children: [
-          //       Icon(_getStatusIcon(), color: _getStatusColor(), size: 20),
-          //       SizedBox(width: 12),
-          //       Expanded(
-          //         child: Text(
-          //           _authStatus,
-          //           style: TextStyle(
-          //             fontSize: 14,
-          //             fontWeight: FontWeight.w500,
-          //             color: AppColors.textPrimary,
-          //           ),
-          //         ),
-          //       ),
-          //       if (_isLoading)
-          //         SizedBox(
-          //           width: 20,
-          //           height: 20,
-          //           child: CircularProgressIndicator(
-          //             strokeWidth: 2,
-          //             valueColor: AlwaysStoppedAnimation<Color>(
-          //               AppColors.primary,
-          //             ),
-          //           ),
-          //         ),
-          //     ],
-          //   ),
-          // ),
-          // 웹뷰
-          Expanded(child: WebViewWidget(controller: _controller)),
-          SizedBox(height: 50),
+          Column(
+            children: [
+              // 상태 표시 영역
+              // Container(
+              //   width: double.infinity,
+              //   padding: EdgeInsets.all(16),
+              //   decoration: BoxDecoration(
+              //     color: AppColors.surface,
+              //     border: Border(
+              //       bottom: BorderSide(color: AppColors.secondary, width: 1),
+              //     ),
+              //   ),
+              //   child: Row(
+              //     children: [
+              //       Icon(_getStatusIcon(), color: _getStatusColor(), size: 20),
+              //       SizedBox(width: 12),
+              //       Expanded(
+              //         child: Text(
+              //           _authStatus,
+              //           style: TextStyle(
+              //             fontSize: 14,
+              //             color: AppColors.textPrimary,
+              //             fontWeight: FontWeight.w500,
+              //           ),
+              //         ),
+              //       ),
+              //       if (_isLoading || _isProcessingResult)
+              //         SizedBox(
+              //           width: 16,
+              //           height: 16,
+              //           child: CircularProgressIndicator(
+              //             strokeWidth: 2,
+              //             valueColor: AlwaysStoppedAnimation<Color>(
+              //               _getStatusColor(),
+              //             ),
+              //           ),
+              //         ),
+              //     ],
+              //   ),
+              // ),
+              // 웹뷰
+              Expanded(child: WebViewWidget(controller: _controller)),
+              SizedBox(height: 50),
+            ],
+          ),
+          // 결과 처리 중 오버레이
+          if (_isProcessingResult)
+            Container(
+              color: Colors.black54,
+              child: Center(
+                child: Container(
+                  padding: EdgeInsets.all(24),
+                  margin: EdgeInsets.all(32),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          AppColors.primary,
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        '인증 결과를 처리하고 있습니다...',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
   }
 
-  // OmniOne CX 페이지 로드
   void _loadOmniOnePage() {
     String htmlContent = '''
       <!DOCTYPE html>
@@ -217,9 +249,7 @@ class _OmniOneCXAuthScreenState extends State<OmniOneCXAuthScreen> {
     _controller.loadHtmlString(htmlContent);
   }
 
-  // 페이지 로드 후 바로 인증 시작
   void _startAuthenticationImmediately() {
-    // 인증 타입 결정
     String authType = _determineAuthType();
 
     setState(() {
@@ -229,18 +259,15 @@ class _OmniOneCXAuthScreenState extends State<OmniOneCXAuthScreen> {
     _controller.runJavaScript('''
       console.log('OmniOne CX 즉시 인증 시작');
       
-      // 상태 업데이트 함수
       function updateStatus(message) {
         FlutterAuth.postMessage(JSON.stringify({type: 'status', message: message}));
       }
       
-      // 인증 설정
       var authConfig = ${_getAuthConfig(authType)};
       
       console.log('인증 요청 데이터:', JSON.stringify(authConfig, null, 2));
       updateStatus('${_getAuthTypeDisplayName(authType)} 인증 요청 중...');
       
-      // OACX 스크립트 로드 확인 후 바로 실행
       setTimeout(function() {
         if (typeof OACX !== 'undefined') {
           console.log('OACX 객체 확인됨 - 즉시 인증 시작');
@@ -285,16 +312,14 @@ class _OmniOneCXAuthScreenState extends State<OmniOneCXAuthScreen> {
     ''');
   }
 
-  // 인증 타입 결정
   String _determineAuthType() {
     if (widget.currentAuthLevel == 0) {
-      return 'simple'; // 기본값: 간편 인증
+      return 'simple';
     } else {
-      return 'mobile_id'; // 모바일 신분증 인증
+      return 'mobile_id';
     }
   }
 
-  // 인증 설정 JSON 반환
   String _getAuthConfig(String authType) {
     if (authType == 'simple') {
       return '''
@@ -312,7 +337,7 @@ class _OmniOneCXAuthScreenState extends State<OmniOneCXAuthScreen> {
       {
         "provider": "coidentitydocument_v1.5",
         "contentInfo": {
-          "signType": "ENT_MID",
+          "signType": "ENT_MID"
         },
         "compareCI": false,
         "isBirth" : true
@@ -321,7 +346,6 @@ class _OmniOneCXAuthScreenState extends State<OmniOneCXAuthScreen> {
     }
   }
 
-  // 인증 타입 표시명 반환
   String _getAuthTypeDisplayName(String authType) {
     switch (authType) {
       case 'simple':
@@ -333,7 +357,6 @@ class _OmniOneCXAuthScreenState extends State<OmniOneCXAuthScreen> {
     }
   }
 
-  // 인증 결과 처리
   void _handleAuthResult(String message) {
     try {
       final data = jsonDecode(message);
@@ -366,14 +389,46 @@ class _OmniOneCXAuthScreenState extends State<OmniOneCXAuthScreen> {
     }
   }
 
-  // 인증 성공 처리
-  void _onAuthSuccess(dynamic result) {
+  void _onAuthSuccess(dynamic result) async {
+    if (_isProcessingResult) return; // 중복 처리 방지
+
     setState(() {
-      _authStatus = '✅ 인증 성공!';
+      _authStatus = '✅ 인증 성공! 결과를 처리하고 있습니다...';
       _isLoading = false;
+      _isProcessingResult = true;
     });
 
-    // 성공 다이얼로그 표시
+    try {
+      // AuthService를 통해 인증 결과 서버에 기록
+      final authResult = await widget.authService.processOmniOneResult(
+        userId: widget.userId,
+        omniOneResult: result,
+      );
+
+      setState(() {
+        _isProcessingResult = false;
+      });
+
+      if (authResult.isSuccess) {
+        // 서버 기록 성공
+        _showSuccessDialog(result, authResult.data!);
+      } else {
+        // 서버 기록 실패
+        _showServerErrorDialog(authResult.errorMessage!, result);
+      }
+    } catch (e) {
+      setState(() {
+        _isProcessingResult = false;
+      });
+      print('❌ 인증 결과 처리 중 예외: $e');
+      _showServerErrorDialog('인증 결과 처리 중 오류가 발생했습니다.', result);
+    }
+  }
+
+  void _showSuccessDialog(
+    dynamic authResult,
+    IdentityVerificationResponse serverResponse,
+  ) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -385,7 +440,7 @@ class _OmniOneCXAuthScreenState extends State<OmniOneCXAuthScreen> {
             Icon(Icons.check_circle, color: AppColors.success, size: 28),
             SizedBox(width: 12),
             Text(
-              '인증 성공',
+              '인증 완료',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -396,32 +451,74 @@ class _OmniOneCXAuthScreenState extends State<OmniOneCXAuthScreen> {
         ),
         content: Container(
           width: double.infinity,
-          padding: EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.success.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                '본인 인증이 완료되었습니다!',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.success,
+              // 인증 성공 메시지
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.success.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '본인 인증이 완료되었습니다!',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.success,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      _getSuccessMessage(authResult['authType']),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textSecondary,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              SizedBox(height: 8),
-              Text(
-                _getSuccessMessage(result['authType']),
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textSecondary,
-                  height: 1.4,
+              SizedBox(height: 16),
+              // 서버 응답 정보
+              if (serverResponse.newVerificationLevel != null)
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.secondary),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '인증 정보',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        '새로운 인증 레벨: ${serverResponse.newVerificationLevel}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
             ],
           ),
         ),
@@ -429,7 +526,11 @@ class _OmniOneCXAuthScreenState extends State<OmniOneCXAuthScreen> {
           TextButton(
             onPressed: () {
               Navigator.of(context).pop(); // 다이얼로그 닫기
-              Navigator.of(context).pop(result); // 결과와 함께 이전 화면으로
+              Navigator.of(context).pop({
+                'success': true,
+                'authResult': authResult,
+                'serverResponse': serverResponse,
+              }); // 결과와 함께 이전 화면으로
             },
             style: TextButton.styleFrom(
               backgroundColor: AppColors.primary,
@@ -449,17 +550,133 @@ class _OmniOneCXAuthScreenState extends State<OmniOneCXAuthScreen> {
     );
   }
 
-  // 인증 실패 처리
+  void _showServerErrorDialog(String errorMessage, dynamic authResult) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.warning, color: AppColors.warning, size: 28),
+            SizedBox(width: 12),
+            Text(
+              '인증 완료',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ],
+        ),
+        content: Container(
+          width: double.infinity,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.success.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '인증은 성공했습니다',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.success,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      '하지만 서버 저장 중 문제가 발생했습니다.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '오류 내용',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.error,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      errorMessage,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(); // 다이얼로그 닫기
+              Navigator.of(context).pop({
+                'success': true,
+                'authResult': authResult,
+                'serverError': errorMessage,
+              }); // 결과와 함께 이전 화면으로
+            },
+            style: TextButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.white,
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text(
+              '확인',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _onAuthFailure(dynamic error) {
     setState(() {
       _authStatus = '인증 실패';
       _isLoading = false;
+      _isProcessingResult = false;
     });
 
     _showErrorDialog('인증 중 오류가 발생했습니다.\n다시 시도해주세요.\n\n오류 정보: $error');
   }
 
-  // 에러 다이얼로그 표시
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
@@ -499,7 +716,6 @@ class _OmniOneCXAuthScreenState extends State<OmniOneCXAuthScreen> {
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              // 페이지 새로고침하여 다시 시도
               _loadOmniOnePage();
             },
             style: TextButton.styleFrom(
@@ -510,7 +726,7 @@ class _OmniOneCXAuthScreenState extends State<OmniOneCXAuthScreen> {
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              Navigator.of(context).pop(); // 이전 화면으로
+              Navigator.of(context).pop();
             },
             style: TextButton.styleFrom(
               backgroundColor: AppColors.primary,
@@ -527,71 +743,50 @@ class _OmniOneCXAuthScreenState extends State<OmniOneCXAuthScreen> {
     );
   }
 
-  // 상태별 색상 반환
   Color _getStatusColor() {
     if (_authStatus.contains('성공') || _authStatus.contains('완료'))
       return AppColors.success;
     if (_authStatus.contains('실패') || _authStatus.contains('오류'))
       return AppColors.error;
-    if (_authStatus.contains('요청') || _authStatus.contains('진행'))
+    if (_authStatus.contains('요청') ||
+        _authStatus.contains('진행') ||
+        _authStatus.contains('처리'))
       return AppColors.warning;
     return AppColors.primary;
   }
 
-  // 상태별 아이콘 반환
   IconData _getStatusIcon() {
     if (_authStatus.contains('성공') || _authStatus.contains('완료'))
       return Icons.check_circle;
     if (_authStatus.contains('실패') || _authStatus.contains('오류'))
       return Icons.error;
-    if (_authStatus.contains('요청') || _authStatus.contains('진행'))
+    if (_authStatus.contains('요청') ||
+        _authStatus.contains('진행') ||
+        _authStatus.contains('처리'))
       return Icons.hourglass_empty;
     return Icons.security;
   }
 
-  // 성공 메시지 반환
   String _getSuccessMessage(String? authType) {
     if (authType == 'simple') {
-      return '일반 인증 회원이 되었습니다!\n이제 공연 예매와 기본 서비스를 이용하실 수 있습니다.';
+      return '일반 인증 회원이 되었습니다!\n이제 공연 예매 서비스를 이용하실 수 있습니다.';
     } else {
-      return '모바일 신분증 인증 회원이 되었습니다!\n이제 3초 간편입장과 강화된 보안 서비스를 이용하실 수 있습니다.';
+      return '모바일 신분증 인증 회원이 되었습니다!\n이제 3초 간편입장 서비스를 이용하실 수 있습니다.';
     }
   }
 
-  // 외부 앱 실행이 필요한 URL인지 확인
   bool _shouldLaunchExternalApp(String url) {
     final appSchemes = [
-      'mobileid://', // 모바일 신분증 앱
-      'tauthlink://', // 통합인증 앱
-      'naversearchapp://', // 네이버 앱
-      'kakaotalk://', // 카카오톡
-      // 'ktauthexternalcall://', // KT 인증
-      // 'upluscorporation://', // LG U+ 인증
-      // 'nhappvardsstoken://', // NH 앱카드
-      // 'cloudpay://', // 클라우드페이 앱
-      // 'smartwall://', // 스마트월 앱
-      // 'citispay://', // 시티페이 앱
-      // 'payco://', // 페이코 앱
-      // 'lguthepay://', // LGU+ 페이
-      // 'hdcardappcardansimclick://', // HD카드 앱
-      // 'smhyundaiansimclick://', // 현대카드 앱
-      // 'shinhan-sr-ansimclick://', // 신한카드 앱
-      // 'smshinhanansimclick://', // 신한카드 앱
-      // 'kb-acp://', // KB 앱
-      // 'mpocket.online.ansimclick://', // 삼성카드 앱
-      // 'wooripay://', // 우리페이 앱
-      // 'nhappcardansimclick://', // NH카드 앱
-      // 'hanawalletmembers://', // 하나카드 앱
-      // 'shinsegaeeasypayment://', // 신세계 앱
-      'intent://', // Android Intent
-      // 추가 스킴들
+      'mobileid://',
+      'tauthlink://',
+      'naversearchapp://',
+      'kakaotalk://',
+      'intent://',
     ];
 
-    // URL이 앱 스킴으로 시작하는지 확인
     return appSchemes.any((scheme) => url.startsWith(scheme));
   }
 
-  // 외부 앱 실행
   Future<void> _launchExternalApp(String url) async {
     try {
       print('외부 앱 실행 시도: $url');
@@ -605,16 +800,15 @@ class _OmniOneCXAuthScreenState extends State<OmniOneCXAuthScreen> {
       if (await canLaunchUrl(uri)) {
         final launched = await launchUrl(
           uri,
-          mode: LaunchMode.externalApplication, // 외부 앱에서 실행
+          mode: LaunchMode.externalApplication,
         );
 
         if (launched) {
-          print('!!외부 앱 실행 성공');
+          print('외부 앱 실행 성공');
           setState(() {
             _authStatus = '인증 앱에서 인증을 진행하세요';
           });
 
-          // 앱이 다시 돌아왔을 때를 위한 타이머 설정
           _startReturnWaitTimer();
         } else {
           print('❌ 외부 앱 실행 실패');
@@ -630,7 +824,6 @@ class _OmniOneCXAuthScreenState extends State<OmniOneCXAuthScreen> {
     }
   }
 
-  // 앱 실행 실패 처리
   void _handleAppLaunchFailure(String url) {
     setState(() {
       _authStatus = '❌ 인증 앱 실행 실패';
@@ -697,7 +890,6 @@ class _OmniOneCXAuthScreenState extends State<OmniOneCXAuthScreen> {
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              // 페이지 새로고침하여 다시 시도
               _loadOmniOnePage();
             },
             style: TextButton.styleFrom(
@@ -722,7 +914,6 @@ class _OmniOneCXAuthScreenState extends State<OmniOneCXAuthScreen> {
     );
   }
 
-  // 앱에서 돌아오는 것을 기다리는 타이머
   void _startReturnWaitTimer() {
     Future.delayed(Duration(seconds: 3), () {
       if (mounted) {

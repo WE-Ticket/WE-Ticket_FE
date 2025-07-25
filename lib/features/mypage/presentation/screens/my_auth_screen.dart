@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:we_ticket/core/constants/app_colors.dart';
 import 'package:we_ticket/features/auth/presentation/providers/auth_provider.dart';
 import 'package:we_ticket/features/auth/presentation/screens/omnione_cx_auth_screen.dart';
+import 'package:we_ticket/features/auth/data/user_models.dart';
 import 'package:we_ticket/features/shared/providers/api_provider.dart';
 
 class MyAuthScreen extends StatefulWidget {
@@ -625,7 +626,7 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
     );
   }
 
-  // Utility
+  // Utility Methods
 
   bool _isAtLeast(String currentLevel, String requiredLevel) {
     return _authLevelOrder[currentLevel]! >= _authLevelOrder[requiredLevel]!;
@@ -686,13 +687,193 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
   Color _getUpgradeColor(String level) => _getAuthLevelColor(level);
   IconData _getUpgradeIcon(String level) => _getAuthLevelIcon(level);
 
-  void _navigateToAuth(BuildContext context, String currentLevel) {
-    Navigator.push(
+  // Navigation Methods
+
+  Future<void> _navigateToAuth(
+    BuildContext context,
+    String currentLevel,
+  ) async {
+    // 필요한 데이터 가져오기
+    final authProvider = context.read<AuthProvider>();
+    final apiProvider = context.read<ApiProvider>();
+    final userId = authProvider.currentUserId;
+
+    if (userId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('사용자 정보를 찾을 수 없습니다. 다시 로그인해주세요.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    // OmniOne 인증 화면으로 이동
+    final result = await Navigator.push<Map<String, dynamic>>(
       context,
       MaterialPageRoute(
-        builder: (_) => OmniOneCXAuthScreen(
+        builder: (context) => OmniOneCXAuthScreen(
+          userId: userId,
           currentAuthLevel: _authLevelOrder[currentLevel] ?? 0,
+          authService: apiProvider.authService,
         ),
+      ),
+    );
+
+    // 인증 결과 처리
+    if (result != null && result['success'] == true) {
+      await _handleAuthSuccess(result);
+    }
+  }
+
+  /// 인증 성공 후 처리
+  Future<void> _handleAuthSuccess(Map<String, dynamic> result) async {
+    final authResult = result['authResult'];
+    final serverResponse =
+        result['serverResponse'] as IdentityVerificationResponse?;
+    final serverError = result['serverError'];
+
+    if (serverResponse != null) {
+      // 서버 저장 성공
+      await _showSuccessDialog(
+        '본인인증이 완료되었습니다!',
+        '새로운 인증 레벨: ${serverResponse.newVerificationLevel ?? "업데이트됨"}\n'
+            '이제 더 많은 서비스를 이용하실 수 있습니다.',
+      );
+
+      // 인증 레벨 새로고침
+      await _loadUserAuthLevel();
+
+      // AuthProvider 업데이트
+      if (serverResponse.newVerificationLevel != null) {
+        final authProvider = context.read<AuthProvider>();
+        await authProvider.updateAuthLevel(
+          serverResponse.newVerificationLevel!,
+        );
+      }
+    } else if (serverError != null) {
+      // 인증 성공했으나 서버 저장 실패
+      await _showWarningDialog(
+        '인증은 성공했으나 저장 중 문제가 발생했습니다.',
+        '잠시 후 다시 시도해주세요.\n\n오류: $serverError',
+      );
+    }
+  }
+
+  /// 성공 다이얼로그 표시
+  Future<void> _showSuccessDialog(String title, String message) async {
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.check_circle, color: AppColors.success, size: 28),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Container(
+          padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.success.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            message,
+            style: TextStyle(
+              fontSize: 14,
+              color: AppColors.textSecondary,
+              height: 1.4,
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            style: TextButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.white,
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text(
+              '확인',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 경고 다이얼로그 표시
+  Future<void> _showWarningDialog(String title, String message) async {
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.warning, color: AppColors.warning, size: 28),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Container(
+          padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.warning.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            message,
+            style: TextStyle(
+              fontSize: 14,
+              color: AppColors.textSecondary,
+              height: 1.4,
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            style: TextButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.white,
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text(
+              '확인',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
       ),
     );
   }

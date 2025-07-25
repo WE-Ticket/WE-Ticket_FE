@@ -159,6 +159,7 @@ class Agreement {
   bool get isPrivacyPolicy => termType == 'PRIVACY_POLICY';
 }
 
+/// 인증 결과 데이터 모델
 class VerificationResult {
   final String? did;
   final String provider;

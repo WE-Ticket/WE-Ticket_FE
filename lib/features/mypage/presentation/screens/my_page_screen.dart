@@ -396,6 +396,7 @@ class MyPageScreen extends StatelessWidget {
               ).showSnackBar(SnackBar(content: Text('문의 기능은 추후 구현 예정')));
             },
             child: Container(
+              margin: EdgeInsets.only(left: 10),
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: AppColors.primary,

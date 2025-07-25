@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:we_ticket/features/auth/data/auth_validators.dart';
 import 'package:we_ticket/features/auth/data/user_models.dart';
@@ -207,6 +209,7 @@ class AuthResult<T> {
 }
 
 //FIXME
+/// AuthService Extension - OmniOne 인증 처리 (수정된 버전)
 extension AuthServiceExtension on AuthService {
   /// 본인인증 결과 기록
   Future<AuthResult<IdentityVerificationResponse>> recordIdentityVerification({
@@ -247,40 +250,142 @@ extension AuthServiceExtension on AuthService {
     }
   }
 
-  /// OmniOne CX 인증 결과 처리
+  /// OmniOne CX 인증 결과 처리 (수정된 버전)
   Future<AuthResult<IdentityVerificationResponse>> processOmniOneResult({
     required int userId,
     required Map<String, dynamic> omniOneResult,
   }) async {
     try {
       print('🔐 OmniOne CX 결과 처리 시작');
+      print('📋 인증 타입: ${omniOneResult['authType']}');
 
-      // OmniOne 결과에서 필요한 정보 추출
+      // OmniOne 결과에서 기본 정보 추출
       final authType = omniOneResult['authType'] as String? ?? 'unknown';
       final success = omniOneResult['success'] as bool? ?? false;
-      final data = omniOneResult['data'] as Map<String, dynamic>? ?? {};
+      final rawData = omniOneResult['data'];
 
-      // 검증 방법 결정
-      String verificationMethod;
-      switch (authType) {
-        case 'simple':
-          verificationMethod = 'omni_simple';
-          break;
-        case 'mobile_id':
-          verificationMethod = 'omni_mobile_id';
-          break;
-        default:
-          verificationMethod = 'omni_unknown';
+      if (!success) {
+        return AuthResult.failure('인증이 실패했습니다.');
       }
 
-      // 인증 결과 데이터 구성
-      final verificationResult = VerificationResult(
-        did: data['did'],
-        provider: data['provider'] ?? authType,
-        name: data['name'] ?? '인증됨',
-        phone: data['phone'] ?? '',
-        birthday: data['birthday'] ?? '',
-        sex: data['sex'] ?? '',
+      // rawData가 String인 경우 JSON 파싱
+      Map<String, dynamic> dataMap;
+      if (rawData is String) {
+        try {
+          dataMap = jsonDecode(rawData) as Map<String, dynamic>;
+        } catch (e) {
+          print('❌ JSON 파싱 실패: $e');
+          return AuthResult.failure('인증 데이터 파싱에 실패했습니다.');
+        }
+      } else if (rawData is Map<String, dynamic>) {
+        dataMap = rawData;
+      } else {
+        return AuthResult.failure('잘못된 인증 데이터 형식입니다.');
+      }
+
+      VerificationResult verificationResult;
+      String verificationMethod;
+
+      // 토큰이 있는 경우 서버 API를 통해 파싱
+      if (dataMap.containsKey('token')) {
+        final tokenString = dataMap['token'] as String;
+        print('🔍 토큰 길이: ${tokenString.length}');
+
+        // 모바일 신분증의 경우 서버 API를 통해 토큰 파싱
+        if (authType == 'mobile_id') {
+          final tokenResult = await _parseOmniOneTokenViaAPI(tokenString);
+          if (tokenResult.isSuccess && tokenResult.data != null) {
+            final parsedData = tokenResult.data!;
+            verificationResult = VerificationResult(
+              did: parsedData['userDid'],
+              //FIXME
+              provider: _extractProviderFromAuthType(authType),
+
+              // provider: 'mobile_id',
+              name: parsedData['name'] ?? '인증됨',
+              phone: _formatPhoneNumber(
+                parsedData['telno'] ?? parsedData['phone'] ?? '',
+              ),
+              birthday: _formatBirthday(
+                parsedData['birth'] ?? parsedData['birthday'] ?? '',
+              ),
+              sex: parsedData['sex'] ?? '',
+            );
+            // FIXME
+            verificationMethod = 'mobile_id';
+
+            // verificationMethod = _getVerificationMethod(
+            //   authType,
+            //   _extractProviderFromAuthType(authType),
+            // );
+          } else {
+            print('❌ 서버 토큰 파싱 실패, 로컬 디코딩 시도');
+            final tokenData = _decodeJWTPayload(tokenString);
+            if (tokenData != null) {
+              verificationResult = VerificationResult(
+                did: tokenData['userDid'],
+                provider: _extractProviderFromAuthType(authType),
+                name: tokenData['name'] ?? '인증됨',
+                phone: _formatPhoneNumber(
+                  tokenData['telno'] ?? tokenData['phone'] ?? '',
+                ),
+                birthday: _formatBirthday(
+                  tokenData['birth'] ?? tokenData['birthday'] ?? '',
+                ),
+                sex: tokenData['sex'] ?? '',
+              );
+              verificationMethod = _getVerificationMethod(
+                authType,
+                _extractProviderFromAuthType(authType),
+              );
+            } else {
+              return AuthResult.failure('토큰 파싱에 실패했습니다.');
+            }
+          }
+        } else {
+          // 간편인증의 경우 로컬에서 JWT 디코딩
+          final tokenData = _decodeJWTPayload(tokenString);
+          if (tokenData != null) {
+            verificationResult = VerificationResult(
+              did: tokenData['userDid'],
+              provider: tokenData['provider'] ?? tokenData['pid'] ?? 'unknown',
+              name: tokenData['name'] ?? '인증됨',
+              phone: _formatPhoneNumber(
+                tokenData['telno'] ?? tokenData['phone'] ?? '',
+              ),
+              birthday: _formatBirthday(
+                tokenData['birth'] ?? tokenData['birthday'] ?? '',
+              ),
+              sex: tokenData['sex'] ?? '',
+            );
+            verificationMethod = _getVerificationMethod(
+              authType,
+              tokenData['provider'] ?? tokenData['pid'],
+            );
+          } else {
+            return AuthResult.failure('토큰 디코딩에 실패했습니다.');
+          }
+        }
+      } else {
+        // 토큰이 없는 경우 기본 데이터로 처리
+        verificationResult = VerificationResult(
+          did: dataMap['userDid'],
+          provider: dataMap['provider'] ?? authType,
+          name: dataMap['name'] ?? '인증됨',
+          phone: _formatPhoneNumber(dataMap['phone'] ?? ''),
+          birthday: _formatBirthday(dataMap['birthday'] ?? ''),
+          sex: dataMap['sex'] ?? '',
+        );
+        verificationMethod = _getVerificationMethod(
+          authType,
+          dataMap['provider'],
+        );
+      }
+
+      print('✅ 인증 결과 파싱 완료');
+      print('📋 인증 방법: $verificationMethod');
+      print(
+        '📋 사용자 정보: ${verificationResult.name}, ${verificationResult.provider}',
       );
 
       return await recordIdentityVerification(
@@ -291,7 +396,144 @@ extension AuthServiceExtension on AuthService {
       );
     } catch (e) {
       print('❌ OmniOne 결과 처리 오류: $e');
-      return AuthResult.failure('인증 결과 처리 중 오류가 발생했습니다');
+      return AuthResult.failure('인증 결과 처리 중 오류가 발생했습니다: $e');
     }
+  }
+
+  /// OmniOne 토큰 파싱 (서버 API 호출)
+  Future<AuthResult<Map<String, dynamic>>> _parseOmniOneTokenViaAPI(
+    String token,
+  ) async {
+    try {
+      print('🔍 서버를 통한 OmniOne 토큰 파싱 시작');
+
+      final response = await _dioClient.post(
+        '/oacx/api/v1.0/trans/token',
+        data: {'token': token},
+      );
+
+      if (response.statusCode == 200) {
+        final data = response.data['data'] as Map<String, dynamic>;
+        print('✅ 서버 토큰 파싱 성공');
+        return AuthResult.success(data);
+      } else {
+        print('❌ 서버 토큰 파싱 실패: ${response.statusCode}');
+        return AuthResult.failure('토큰 파싱 실패: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ 서버 토큰 파싱 오류: $e');
+      return AuthResult.failure('토큰 파싱 중 오류 발생');
+    }
+  }
+
+  /// authType에서 provider 추출
+  String _extractProviderFromAuthType(String authType) {
+    switch (authType) {
+      case 'simple':
+        return 'comdl_v1.5';
+      case 'mobile_id':
+        return 'coidentitydocument_v1.5';
+      default:
+        return 'unknown';
+    }
+  }
+
+  /// JWT 토큰의 페이로드 디코딩
+  Map<String, dynamic>? _decodeJWTPayload(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) {
+        print('❌ 잘못된 JWT 형식');
+        return null;
+      }
+
+      // Base64 디코딩
+      String payload = parts[1];
+
+      // Base64 패딩 추가
+      switch (payload.length % 4) {
+        case 2:
+          payload += '==';
+          break;
+        case 3:
+          payload += '=';
+          break;
+      }
+
+      // Base64 디코딩 및 JSON 파싱
+      final decodedBytes = base64Decode(payload);
+      final decodedString = utf8.decode(decodedBytes);
+      final decodedJson = jsonDecode(decodedString) as Map<String, dynamic>;
+
+      print('✅ JWT 페이로드 디코딩 성공');
+      return decodedJson;
+    } catch (e) {
+      print('❌ JWT 디코딩 오류: $e');
+      return null;
+    }
+  }
+
+  /// 인증 방법 결정
+  String _getVerificationMethod(String authType, String? provider) {
+    if (provider != null) {
+      // provider 기반 우선 판단
+      switch (provider.toLowerCase()) {
+        case 'comdl':
+        case 'comdl_v1.5':
+          return 'omni_mobile_license'; // 모바일 운전면허증
+        case 'coidentitydocument':
+        case 'coidentitydocument_v1.5':
+          return 'mobile_id'; // 모바일 신분증
+        case 'coresidence':
+        case 'coresidence_v1.5':
+          return 'omni_residence_card'; // 거주증
+        case 'cokakao':
+          return 'cokakao'; // 카카오 간편인증
+        default:
+          return 'omni_${provider}';
+      }
+    }
+
+    // authType 기반 fallback
+    switch (authType) {
+      case 'simple':
+        return 'omni_simple';
+      case 'mobile_id':
+        return 'mobile_id';
+      case 'mobile_license':
+        return 'omni_mobile_license';
+      default:
+        return 'omni_unknown';
+    }
+  }
+
+  /// 전화번호 포맷 정리
+  String _formatPhoneNumber(String phone) {
+    if (phone.isEmpty) return '';
+    // 숫자만 추출
+    final digitsOnly = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    return digitsOnly;
+  }
+
+  /// 생년월일 포맷 정리
+  String _formatBirthday(String birthday) {
+    if (birthday.isEmpty) return '';
+    // 숫자만 추출
+    final digitsOnly = birthday.replaceAll(RegExp(r'[^0-9]'), '');
+    return digitsOnly;
+  }
+
+  /// 성별 추정 (생년월일 마지막 자리 또는 기본값)
+  String _determineSex(String birthday) {
+    if (birthday.isEmpty) return '';
+
+    // 생년월일이 8자리인 경우 (YYYYMMDD)
+    if (birthday.length == 8) {
+      // 한국 주민등록번호 규칙 적용 불가 (뒷자리가 없음)
+      // 기본값 반환
+      return '';
+    }
+
+    return ''; // 기본값
   }
 }
