@@ -1,6 +1,6 @@
-import '../../../../core/services/dio_client.dart';
-import '../../../../core/constants/api_endpoints.dart';
-import '../models/transfer_models.dart';
+import '../../../core/services/dio_client.dart';
+import '../../../core/constants/api_endpoints.dart';
+import 'transfer_models.dart';
 
 /// 양도 마켓 관련 API 서비스
 class TransferService {

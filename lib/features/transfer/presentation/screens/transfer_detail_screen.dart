@@ -4,7 +4,7 @@ import 'package:we_ticket/features/ticketing/presentation/screens/payment_webvie
 import '../../../../core/constants/app_colors.dart';
 import '../../../auth/presentation/providers/auth_guard.dart';
 import '../providers/transfer_provider.dart';
-import '../../../transfer/data/models/transfer_models.dart';
+import '../../data/transfer_models.dart';
 
 class TransferDetailScreen extends StatefulWidget {
   final int transferTicketId;

@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../../../shared/services/api_service.dart';
-import '../../data/models/transfer_models.dart';
+import '../../data/transfer_models.dart';
 
 /// 양도 마켓 관련 상태 관리를 위한 Provider
 ///

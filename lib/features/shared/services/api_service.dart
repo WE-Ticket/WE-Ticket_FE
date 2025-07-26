@@ -4,7 +4,7 @@ import 'package:we_ticket/features/mypage/data/payment_history_model.dart';
 import '../../../core/services/dio_client.dart';
 import '../../contents/data/performance_service.dart';
 import '../../ticketing/data/services/ticket_service.dart';
-import '../../transfer/data/services/transfer_service.dart';
+import '../../transfer/data/transfer_service.dart';
 
 /// [ 모든 API 서비스를 통합 관리하는 클래스 ]
 /// 앱 전체에서 하나의 인스턴스로 모든 API를 관리

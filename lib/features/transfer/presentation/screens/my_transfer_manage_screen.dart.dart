@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../shared/providers/api_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/transfer_provider.dart';
-import '../../../transfer/data/models/transfer_models.dart';
+import '../../data/transfer_models.dart';
 import 'transfer_dialogs.dart';
 
 class MyTransferManageScreen extends StatefulWidget {

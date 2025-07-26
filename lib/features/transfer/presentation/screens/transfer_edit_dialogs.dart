@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../providers/transfer_provider.dart';
-import '../../../transfer/data/models/transfer_models.dart';
+import '../../data/transfer_models.dart';
 
 class TransferEditDialogs {
   // 양도 수정 메인 팝업

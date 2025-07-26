@@ -1,4 +1,4 @@
-import '../../../../core/utils/json_parser.dart';
+import '../../../core/utils/json_parser.dart';
 
 /// 양도 마켓 리스트 페이지네이션 응답 모델
 class TransferListResponse {
