@@ -227,13 +227,13 @@ class VerificationResult {
 /// 본인인증 기록 요청 모델
 class IdentityVerificationRequest {
   final int userId;
-  final String verificationMethod;
+  final String nextVerificationLevel;
   final bool isSuccess;
   final VerificationResult verificationResult;
 
   IdentityVerificationRequest({
     required this.userId,
-    required this.verificationMethod,
+    required this.nextVerificationLevel,
     required this.isSuccess,
     required this.verificationResult,
   });
@@ -241,7 +241,7 @@ class IdentityVerificationRequest {
   Map<String, dynamic> toJson() {
     return {
       'user_id': userId,
-      'verification_method': verificationMethod,
+      'next_verification_level': nextVerificationLevel,
       'is_success': isSuccess,
       'verification_result': verificationResult.toJson(),
     };
@@ -249,7 +249,7 @@ class IdentityVerificationRequest {
 
   @override
   String toString() {
-    return 'IdentityVerificationRequest(userId: $userId, method: $verificationMethod, success: $isSuccess, result: $verificationResult)';
+    return 'IdentityVerificationRequest(userId: $userId, method: $nextVerificationLevel, success: $isSuccess, result: $verificationResult)';
   }
 }
 

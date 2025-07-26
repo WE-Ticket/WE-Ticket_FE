@@ -209,21 +209,23 @@ class AuthResult<T> {
 }
 
 //FIXME
-/// AuthService Extension - OmniOne 인증 처리 (수정된 버전)
+/// AuthService Extension - OmniOne 인증 처리
 extension AuthServiceExtension on AuthService {
   /// 본인인증 결과 기록
   Future<AuthResult<IdentityVerificationResponse>> recordIdentityVerification({
     required int userId,
-    required String verificationMethod,
+    required String nextVerificationLevel,
     required bool isSuccess,
     required VerificationResult verificationResult,
   }) async {
     try {
-      print('🔐 본인인증 결과 기록 시작 (사용자 ID: $userId, 방법: $verificationMethod)');
+      print(
+        '🔐 본인인증 결과 기록 시작 (사용자 ID: $userId, 다음 Auth level: $nextVerificationLevel)',
+      );
 
       final request = IdentityVerificationRequest(
         userId: userId,
-        verificationMethod: verificationMethod,
+        nextVerificationLevel: nextVerificationLevel,
         isSuccess: isSuccess,
         verificationResult: verificationResult,
       );
@@ -250,7 +252,7 @@ extension AuthServiceExtension on AuthService {
     }
   }
 
-  /// OmniOne CX 인증 결과 처리 (수정된 버전)
+  /// OmniOne CX 인증 결과 처리
   Future<AuthResult<IdentityVerificationResponse>> processOmniOneResult({
     required int userId,
     required Map<String, dynamic> omniOneResult,
@@ -284,7 +286,8 @@ extension AuthServiceExtension on AuthService {
       }
 
       VerificationResult verificationResult;
-      String verificationMethod;
+      String nextVerificationLevel;
+      // String verificationMethod;
 
       // 토큰이 있는 경우 서버 API를 통해 파싱
       if (dataMap.containsKey('token')) {
@@ -311,8 +314,8 @@ extension AuthServiceExtension on AuthService {
               ),
               sex: parsedData['sex'] ?? '',
             );
-            // FIXME
-            verificationMethod = 'mobile_id';
+            nextVerificationLevel = 'mobile_id';
+            // verificationMethod = 'mobile_id';
 
             // verificationMethod = _getVerificationMethod(
             //   authType,
@@ -321,6 +324,7 @@ extension AuthServiceExtension on AuthService {
           } else {
             print('❌ 서버 토큰 파싱 실패, 로컬 디코딩 시도');
             final tokenData = _decodeJWTPayload(tokenString);
+            print(tokenData);
             if (tokenData != null) {
               verificationResult = VerificationResult(
                 did: tokenData['userDid'],
@@ -334,10 +338,12 @@ extension AuthServiceExtension on AuthService {
                 ),
                 sex: tokenData['sex'] ?? '',
               );
-              verificationMethod = _getVerificationMethod(
-                authType,
-                _extractProviderFromAuthType(authType),
-              );
+              nextVerificationLevel = 'mobile_id';
+
+              // verificationMethod = _getVerificationMethod(
+              //   authType,
+              //   _extractProviderFromAuthType(authType),
+              // );
             } else {
               return AuthResult.failure('토큰 파싱에 실패했습니다.');
             }
@@ -358,10 +364,12 @@ extension AuthServiceExtension on AuthService {
               ),
               sex: tokenData['sex'] ?? '',
             );
-            verificationMethod = _getVerificationMethod(
-              authType,
-              tokenData['provider'] ?? tokenData['pid'],
-            );
+            nextVerificationLevel = 'general';
+
+            // verificationMethod = _getVerificationMethod(
+            //   authType,
+            //   tokenData['provider'] ?? tokenData['pid'],
+            // );
           } else {
             return AuthResult.failure('토큰 디코딩에 실패했습니다.');
           }
@@ -376,21 +384,23 @@ extension AuthServiceExtension on AuthService {
           birthday: _formatBirthday(dataMap['birthday'] ?? ''),
           sex: dataMap['sex'] ?? '',
         );
-        verificationMethod = _getVerificationMethod(
-          authType,
-          dataMap['provider'],
-        );
+        nextVerificationLevel = 'general';
+
+        // verificationMethod = _getVerificationMethod(
+        //   authType,
+        //   dataMap['provider'],
+        // );
       }
 
       print('✅ 인증 결과 파싱 완료');
-      print('📋 인증 방법: $verificationMethod');
+      // print('📋 인증 방법: $verificationMethod');
       print(
         '📋 사용자 정보: ${verificationResult.name}, ${verificationResult.provider}',
       );
 
       return await recordIdentityVerification(
         userId: userId,
-        verificationMethod: verificationMethod,
+        nextVerificationLevel: nextVerificationLevel,
         isSuccess: success,
         verificationResult: verificationResult,
       );
