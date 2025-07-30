@@ -1,7 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:we_ticket/features/auth/presentation/providers/auth_provider.dart';
 import '../../../../core/constants/app_colors.dart';
+// import 'package:nfc_manager/nfc_manager.dart';  // 제거
+import 'package:flutter_nfc_kit/flutter_nfc_kit.dart'; // 추가
 
 class NFCEntryScreen extends StatefulWidget {
   final String ticketId;
@@ -70,12 +74,76 @@ class _NFCEntryScreenState extends State<NFCEntryScreen>
       _errorMessage = null;
     });
 
-    // TODO: 실제 NFC 스캔 로직 구현
-    // 현재는 더미 데이터로 시뮬레이션
-    await Future.delayed(Duration(seconds: 2));
+    try {
+      // NFC 사용 가능 여부 확인
+      var availability = await FlutterNfcKit.nfcAvailability;
+      if (availability != NFCAvailability.available) {
+        throw Exception('NFC가 지원되지 않는 기기입니다.');
+      }
 
-    // NFC 태그를 감지했다고 가정하고 처리 시작
-    await _processNFCEntry();
+      // NFC 태그 스캔 시작
+      NFCTag tag = await FlutterNfcKit.poll(
+        timeout: Duration(seconds: 10),
+        iosMultipleTagMessage: "여러 태그가 감지되었습니다",
+        iosAlertMessage: "NFC 태그를 스캔하세요",
+      );
+
+      print('✅ NFC 태그 감지: ${tag.id}');
+
+      // NDEF 데이터 읽기
+      var ndefRecords = await FlutterNfcKit.readNDEFRecords(cached: false);
+
+      if (ndefRecords.isEmpty) {
+        throw Exception('NFC 태그에 데이터가 없습니다.');
+      }
+
+      // 첫 번째 레코드에서 JSON 텍스트 데이터 추출
+      var record = ndefRecords.first;
+      var payload = record.payload!;
+
+      // 텍스트 레코드의 경우 앞 3바이트 제거 (언어 코드)
+      String jsonString = String.fromCharCodes(payload.sublist(3));
+
+      print('📖 NFC 데이터: $jsonString');
+
+      // JSON 파싱
+      final Map<String, dynamic> nfcData = jsonDecode(jsonString);
+      final sessionId = nfcData['sessionId'];
+      final gateId = nfcData['gateId'];
+
+      // 세션 ID 일치 여부 확인
+      if (sessionId != widget.ticketData['sessionId']) {
+        throw Exception('세션 ID가 일치하지 않습니다.');
+      }
+
+      // NFC 세션 종료
+      await FlutterNfcKit.finish();
+
+      // 백엔드 API 호출
+      final success = await _sendGateEntry(widget.ticketId, gateId);
+
+      setState(() {
+        _isScanning = false;
+        _entryResult = success;
+      });
+
+      if (success) {
+        _showSuccessDialog();
+      }
+    } catch (e) {
+      print('❌ NFC 스캔 오류: $e');
+      setState(() {
+        _errorMessage = e.toString();
+        _entryResult = false;
+        _isScanning = false;
+      });
+
+      try {
+        await FlutterNfcKit.finish(iosErrorMessage: '스캔 실패');
+      } catch (finishError) {
+        print('NFC 세션 종료 오류: $finishError');
+      }
+    }
   }
 
   Future<void> _processNFCEntry() async {
@@ -250,6 +318,24 @@ class _NFCEntryScreenState extends State<NFCEntryScreen>
         ],
       ),
     );
+  }
+
+  Future<bool> _sendGateEntry(String ticketId, String gateId) async {
+    print('📤 입장 API 호출 → ticketId: $ticketId, gateId: $gateId');
+
+    // 실제 구현시
+    // final response = await http.post(
+    //   Uri.parse('https://api.yourbackend.com/gate/entry'),
+    //   body: jsonEncode({
+    //     'ticket_id': ticketId,
+    //     'gate_id': gateId,
+    //   }),
+    //   headers: {'Content-Type': 'application/json'},
+    // );
+    // return response.statusCode == 200;
+
+    await Future.delayed(Duration(seconds: 1)); // 시뮬레이션
+    return true; // 더미 성공 응답
   }
 
   @override

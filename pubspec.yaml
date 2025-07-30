@@ -46,6 +46,8 @@ dependencies:
   http: ^1.1.0
   dio: ^5.3.2
   intl: ^0.20.2
+  # nfc_manager: 3.3.0
+  flutter_nfc_kit: ^3.3.1
   flutter_localizations:
     sdk: flutter
 
