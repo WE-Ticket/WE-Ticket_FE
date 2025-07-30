@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:we_ticket/features/ticketing/data/models/patment_data.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:we_ticket/features/ticketing/presentation/screens/nft_issuance_screen.dart';
 import '../../../../core/constants/app_colors.dart';
 
 class PaymentWebViewScreen extends StatefulWidget {
-  final Map<String, dynamic> paymentData;
+  final PaymentData paymentData;
 
   const PaymentWebViewScreen({Key? key, required this.paymentData})
     : super(key: key);
@@ -58,11 +59,34 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
       ..loadHtmlString(_generatePaymentHTML());
   }
 
-  //FIXME paymentData 정리(model로 )
   String _generatePaymentHTML() {
-    final name = widget.paymentData['sessionSeatInfo']['title'] ?? '공연 티켓';
-    final amount = widget.paymentData['amount'] ?? 0;
-    final merchantUid = widget.paymentData['merchant_uid'] ?? 'unknown';
+    final name = widget.paymentData.displayTitle;
+    final amount = widget.paymentData.amount;
+    final merchantUid = widget.paymentData.merchantUid;
+    final isTransfer = widget.paymentData.paymentType == 'transfer';
+
+    // 추가 정보 생성
+    String additionalInfo = '';
+    if (isTransfer && widget.paymentData is TransferPaymentData) {
+      final transferData = widget.paymentData as TransferPaymentData;
+      additionalInfo =
+          '''
+        <p><strong>공연:</strong> ${transferData.performanceTitle}</p>
+        <p><strong>좌석:</strong> ${transferData.seatNumber} (${transferData.seatGrade})</p>
+        <p><strong>양도가격:</strong> ${transferData.transferPriceDisplay}</p>
+        <p><strong>구매자 수수료:</strong> ${transferData.buyerFeeDisplay}</p>
+      ''';
+    } else if (widget.paymentData is TicketingPaymentData) {
+      final ticketData = widget.paymentData as TicketingPaymentData;
+      final concertInfo = ticketData.concertInfo;
+      final selectedSeat = ticketData.selectedSeat;
+      additionalInfo =
+          '''
+        <p><strong>아티스트:</strong> ${concertInfo['artist'] ?? ''}</p>
+        <p><strong>좌석:</strong> ${ticketData.selectedZone}구역 ${selectedSeat['seatRow'] ?? ''}행 ${selectedSeat['seatCol'] ?? ''}번</p>
+        <p><strong>좌석등급:</strong> ${ticketData.seatGrade}</p>
+      ''';
+    }
 
     return '''
     <!DOCTYPE html>
@@ -89,6 +113,13 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
                 padding-bottom: 20px;
                 border-bottom: 1px solid #eee;
             }
+            .additional-info {
+                background-color: #f8f9fa;
+                border-radius: 8px;
+                padding: 16px;
+                margin: 16px 0;
+                border-left: 4px solid ${isTransfer ? '#FFA500' : '#1E3A8A'};
+            }
             .payment-method {
                 margin: 16px 0;
                 padding: 12px;
@@ -103,7 +134,7 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
             .pay-button {
                 width: 100%;
                 padding: 16px;
-                background-color: #1E3A8A;
+                background-color: ${isTransfer ? '#FFA500' : '#1E3A8A'};
                 color: white;
                 border: none;
                 border-radius: 12px;
@@ -113,22 +144,37 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
                 margin-top: 20px;
             }
             .pay-button:hover {
-                background-color: #1E40AF;
+                background-color: ${isTransfer ? '#FF8C00' : '#1E40AF'};
             }
             .loading {
                 display: none;
                 text-align: center;
                 padding: 20px;
             }
+            .transfer-badge {
+                display: inline-block;
+                background-color: #FFA500;
+                color: white;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 12px;
+                font-weight: 600;
+                margin-left: 8px;
+            }
         </style>
     </head>
     <body>
         <div class="payment-container">
-            <h2>결제 정보</h2>
+            <h2>${isTransfer ? '양도 티켓 구매' : '티켓 결제'}</h2>
             <div class="payment-info">
-                <p><strong>상품명:</strong> Ticketing : $name</p>
+                <p><strong>상품명:</strong> $name ${isTransfer ? '<span class="transfer-badge">양도</span>' : ''}</p>
                 <p><strong>결제금액:</strong> ${_formatPrice(amount)}원</p>
                 <p><strong>주문번호:</strong> $merchantUid</p>
+            </div>
+            
+            <div class="additional-info">
+                <h4>${isTransfer ? '양도 상품 정보' : '공연 정보'}</h4>
+                $additionalInfo
             </div>
             
             <h3>결제 수단 선택</h3>
@@ -148,11 +194,11 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
             </div>
             
             <button class="pay-button" onclick="processPayment()">
-                ${_formatPrice(amount)}원 결제하기
+                ${_formatPrice(amount)}원 ${isTransfer ? '양도 구매하기' : '결제하기'}
             </button>
             
             <div class="loading" id="loading">
-                <p>결제 처리 중...</p>
+                <p>${isTransfer ? '양도 처리 중...' : '결제 처리 중...'}</p>
             </div>
         </div>
         
@@ -215,15 +261,17 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
     };
 
     if (result['success'] == true) {
-      // 결제 성공 - NFT 발행 화면으로 이동
-      _navigateToNFTIssuance();
+      // 결제 성공 - NFT 발행/양도 처리 화면으로 이동
+      _navigateToProcessing();
     } else {
       // 결제 실패
       Navigator.pop(context, result);
     }
   }
 
-  void _navigateToNFTIssuance() {
+  void _navigateToProcessing() {
+    final isTransfer = widget.paymentData.paymentType == 'transfer';
+
     // 결제 성공 토스트 표시
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -231,15 +279,12 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
           children: [
             Icon(Icons.check_circle, color: AppColors.white, size: 20),
             SizedBox(width: 12),
-            (widget.paymentData['paymentType'] == 'ticketing')
-                ? Text(
-                    '결제가 완료되었습니다! NFT 티켓을 발행합니다.',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  )
-                : Text(
-                    '결제가 완료되었습니다! 양도를 진행합니다.',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
+            Text(
+              isTransfer
+                  ? '결제가 완료되었습니다! 양도를 처리합니다.'
+                  : '결제가 완료되었습니다! NFT 티켓을 발행합니다.',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
           ],
         ),
         backgroundColor: AppColors.success,
@@ -248,7 +293,7 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
       ),
     );
 
-    // 1초 후 NFT 발행 화면으로 이동
+    // 1초 후 처리 화면으로 이동
     Future.delayed(Duration(seconds: 1), () {
       Navigator.pushReplacement(
         context,
@@ -261,9 +306,11 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isTransfer = widget.paymentData.paymentType == 'transfer';
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('결제하기'),
+        title: Text(isTransfer ? '양도 구매' : '결제하기'),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.white,
         leading: IconButton(

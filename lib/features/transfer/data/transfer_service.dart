@@ -316,6 +316,37 @@ class TransferService {
     }
   }
 
+  Future<Map<String, dynamic>> postProcessTransfer({
+    required int userId,
+    required int transferTicketId,
+  }) async {
+    try {
+      print('📋 양도 진행 시작 (사용자 ID: $userId, 양도 티켓 ID : $transferTicketId)');
+
+      final data = <String, dynamic>{
+        "transfer_ticket_id": transferTicketId,
+        "buyer_user_id": userId,
+      };
+
+      final response = await _dioClient.post(
+        ApiConstants.processTransfer,
+        data: data,
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> result = response.data;
+
+        print('✅ 양도 이행 성공');
+        return result;
+      } else {
+        throw Exception('양도 이행  실패: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ 양도 이행 오류 (사용자 ID: $userId): $e');
+      rethrow;
+    }
+  }
+
   /// 날짜 범위별 양도 티켓 필터링 (API에서 지원하지 않아 로컬 처리)
   Future<List<TransferTicketItem>> getTransferTicketsByDateRange({
     required DateTime startDate,

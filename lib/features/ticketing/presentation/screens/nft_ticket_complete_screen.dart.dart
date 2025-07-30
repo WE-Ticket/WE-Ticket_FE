@@ -22,6 +22,8 @@ class _NFTTicketCompleteScreenState extends State<NFTTicketCompleteScreen>
   late Animation<Offset> _slideAnimation;
   late Animation<double> _fadeAnimation;
 
+  bool get _isTransfer => widget.nftData['type'] == 'transfer';
+
   @override
   void initState() {
     super.initState();
@@ -73,21 +75,13 @@ class _NFTTicketCompleteScreenState extends State<NFTTicketCompleteScreen>
           child: Column(
             children: [
               SizedBox(height: 40),
-
               _buildSuccessHeader(),
-
               SizedBox(height: 40),
-
-              _buildNFTTicketCard(),
-
+              _buildTicketCard(),
               SizedBox(height: 32),
-
-              _buildNFTInfo(),
-
+              _buildDetailInfo(),
               SizedBox(height: 32),
-
               _buildActionButtons(),
-
               SizedBox(height: 20),
             ],
           ),
@@ -106,27 +100,34 @@ class _NFTTicketCompleteScreenState extends State<NFTTicketCompleteScreen>
             height: 75,
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: AppColors.successGradient,
+                colors: _isTransfer
+                    ? [AppColors.warning, AppColors.warningLight]
+                    : AppColors.successGradient,
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.success.withOpacity(0.3),
+                  color: (_isTransfer ? AppColors.warning : AppColors.success)
+                      .withOpacity(0.3),
                   spreadRadius: 8,
                   blurRadius: 20,
                   offset: Offset(0, 8),
                 ),
               ],
             ),
-            child: Icon(Icons.check, size: 50, color: AppColors.white),
+            child: Icon(
+              _isTransfer ? Icons.swap_horiz : Icons.check,
+              size: 50,
+              color: AppColors.white,
+            ),
           ),
 
           SizedBox(height: 24),
 
           Text(
-            '예매 완료!',
+            _isTransfer ? '양도 구매 완료!' : '예매 완료!',
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
@@ -137,7 +138,7 @@ class _NFTTicketCompleteScreenState extends State<NFTTicketCompleteScreen>
           SizedBox(height: 8),
 
           Text(
-            '안전한 NFT 티켓이 발행되었습니다.',
+            _isTransfer ? '티켓 소유권이 안전하게 이전되었습니다.' : '안전한 NFT 티켓이 발행되었습니다.',
             style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
             textAlign: TextAlign.center,
           ),
@@ -146,13 +147,7 @@ class _NFTTicketCompleteScreenState extends State<NFTTicketCompleteScreen>
     );
   }
 
-  Widget _buildNFTTicketCard() {
-    final concertInfo = widget.nftData['concertInfo'] ?? {};
-    final schedule = widget.nftData['selectedSchedule'] ?? {};
-    final seat = widget.nftData['selectedSeat'] ?? {};
-    final zone = widget.nftData['selectedZone'] ?? '';
-    final grade = widget.nftData['seatGrade'] ?? '';
-
+  Widget _buildTicketCard() {
     return SlideTransition(
       position: _slideAnimation,
       child: Container(
@@ -160,14 +155,17 @@ class _NFTTicketCompleteScreenState extends State<NFTTicketCompleteScreen>
         padding: EdgeInsets.all(24),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [AppColors.primary, AppColors.primaryLight],
+            colors: _isTransfer
+                ? [AppColors.warning, AppColors.warningLight]
+                : [AppColors.primary, AppColors.primaryLight],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary.withOpacity(0.3),
+              color: (_isTransfer ? AppColors.warning : AppColors.primary)
+                  .withOpacity(0.3),
               spreadRadius: 4,
               blurRadius: 16,
               offset: Offset(0, 8),
@@ -184,7 +182,7 @@ class _NFTTicketCompleteScreenState extends State<NFTTicketCompleteScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'NFT 디지털 티켓',
+                      _isTransfer ? '양도 NFT 티켓' : 'NFT 디지털 티켓',
                       style: TextStyle(
                         color: AppColors.white.withOpacity(0.8),
                         fontSize: 12,
@@ -193,7 +191,7 @@ class _NFTTicketCompleteScreenState extends State<NFTTicketCompleteScreen>
                     ),
                     SizedBox(height: 4),
                     Text(
-                      '#${widget.nftData['tokenId'] ?? 'UNKNOWN'}',
+                      _getTicketId(),
                       style: TextStyle(
                         color: AppColors.white,
                         fontSize: 16,
@@ -212,10 +210,14 @@ class _NFTTicketCompleteScreenState extends State<NFTTicketCompleteScreen>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.verified, color: AppColors.white, size: 16),
+                      Icon(
+                        _isTransfer ? Icons.swap_calls : Icons.verified,
+                        color: AppColors.white,
+                        size: 16,
+                      ),
                       SizedBox(width: 4),
                       Text(
-                        '인증됨',
+                        _isTransfer ? '양도완료' : '인증됨',
                         style: TextStyle(
                           color: AppColors.white,
                           fontSize: 12,
@@ -232,7 +234,7 @@ class _NFTTicketCompleteScreenState extends State<NFTTicketCompleteScreen>
 
             // 공연 정보
             Text(
-              concertInfo['title'] ?? '공연명',
+              _getPerformanceTitle(),
               style: TextStyle(
                 color: AppColors.white,
                 fontSize: 20,
@@ -243,7 +245,7 @@ class _NFTTicketCompleteScreenState extends State<NFTTicketCompleteScreen>
             SizedBox(height: 4),
 
             Text(
-              concertInfo['artist'] ?? '아티스트',
+              _getPerformerName(),
               style: TextStyle(
                 color: AppColors.white.withOpacity(0.9),
                 fontSize: 16,
@@ -254,24 +256,23 @@ class _NFTTicketCompleteScreenState extends State<NFTTicketCompleteScreen>
             SizedBox(height: 20),
 
             // 공연 상세 정보
-            _buildTicketDetailRow(
-              Icons.calendar_today,
-              '${schedule['date'] ?? ''} ${schedule['time'] ?? ''}',
-            ),
+            _buildTicketDetailRow(Icons.calendar_today, _getSessionDateTime()),
 
             SizedBox(height: 8),
 
-            _buildTicketDetailRow(
-              Icons.location_on,
-              concertInfo['venue'] ?? '공연장',
-            ),
+            _buildTicketDetailRow(Icons.location_on, _getVenueName()),
 
             SizedBox(height: 8),
 
-            _buildTicketDetailRow(
-              Icons.event_seat,
-              '$grade ${zone}구역 ${seat['row'] ?? ''}행 ${seat['col'] ?? ''}번',
-            ),
+            _buildTicketDetailRow(Icons.event_seat, _getSeatInfo()),
+
+            if (_isTransfer) ...[
+              SizedBox(height: 8),
+              _buildTicketDetailRow(
+                Icons.attach_money,
+                _getTransferPriceInfo(),
+              ),
+            ],
           ],
         ),
       ),
@@ -297,7 +298,7 @@ class _NFTTicketCompleteScreenState extends State<NFTTicketCompleteScreen>
     );
   }
 
-  Widget _buildNFTInfo() {
+  Widget _buildDetailInfo() {
     return FadeTransition(
       opacity: _fadeAnimation,
       child: Container(
@@ -321,10 +322,14 @@ class _NFTTicketCompleteScreenState extends State<NFTTicketCompleteScreen>
           children: [
             Row(
               children: [
-                Icon(Icons.info_outline, color: AppColors.primary, size: 20),
+                Icon(
+                  Icons.info_outline,
+                  color: _isTransfer ? AppColors.warning : AppColors.primary,
+                  size: 20,
+                ),
                 SizedBox(width: 8),
                 Text(
-                  'NFT 상세 정보',
+                  _isTransfer ? '양도 상세 정보' : 'NFT 상세 정보',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -336,24 +341,49 @@ class _NFTTicketCompleteScreenState extends State<NFTTicketCompleteScreen>
 
             SizedBox(height: 16),
 
-            _buildInfoRow('토큰 ID', widget.nftData['tokenId'] ?? 'N/A'),
-            _buildInfoRow(
-              '컨트랙트 주소',
-              _formatAddress(widget.nftData['contractAddress']),
-            ),
-            _buildInfoRow(
-              '블록체인 네트워크',
-              widget.nftData['blockchainNetwork'] ?? 'OmniOne Chain',
-            ),
-            _buildInfoRow('발행 일시', _formatDateTime(widget.nftData['issuedAt'])),
-            _buildInfoRow(
-              '소유자',
-              _formatAuthLevel(widget.nftData['verificationLevel'].toString()),
-            ),
+            if (_isTransfer)
+              ..._buildTransferInfoRows()
+            else
+              ..._buildNFTInfoRows(),
           ],
         ),
       ),
     );
+  }
+
+  List<Widget> _buildNFTInfoRows() {
+    return [
+      _buildInfoRow('토큰 ID', widget.nftData['tokenId']?.toString() ?? 'N/A'),
+      _buildInfoRow(
+        '컨트랙트 주소',
+        _formatAddress(widget.nftData['contractAddress']),
+      ),
+      _buildInfoRow(
+        '블록체인 네트워크',
+        widget.nftData['blockchainNetwork'] ?? 'OmniOne Chain',
+      ),
+      _buildInfoRow('발행 일시', _formatDateTime(widget.nftData['issuedAt'])),
+      _buildInfoRow(
+        '소유자',
+        _formatAuthLevel(widget.nftData['verificationLevel']?.toString()),
+      ),
+    ];
+  }
+
+  List<Widget> _buildTransferInfoRows() {
+    return [
+      _buildInfoRow('양도 ID', widget.nftData['transferId'] ?? 'N/A'),
+      _buildInfoRow(
+        '트랜잭션 해시',
+        _formatAddress(widget.nftData['transactionHash']),
+      ),
+      _buildInfoRow('블록체인 네트워크', 'OmniOne Chain'),
+      _buildInfoRow('양도 완료일시', _formatDateTime(widget.nftData['completedAt'])),
+      _buildInfoRow('양도 상태', widget.nftData['transferStatus'] ?? 'completed'),
+      _buildInfoRow('양도 가격', widget.nftData['transferPriceDisplay'] ?? 'N/A'),
+      _buildInfoRow('구매자 수수료', widget.nftData['buyerFeeDisplay'] ?? 'N/A'),
+      _buildInfoRow('최종 결제금액', widget.nftData['totalPriceDisplay'] ?? 'N/A'),
+    ];
   }
 
   Widget _buildInfoRow(String label, String value) {
@@ -404,19 +434,26 @@ class _NFTTicketCompleteScreenState extends State<NFTTicketCompleteScreen>
             height: 56,
             child: ElevatedButton.icon(
               onPressed: _goToMyTickets,
-              icon: Icon(Icons.confirmation_number, size: 24),
+              icon: Icon(
+                _isTransfer ? Icons.swap_horiz : Icons.confirmation_number,
+                size: 24,
+              ),
               label: Text(
-                '내 티켓에서 확인하기',
+                _isTransfer ? '내 티켓에서 확인하기' : '내 티켓에서 확인하기',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
+                backgroundColor: _isTransfer
+                    ? AppColors.warning
+                    : AppColors.primary,
                 foregroundColor: AppColors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
                 elevation: 4,
-                shadowColor: AppColors.primary.withOpacity(0.3),
+                shadowColor:
+                    (_isTransfer ? AppColors.warning : AppColors.primary)
+                        .withOpacity(0.3),
               ),
             ),
           ),
@@ -434,8 +471,12 @@ class _NFTTicketCompleteScreenState extends State<NFTTicketCompleteScreen>
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
               ),
               style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.primary,
-                side: BorderSide(color: AppColors.primary),
+                foregroundColor: _isTransfer
+                    ? AppColors.warning
+                    : AppColors.primary,
+                side: BorderSide(
+                  color: _isTransfer ? AppColors.warning : AppColors.primary,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -459,6 +500,80 @@ class _NFTTicketCompleteScreenState extends State<NFTTicketCompleteScreen>
         ],
       ),
     );
+  }
+
+  // 데이터 추출 헬퍼 메서드들
+  String _getTicketId() {
+    if (_isTransfer) {
+      return '#${widget.nftData['transferId'] ?? 'UNKNOWN'}';
+    } else {
+      return '#${widget.nftData['tokenId'] ?? 'UNKNOWN'}';
+    }
+  }
+
+  String _getPerformanceTitle() {
+    if (_isTransfer) {
+      return widget.nftData['performanceTitle'] ?? '공연명';
+    } else {
+      final concertInfo = widget.nftData['concertInfo'] ?? {};
+      return concertInfo['title'] ?? '공연명';
+    }
+  }
+
+  String _getPerformerName() {
+    if (_isTransfer) {
+      return widget.nftData['performerName'] ?? '아티스트';
+    } else {
+      final concertInfo = widget.nftData['concertInfo'] ?? {};
+      return concertInfo['artist'] ?? '아티스트';
+    }
+  }
+
+  String _getSessionDateTime() {
+    if (_isTransfer) {
+      final sessionDateTime = widget.nftData['sessionDatetime'];
+      if (sessionDateTime != null) {
+        try {
+          final dt = DateTime.parse(sessionDateTime);
+          return '${dt.year}.${dt.month.toString().padLeft(2, '0')}.${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+        } catch (e) {
+          return sessionDateTime;
+        }
+      }
+      return '날짜 정보 없음';
+    } else {
+      final schedule =
+          widget.nftData['selectedSchedule'] ??
+          widget.nftData['selectedSession'] ??
+          {};
+      return '${schedule['date'] ?? ''} ${schedule['time'] ?? ''}';
+    }
+  }
+
+  String _getVenueName() {
+    if (_isTransfer) {
+      return widget.nftData['venueName'] ?? '공연장';
+    } else {
+      final concertInfo = widget.nftData['concertInfo'] ?? {};
+      return concertInfo['venue'] ?? '공연장';
+    }
+  }
+
+  String _getSeatInfo() {
+    if (_isTransfer) {
+      final seatNumber = widget.nftData['seatNumber'] ?? '';
+      final seatGrade = widget.nftData['seatGrade'] ?? '';
+      return '$seatGrade $seatNumber';
+    } else {
+      final seat = widget.nftData['selectedSeat'] ?? {};
+      final zone = widget.nftData['selectedZone'] ?? '';
+      final grade = widget.nftData['seatGrade'] ?? '';
+      return '$grade ${zone}구역 ${seat['row'] ?? ''}행 ${seat['col'] ?? ''}번';
+    }
+  }
+
+  String _getTransferPriceInfo() {
+    return widget.nftData['totalPriceDisplay'] ?? 'N/A';
   }
 
   String _formatAddress(String? address) {

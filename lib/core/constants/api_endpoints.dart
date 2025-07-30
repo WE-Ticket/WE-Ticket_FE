@@ -36,6 +36,7 @@ class ApiConstants {
   static const String transferTicketCancel =
       '/transfers/transfer-ticket-cancel/';
   static const String lookupPrivateTicket = '/transfers/private-ticket-lookup/';
+  static const String processTransfer = '/transfers/transfer-process/';
 
   // My Page
   static const String myTickets = '/tickets/my-page/owned-ticket-list/';

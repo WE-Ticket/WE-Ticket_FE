@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:we_ticket/features/ticketing/data/models/patment_data.dart';
 import 'package:we_ticket/features/ticketing/presentation/screens/payment_webview_screen.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../auth/presentation/providers/auth_guard.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/transfer_provider.dart';
 import '../../data/transfer_models.dart';
 
@@ -679,6 +681,7 @@ class _TransferDetailScreenState extends State<TransferDetailScreen> {
         setState(() {
           _isLoading = true;
         });
+        print("티켓 데이타 : $ticketDetail");
 
         // TODO: DID 인증 상태 확인
         Future.delayed(Duration(milliseconds: 500), () {
@@ -686,21 +689,33 @@ class _TransferDetailScreenState extends State<TransferDetailScreen> {
             _isLoading = false;
           });
 
-          // 결제 화면으로 전달할 데이터 변환
-          final paymentData = {
-            'paymentType': 'transfer',
-            'transferTicketId': ticketDetail.transferTicketId,
-            'performanceTitle': ticketDetail.performanceTitle,
-            'performerName': ticketDetail.performerName,
-            'sessionDatetime': ticketDetail.sessionDatetime,
-            'venueName': ticketDetail.venueName,
-            'seatNumber': ticketDetail.seatNumber,
-            'seatGrade': ticketDetail.seatGrade,
-            'transferPrice': ticketDetail.transferTicketPrice,
-            'buyerFee': ticketDetail.transferBuyerFee,
-            'totalPrice': ticketDetail.totalPrice,
-            'isPrivateTransfer': ticketDetail.isPrivateTransfer,
-          };
+          // 현재 사용자 ID 가져오기
+          final authProvider = context.read<AuthProvider>();
+          final buyerUserId = authProvider.currentUserId ?? 0;
+
+          // 새로운 PaymentData 모델 사용
+          final paymentData = TransferPaymentData(
+            merchantUid:
+                'TRF_${ticketDetail.transferTicketId}_${DateTime.now().millisecondsSinceEpoch}',
+            amount: ticketDetail.totalPrice,
+            transferTicketId: ticketDetail.transferTicketId,
+            performanceTitle: ticketDetail.performanceTitle,
+            performerName: ticketDetail.performerName,
+            sessionDatetime: ticketDetail.sessionDatetime,
+            venueName: ticketDetail.venueName,
+            seatNumber: ticketDetail.seatNumber,
+            seatGrade: ticketDetail.seatGrade,
+            transferPrice: ticketDetail.transferTicketPrice,
+            buyerFee: ticketDetail.transferBuyerFee,
+            totalPrice: ticketDetail.totalPrice,
+            transferPriceDisplay: ticketDetail.transferPriceDisplay,
+            buyerFeeDisplay: ticketDetail.buyerFeeDisplay,
+            totalPriceDisplay: ticketDetail.totalPriceDisplay,
+            isPrivateTransfer: ticketDetail.isPrivateTransfer,
+            buyerUserId: buyerUserId,
+          );
+
+          print("페이먼트 데이타 : $paymentData");
 
           Navigator.push(
             context,
