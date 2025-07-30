@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:we_ticket/features/shared/providers/api_provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import 'package:provider/provider.dart';
 
 class TransferRegistrationDialogs {
   // 양도 등록 확인 및 완료 팝업
@@ -8,7 +10,6 @@ class TransferRegistrationDialogs {
     BuildContext context,
     Map<String, dynamic> ticket,
     String transferType,
-    Function(Map<String, dynamic>, String, String?) onRegister,
   ) {
     bool isLoading = false;
     String? generatedCode;
@@ -70,7 +71,6 @@ class TransferRegistrationDialogs {
                     context,
                     ticket,
                     transferType,
-                    onRegister,
                     setState,
                     (loading, code) {
                       setState(() {
@@ -192,7 +192,6 @@ class TransferRegistrationDialogs {
     BuildContext context,
     Map<String, dynamic> ticket,
     String transferType,
-    Function(Map<String, dynamic>, String, String?) onRegister,
     StateSetter setState,
     Function(bool, String?) updateState,
   ) {
@@ -235,7 +234,6 @@ class TransferRegistrationDialogs {
                   context,
                   ticket,
                   transferType,
-                  onRegister,
                   updateState,
                 ),
                 style: ElevatedButton.styleFrom(
@@ -365,36 +363,37 @@ class TransferRegistrationDialogs {
     );
   }
 
-  // 등록 처리 함수 (수정된 버전)
+  // 등록 처리 함수
   static Future<void> _handleRegistration(
     BuildContext context,
     Map<String, dynamic> ticket,
     String transferType,
-    Function(Map<String, dynamic>, String, String?) onRegister,
     Function(bool, String?) updateState,
   ) async {
-    // 로딩 상태로 변경
     updateState(true, null);
 
     try {
-      // 등록 시뮬레이션
-      await Future.delayed(Duration(seconds: 2));
+      final apiProvider = context.read<ApiProvider>();
+      final transferService = apiProvider.apiService.transfer;
 
+      final response = await transferService.postTransferTicketRegister(
+        ticketId: ticket['ticketId'],
+        isPublicTransfer: transferType == 'public',
+        transferTicketPrice: ticket['originalPrice'],
+      );
+
+      // ✅ 응답에서 코드가 오면 (비공개일 경우)
       String? generatedCode;
       if (transferType == 'private') {
-        generatedCode =
-            'PRIV-${DateTime.now().millisecondsSinceEpoch.toString().substring(7, 11)}-TCKT-${(DateTime.now().millisecondsSinceEpoch % 10000).toString().padLeft(4, '0')}';
+        generatedCode = response['unique_code']; // 백엔드 반환 키 확인 필요
       }
 
-      // 등록 완료 처리
-      onRegister(ticket, transferType, generatedCode);
-
-      // 완료 상태로 변경
+      // ✅ 등록 완료 상태로 UI 업데이트
       updateState(false, generatedCode);
+
+      Navigator.pop(context);
     } catch (e) {
       print('❌ 양도 등록 오류: $e');
-
-      // 오류 발생 시 로딩 상태 해제
       updateState(false, null);
 
       if (context.mounted) {

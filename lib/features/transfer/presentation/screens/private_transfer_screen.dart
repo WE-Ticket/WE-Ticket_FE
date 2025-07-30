@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:we_ticket/features/shared/providers/api_provider.dart';
+import 'package:we_ticket/features/shared/services/api_service.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../providers/transfer_provider.dart';
 import 'transfer_detail_screen.dart';
@@ -308,38 +310,28 @@ class _PrivateTransferScreenState extends State<PrivateTransferScreen> {
     });
 
     try {
-      final transferProvider = Provider.of<TransferProvider>(
-        context,
-        listen: false,
-      );
+      final apiProvider = context.read<ApiProvider>();
+      final transferService = apiProvider.apiService.transfer;
+
       final uniqueCode = _codeController.text.trim();
 
       print('🔐 비공개 양도 티켓 조회 시작: ${uniqueCode.substring(0, 4)}...');
 
       // 비공개 양도 티켓 조회 API 호출
-      await transferProvider.loadPrivateTransferDetail(uniqueCode);
+      final int transferTicketId = await transferService.lookupPrivateTicket(
+        uniqueCode,
+      );
 
       // 조회 성공 시 상세 화면으로 이동
-      if (transferProvider.currentTransferDetail != null) {
-        print('✅ 비공개 양도 티켓 조회 성공');
+      print('✅ 비공개 양도 티켓 id 조회 성공');
 
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => TransferDetailScreen(
-              transferTicketId:
-                  transferProvider.currentTransferDetail!.transferTicketId,
-            ),
-          ),
-        );
-      } else {
-        // 에러가 있다면 에러 메시지 표시
-        if (transferProvider.errorMessage != null) {
-          _showErrorDialog('조회 실패', transferProvider.errorMessage!);
-        } else {
-          _showErrorDialog('알 수 없는 오류', '티켓 조회 중 알 수 없는 오류가 발생했습니다.');
-        }
-      }
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) =>
+              TransferDetailScreen(transferTicketId: transferTicketId),
+        ),
+      );
     } catch (e) {
       print('❌ 비공개 양도 티켓 조회 실패: $e');
 

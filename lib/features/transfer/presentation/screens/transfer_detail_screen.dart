@@ -688,6 +688,7 @@ class _TransferDetailScreenState extends State<TransferDetailScreen> {
 
           // 결제 화면으로 전달할 데이터 변환
           final paymentData = {
+            'paymentType': 'transfer',
             'transferTicketId': ticketDetail.transferTicketId,
             'performanceTitle': ticketDetail.performanceTitle,
             'performerName': ticketDetail.performerName,

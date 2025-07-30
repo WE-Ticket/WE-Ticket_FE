@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:we_ticket/features/shared/providers/api_provider.dart';
+import 'package:we_ticket/features/transfer/data/transfer_service.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/transfer_provider.dart';
 import '../../data/transfer_models.dart';
 import 'transfer_dialogs.dart';
+import 'transfer_edit_dialogs.dart';
 
 class MyTransferManageScreen extends StatefulWidget {
   @override
@@ -782,7 +785,10 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
               ],
 
               TextButton(
-                onPressed: () => _showEditDialog(ticket),
+                onPressed: () => TransferEditDialogs.showEditTransferDialog(
+                  context,
+                  ticket.transferTicketId,
+                ),
                 child: Text(
                   '수정',
                   style: TextStyle(fontSize: 12, color: AppColors.primary),
@@ -859,7 +865,7 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
     );
   }
 
-  /// 고유번호 조회 및 표시
+  /// 고유번호 조회 및 표시 (만료 시간 표시 추가)
   Future<void> _showUniqueCode(MyTransferTicket ticket) async {
     final transferProvider = Provider.of<TransferProvider>(
       context,
@@ -872,9 +878,137 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
       );
 
       if (uniqueCode != null && mounted) {
-        TransferDialogs.showUniqueCodeDialog(
-          context,
-          uniqueCode.tempUniqueCode,
+        // 만료까지 남은 시간 계산
+        final expiryTime = DateTime.parse(uniqueCode.expiryDatetime);
+        final now = DateTime.now();
+        final timeLeft = expiryTime.difference(now);
+
+        String timeLeftText;
+        if (timeLeft.isNegative) {
+          timeLeftText = '만료됨';
+        } else if (timeLeft.inHours > 0) {
+          timeLeftText =
+              '${timeLeft.inHours}시간 ${timeLeft.inMinutes % 60}분 후 만료';
+        } else {
+          timeLeftText = '${timeLeft.inMinutes}분 후 만료';
+        }
+
+        showDialog(
+          context: context,
+          builder: (context) => Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Container(
+              padding: EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.lock, color: AppColors.secondary, size: 24),
+                      SizedBox(width: 8),
+                      Text(
+                        '고유 번호',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      Spacer(),
+                      IconButton(
+                        icon: Icon(Icons.close, color: AppColors.textSecondary),
+                        onPressed: () => Navigator.pop(context),
+                        padding: EdgeInsets.zero,
+                        constraints: BoxConstraints(
+                          minWidth: 24,
+                          minHeight: 24,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 20),
+                  Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.secondary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppColors.secondary.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          uniqueCode.tempUniqueCode,
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'monospace',
+                            color: AppColors.textPrimary,
+                            letterSpacing: 2,
+                          ),
+                        ),
+                        SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.timer,
+                              size: 16,
+                              color: timeLeft.isNegative
+                                  ? AppColors.error
+                                  : AppColors.warning,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              timeLeftText,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: timeLeft.isNegative
+                                    ? AppColors.error
+                                    : AppColors.warning,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Clipboard.setData(
+                              ClipboardData(text: uniqueCode.tempUniqueCode),
+                            );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('고유 번호가 복사되었습니다'),
+                                backgroundColor: AppColors.success,
+                              ),
+                            );
+                          },
+                          icon: Icon(Icons.copy, size: 16),
+                          label: Text('복사하기'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.secondary,
+                            side: BorderSide(color: AppColors.secondary),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
         );
       }
     } catch (e) {
@@ -891,41 +1025,15 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
 
   /// 양도 등록 옵션 표시
   void _showTransferOptions(TransferableTicket ticket) {
-    // TODO: 실제 양도 등록 API 연결
     TransferDialogs.showTransferOptions(context, {
-      'id': ticket.nftTicketId,
+      'ticketId': ticket.ticketId,
+      'poster': ticket.performanceMainImage,
       'concertTitle': ticket.performanceTitle,
       'artist': ticket.performerName,
       'date': _formatSessionDateTime(DateTime.parse(ticket.sessionDatetime)),
       'seat': '${ticket.seatNumber} (${ticket.seatGrade})',
       'originalPrice': ticket.seatPrice,
-    }, _registerTransfer);
-  }
-
-  /// 수정 다이얼로그 표시
-  void _showEditDialog(MyTransferTicket ticket) {
-    // TODO: 실제 수정 API 연결
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('수정 기능 준비 중입니다')));
-  }
-
-  /// 양도 등록 처리
-  void _registerTransfer(
-    Map<String, dynamic> ticket,
-    String transferType,
-    String? uniqueCode,
-  ) {
-    // TODO: 실제 양도 등록 API 호출
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('양도 등록이 완료되었습니다'),
-        backgroundColor: AppColors.success,
-      ),
-    );
-
-    // 데이터 새로고침
-    _refreshData();
+    });
   }
 
   /// 양도 취소
@@ -960,8 +1068,10 @@ class _MyTransferManageScreenState extends State<MyTransferManageScreen>
   /// 실제 양도 취소 수행
   Future<void> _performCancelTransfer(MyTransferTicket ticket) async {
     try {
-      // TODO: 실제 양도 취소 API 호출
-      // await transferService.cancelTransfer(ticket.transferTicketId);
+      final apiProvider = context.read<ApiProvider>();
+      final transferService = apiProvider.apiService.transfer;
+
+      await transferService.cancelTransfer(ticket.transferTicketId);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

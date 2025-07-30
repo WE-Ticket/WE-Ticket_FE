@@ -128,28 +128,6 @@ class TransferProvider extends ChangeNotifier {
     }
   }
 
-  /// 양도 티켓 상세 정보 로드 (비공개)
-  Future<void> loadPrivateTransferDetail(String uniqueCode) async {
-    try {
-      _setLoading(true);
-      clearError();
-
-      print('🔐 비공개 양도 티켓 상세 로드');
-
-      final detail = await _apiService.transfer.getPrivateTransferDetail(
-        uniqueCode,
-      );
-      _currentTransferDetail = detail;
-
-      print('✅ 비공개 양도 티켓 상세 로드 완료');
-    } catch (e) {
-      print('❌ 비공개 양도 티켓 상세 로드 실패: $e');
-      _setError('고유번호가 유효하지 않거나 만료되었습니다.');
-    } finally {
-      _setLoading(false);
-    }
-  }
-
   /// 내 양도 등록 티켓 리스트 로드
   Future<void> loadMyRegisteredTickets({
     required int userId,
