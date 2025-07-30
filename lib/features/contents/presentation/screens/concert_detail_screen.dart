@@ -552,7 +552,11 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
             '${_performanceDetail?.startDate} ~ ${_performanceDetail?.endDate} ',
           ),
           Divider(color: AppColors.gray200, height: 24),
-          _buildDetailInfoRow(Icons.location_on, '공연장소', '${_getVenue()} '),
+          _buildDetailInfoRow(
+            Icons.location_on,
+            '공연장소',
+            '${_getVenue()}\n( ${_performanceDetail?.venueLocation} )',
+          ),
           Divider(color: AppColors.gray200, height: 24),
           _buildDetailInfoRow(Icons.local_offer, '가격', _getPrice()),
           Divider(color: AppColors.gray200, height: 24),
