@@ -207,6 +207,15 @@ Widget buildPerformanceListCard(
               ],
             ),
           ),
+          // 상태 배지
+          Positioned(
+            top: 8,
+            right: 8,
+            child: _buildCompactStatusBadge(
+              performance.isSoldOut,
+              performance.isTicketOpen,
+            ),
+          ),
         ],
       ),
     ),
