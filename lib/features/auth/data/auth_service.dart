@@ -216,7 +216,7 @@ extension AuthServiceExtension on AuthService {
     required int userId,
     required String nextVerificationLevel,
     required bool isSuccess,
-    required VerificationResult verificationResult,
+    required String verificationResult,
   }) async {
     try {
       print(
@@ -285,122 +285,11 @@ extension AuthServiceExtension on AuthService {
         return AuthResult.failure('잘못된 인증 데이터 형식입니다.');
       }
 
-      VerificationResult verificationResult;
-      String nextVerificationLevel;
-      // String verificationMethod;
-
-      // 토큰이 있는 경우 서버 API를 통해 파싱
-      if (dataMap.containsKey('token')) {
-        final tokenString = dataMap['token'] as String;
-        print('🔍 토큰 길이: ${tokenString.length}');
-
-        // 모바일 신분증의 경우 서버 API를 통해 토큰 파싱
-        if (authType == 'mobile_id') {
-          final tokenResult = await _parseOmniOneTokenViaAPI(tokenString);
-          if (tokenResult.isSuccess && tokenResult.data != null) {
-            final parsedData = tokenResult.data!;
-            verificationResult = VerificationResult(
-              did: parsedData['userDid'],
-              //FIXME
-              provider: _extractProviderFromAuthType(authType),
-
-              // provider: 'mobile_id',
-              name: parsedData['name'] ?? '인증됨',
-              phone: _formatPhoneNumber(
-                parsedData['telno'] ?? parsedData['phone'] ?? '',
-              ),
-              birthday: _formatBirthday(
-                parsedData['birth'] ?? parsedData['birthday'] ?? '',
-              ),
-              sex: parsedData['sex'] ?? '',
-            );
-            nextVerificationLevel = 'mobile_id';
-            // verificationMethod = 'mobile_id';
-
-            // verificationMethod = _getVerificationMethod(
-            //   authType,
-            //   _extractProviderFromAuthType(authType),
-            // );
-          } else {
-            print('❌ 서버 토큰 파싱 실패, 로컬 디코딩 시도');
-            final tokenData = _decodeJWTPayload(tokenString);
-            print(tokenData);
-            if (tokenData != null) {
-              verificationResult = VerificationResult(
-                did: tokenData['userDid'],
-                provider: _extractProviderFromAuthType(authType),
-                name: tokenData['name'] ?? '인증됨',
-                phone: _formatPhoneNumber(
-                  tokenData['telno'] ?? tokenData['phone'] ?? '',
-                ),
-                birthday: _formatBirthday(
-                  tokenData['birth'] ?? tokenData['birthday'] ?? '',
-                ),
-                sex: tokenData['sex'] ?? '',
-              );
-              nextVerificationLevel = 'mobile_id';
-
-              // verificationMethod = _getVerificationMethod(
-              //   authType,
-              //   _extractProviderFromAuthType(authType),
-              // );
-            } else {
-              return AuthResult.failure('토큰 파싱에 실패했습니다.');
-            }
-          }
-        } else {
-          // 간편인증의 경우 로컬에서 JWT 디코딩
-          final tokenData = _decodeJWTPayload(tokenString);
-          if (tokenData != null) {
-            verificationResult = VerificationResult(
-              did: tokenData['userDid'],
-              provider: tokenData['provider'] ?? tokenData['pid'] ?? 'unknown',
-              name: tokenData['name'] ?? '인증됨',
-              phone: _formatPhoneNumber(
-                tokenData['telno'] ?? tokenData['phone'] ?? '',
-              ),
-              birthday: _formatBirthday(
-                tokenData['birth'] ?? tokenData['birthday'] ?? '',
-              ),
-              sex: tokenData['sex'] ?? '',
-            );
-            nextVerificationLevel = 'general';
-
-            // verificationMethod = _getVerificationMethod(
-            //   authType,
-            //   tokenData['provider'] ?? tokenData['pid'],
-            // );
-          } else {
-            return AuthResult.failure('토큰 디코딩에 실패했습니다.');
-          }
-        }
-      } else {
-        // 토큰이 없는 경우 기본 데이터로 처리
-        verificationResult = VerificationResult(
-          did: dataMap['userDid'],
-          provider: dataMap['provider'] ?? authType,
-          name: dataMap['name'] ?? '인증됨',
-          phone: _formatPhoneNumber(dataMap['phone'] ?? ''),
-          birthday: _formatBirthday(dataMap['birthday'] ?? ''),
-          sex: dataMap['sex'] ?? '',
-        );
-        nextVerificationLevel = 'general';
-
-        // verificationMethod = _getVerificationMethod(
-        //   authType,
-        //   dataMap['provider'],
-        // );
-      }
-
-      print('✅ 인증 결과 파싱 완료');
-      // print('📋 인증 방법: $verificationMethod');
-      print(
-        '📋 사용자 정보: ${verificationResult.name}, ${verificationResult.provider}',
-      );
+      String verificationResult = dataMap['token'];
 
       return await recordIdentityVerification(
         userId: userId,
-        nextVerificationLevel: nextVerificationLevel,
+        nextVerificationLevel: authType,
         isSuccess: success,
         verificationResult: verificationResult,
       );

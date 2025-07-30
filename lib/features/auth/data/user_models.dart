@@ -229,7 +229,7 @@ class IdentityVerificationRequest {
   final int userId;
   final String nextVerificationLevel;
   final bool isSuccess;
-  final VerificationResult verificationResult;
+  final String? verificationResult;
 
   IdentityVerificationRequest({
     required this.userId,
@@ -243,7 +243,7 @@ class IdentityVerificationRequest {
       'user_id': userId,
       'next_verification_level': nextVerificationLevel,
       'is_success': isSuccess,
-      'verification_result': verificationResult.toJson(),
+      'verification_result': verificationResult.toString(),
     };
   }
 
