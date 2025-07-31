@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:we_ticket/features/transfer/presentation/screens/transfer_edit_dialogs.dart';
 import '../../../../core/constants/app_colors.dart';
 import 'transfer_registration_dialogs.dart';
-import 'transfer_edit_dialogs.dart';
 
 class TransferDialogs {
   // 양도 등록 방식 선택 팝업
   static void showTransferOptions(
     BuildContext context,
     Map<String, dynamic> ticket,
-    Function(Map<String, dynamic>, String, String?) onRegister,
   ) {
     showDialog(
       context: context,
@@ -130,7 +129,6 @@ class TransferDialogs {
                         context,
                         ticket,
                         'public',
-                        onRegister,
                       );
                     },
                     borderRadius: BorderRadius.circular(8),
@@ -201,7 +199,6 @@ class TransferDialogs {
                         context,
                         ticket,
                         'private',
-                        onRegister,
                       );
                     },
                     borderRadius: BorderRadius.circular(8),
@@ -413,13 +410,12 @@ class TransferDialogs {
   }
 
   // 양도 수정 팝업
-  // static void showEditTransferDialog(
-  //   BuildContext context,
-  //   Map<String, dynamic> ticket,
-  //   Function(Map<String, dynamic>) onUpdate,
-  // ) {
-  //   TransferEditDialogs.showEditTransferDialog(context, ticket, onUpdate);
-  // }
+  static void showEditTransferDialog(
+    BuildContext context,
+    int transferTicketId,
+  ) {
+    TransferEditDialogs.showEditTransferDialog(context, transferTicketId);
+  }
 
   static String _formatPrice(int price) {
     return price.toString().replaceAllMapped(

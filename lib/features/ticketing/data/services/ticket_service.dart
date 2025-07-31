@@ -117,9 +117,32 @@ class TicketService {
       if (response.statusCode == 201) {
         final ticketResponse = CreateTicketResponse.fromJson(response.data);
         print(
-          '✅ 티켓 생성 성공: ${ticketResponse.nftTicketId} (상태: ${ticketResponse.statusDisplay})',
+          '✅ 티켓 생성 성공: ${ticketResponse.ticketId} (상태: ${ticketResponse.statusDisplay})',
         );
         return ticketResponse;
+      } else {
+        throw Exception('티켓 생성 실패: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ 티켓 생성 오류: $e');
+      rethrow;
+    }
+  }
+
+  Future<String> postEntry(String ticketId, int gateId) async {
+    try {
+      print('📤 입장 API 호출 → ticketId: $ticketId, gateId: $gateId');
+
+      final response = await _dioClient.post(
+        ApiConstants.entryNFC,
+        data: {'ticket_id': ticketId, 'gate_id': gateId},
+      );
+
+      print('응답!!!1');
+      print(response);
+
+      if (response.statusCode == 200) {
+        return "200";
       } else {
         throw Exception('티켓 생성 실패: ${response.statusCode}');
       }

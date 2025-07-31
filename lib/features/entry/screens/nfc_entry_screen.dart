@@ -1,7 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
-import 'package:we_ticket/features/auth/presentation/providers/auth_provider.dart';
+import 'package:we_ticket/features/shared/providers/api_provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import 'package:flutter_nfc_kit/flutter_nfc_kit.dart';
 
 class NFCEntryScreen extends StatefulWidget {
   final String ticketId;
@@ -70,130 +74,83 @@ class _NFCEntryScreenState extends State<NFCEntryScreen>
       _errorMessage = null;
     });
 
-    // TODO: 실제 NFC 스캔 로직 구현
-    // 현재는 더미 데이터로 시뮬레이션
-    await Future.delayed(Duration(seconds: 2));
-
-    // NFC 태그를 감지했다고 가정하고 처리 시작
-    await _processNFCEntry();
-  }
-
-  Future<void> _processNFCEntry() async {
-    setState(() {
-      _isScanning = false;
-      _isProcessing = true;
-    });
-
-    _rotationController.repeat();
-
     try {
-      final authProvider = context.read<AuthProvider>();
-
-      // TODO: 백엔드 API 호출
-      // 1. ZKP 기반 DID 검증 (옴니원 영지식 인증)
-      final zkpResult = await _performZKPAuthentication(authProvider);
-
-      if (!zkpResult) {
-        throw Exception('신원 인증에 실패했습니다');
+      // NFC 사용 가능 여부 확인
+      var availability = await FlutterNfcKit.nfcAvailability;
+      if (availability != NFCAvailability.available) {
+        throw Exception('NFC가 지원되지 않는 기기입니다.');
       }
 
-      // 2. NFT 소유권 확인 (블록체인)
-      final nftResult = await _verifyNFTOwnership();
+      // NFC 태그 스캔 시작
+      NFCTag tag = await FlutterNfcKit.poll(
+        timeout: Duration(seconds: 10),
+        iosMultipleTagMessage: "여러 태그가 감지되었습니다",
+        iosAlertMessage: "NFC 태그를 스캔하세요",
+      );
 
-      if (!nftResult) {
-        throw Exception('티켓 소유권 확인에 실패했습니다');
+      print('✅ NFC 태그 감지: ${tag.id}');
+
+      // NDEF 데이터 읽기
+      var ndefRecords = await FlutterNfcKit.readNDEFRecords(cached: false);
+
+      if (ndefRecords.isEmpty) {
+        throw Exception('NFC 태그에 데이터가 없습니다.');
       }
 
-      // 3. 입장 승인 및 블록체인 기록
-      final entryResult = await _recordEntryOnBlockchain();
+      // 첫 번째 레코드에서 JSON 텍스트 데이터 추출
+      var record = ndefRecords.first;
+      var payload = record.payload!;
 
-      await Future.delayed(Duration(seconds: 2)); // 처리 시간 시뮬레이션
+      // 텍스트 레코드의 경우 앞 3바이트 제거 (언어 코드)
+      String jsonString = String.fromCharCodes(payload.sublist(3));
+
+      print('📖 NFC 데이터: $jsonString');
+
+      // JSON 파싱
+      final Map<String, dynamic> nfcData = jsonDecode(jsonString);
+      final sessionId = nfcData['sessionId'];
+      final gateId = nfcData['gateId'];
+
+      // 세션 ID 일치 여부 확인
+      //FIXME : 세션 id 읽을 수 있도록 앞선 api에서 수정 필요ㄴ
+      // print('티켓 데이터:  ${widget.ticketData}');
+      // if (sessionId != widget.ticketData['sessionId']) {
+      //   throw Exception('세션 ID가 일치하지 않습니다.');
+      // }
+
+      // NFC 세션 종료
+      await FlutterNfcKit.finish();
+
+      final apiProvider = context.read<ApiProvider>();
+      final success =
+          await apiProvider.apiService.ticket.postEntry(
+            widget.ticketId,
+            gateId,
+          ) ==
+          "200";
 
       setState(() {
-        _entryResult = entryResult;
-        _isProcessing = false;
+        _isScanning = false;
+        _entryResult = success;
       });
 
-      _rotationController.stop();
-
-      if (entryResult) {
+      if (success) {
         _showSuccessDialog();
       }
     } catch (e) {
-      print('❌ NFC 입장 처리 오류: $e');
+      print('❌ NFC 스캔 오류: $e');
       setState(() {
         _errorMessage = e.toString();
         _entryResult = false;
-        _isProcessing = false;
+        _isScanning = false;
       });
-      _rotationController.stop();
+
+      try {
+        await FlutterNfcKit.finish(iosErrorMessage: '스캔 실패');
+      } catch (finishError) {
+        print('NFC 세션 종료 오류: $finishError');
+      }
     }
-  }
-
-  /// TODO: 백엔드 API - ZKP 기반 DID 검증 (옴니원 영지식 인증)
-  Future<bool> _performZKPAuthentication(AuthProvider authProvider) async {
-    // 옴니원 영지식 증명 API 호출
-    // 개인정보 노출 없이 신원 확인
-    print('🔐 ZKP 인증 시작 - 사용자: ${authProvider.userName}');
-
-    final requestData = {
-      'user_id': authProvider.userId,
-      'did_type': 'mobile_id',
-      'auth_level': authProvider.currentUserAuthLevel,
-      'ticket_id': widget.ticketId,
-      'timestamp': DateTime.now().toIso8601String(),
-    };
-
-    print('📤 ZKP 인증 요청: $requestData');
-
-    // 실제 구현시:
-    // final response = await apiService.verifyZKP(requestData);
-    // return response.isSuccess;
-
-    await Future.delayed(Duration(milliseconds: 800)); // 시뮬레이션
-    return true; // 더미 응답
-  }
-
-  /// TODO: 백엔드 API - NFT 소유권 확인
-  Future<bool> _verifyNFTOwnership() async {
-    print('🎫 NFT 소유권 확인 시작');
-
-    final requestData = {
-      'ticket_id': widget.ticketId,
-      'user_id': context.read<AuthProvider>().userId,
-      'blockchain_address': 'dummy_address', // 실제 블록체인 주소
-    };
-
-    print('📤 NFT 소유권 확인 요청: $requestData');
-
-    // 실제 구현시:
-    // final response = await blockchainService.verifyNFTOwnership(requestData);
-    // return response.isOwner;
-
-    await Future.delayed(Duration(milliseconds: 600)); // 시뮬레이션
-    return true; // 더미 응답
-  }
-
-  /// TODO: 백엔드 API - 입장 기록 블록체인 저장
-  Future<bool> _recordEntryOnBlockchain() async {
-    print('⛓️ 블록체인 입장 기록 저장 시작');
-
-    final requestData = {
-      'ticket_id': widget.ticketId,
-      'user_id': context.read<AuthProvider>().userId,
-      'entry_method': 'nfc',
-      'venue_location': widget.ticketData['venue'],
-      'entry_timestamp': DateTime.now().toIso8601String(),
-    };
-
-    print('📤 블록체인 기록 요청: $requestData');
-
-    // 실제 구현시:
-    // final response = await blockchainService.recordEntry(requestData);
-    // return response.isSuccess;
-
-    await Future.delayed(Duration(milliseconds: 1000)); // 시뮬레이션
-    return true; // 더미 응답
   }
 
   void _showSuccessDialog() {
@@ -206,7 +163,7 @@ class _NFCEntryScreenState extends State<NFCEntryScreen>
           children: [
             Icon(Icons.check_circle, color: AppColors.success, size: 28),
             SizedBox(width: 12),
-            Text('입장 완료!'),
+            Text('입장 게이트 인증을 완료해주세요!'),
           ],
         ),
         content: Column(

@@ -16,14 +16,14 @@ class ApiConstants {
       '/tickets/performance/{performance_id}/session/{performance_session_id}/seats/';
   static const String seatLayout =
       '/tickets/performance/{performance_id}/session/{performance_session_id}/zone/{seat_zone}/layout/';
+
   static const String createTicket = '/tickets/create/';
+  static const String entryNFC = '/tickets/gate-entry-start/';
 
   // Transfer
   static const String transferTicketList = '/transfers/ticket-list/';
   static const String transferTicketDetail =
       '/transfers/ticket-detail/{transfer_ticket_id}/';
-  static const String privateTransferDetail =
-      '/transfers/private-ticket-detail/';
   static const String uniqueCodeLookup = '/transfers/unique-code-lookup/';
   static const String uniqueCodeRegeneration =
       '/transfers/unique-code-regeneration/';
@@ -31,8 +31,14 @@ class ApiConstants {
       '/transfers/my-ticket-list/registered/';
   static const String myTransferableTickets =
       '/transfers/my-ticket-list/transferable/';
-  static const String transferIdentityVerificationRecord =
-      '/transfers/identity-verification-record/';
+  static const String transferTicketRegitster =
+      "/transfers/transfer-ticket-register/";
+  static const String transferTicketTogglePublic =
+      '/transfers/transfer-ticket-toggle-public/';
+  static const String transferTicketCancel =
+      '/transfers/transfer-ticket-cancel/';
+  static const String lookupPrivateTicket = '/transfers/private-ticket-lookup/';
+  static const String processTransfer = '/transfers/transfer-process/';
 
   // My Page
   static const String myTickets = '/tickets/my-page/owned-ticket-list/';

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:we_ticket/features/contents/presentation/screens/dashboard_screen.dart';
 import 'package:we_ticket/features/auth/presentation/providers/auth_provider.dart';
@@ -33,7 +34,22 @@ class MyApp extends StatelessWidget {
               TransferProvider(apiProvider.apiService),
         ),
       ],
-      child: MaterialApp(title: 'WE-Ticket', home: MainApp()),
+      child: MaterialApp(
+        title: 'WE-Ticket',
+
+        localizationsDelegates: [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: [
+          Locale('ko', 'KR'), // 한국어
+          Locale('en', 'US'), // 영어
+        ],
+        locale: Locale('ko', 'KR'), // 기본 로케일을 한국어로 설정
+
+        home: MainApp(),
+      ),
     );
   }
 }

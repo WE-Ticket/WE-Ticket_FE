@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:we_ticket/features/ticketing/data/models/patment_data.dart';
 import 'package:we_ticket/features/ticketing/presentation/screens/payment_webview_screen.dart';
 import '../../../shared/providers/api_provider.dart';
 import '../../data/models/ticket_models.dart';
@@ -1024,7 +1025,6 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
     );
   }
 
-  //FIXME shared widget으로 분리 가능할 듯
   Widget _buildNextButton() {
     final canProceed = _selectedSeatId != null && _currentSeatLayout != null;
 
@@ -1147,25 +1147,22 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
     final selectedZoneInfo = _getZoneInfo(_selectedZone!);
     if (selectedZoneInfo == null) return;
 
-    final paymentData = {
-      'paymentType': 'ticketing',
-
-      // 기본 정보
-      'concertInfo': widget.data['concertInfo'] ?? {},
-      'selectedSession': widget.data['selectedSession'] ?? {},
-
-      // API에서 받은 실제 데이터
-      'performanceId': _performanceId,
-      'performanceSessionId': _sessionId,
-      'sessionSeatInfo': {
+    // 새로운 PaymentData 모델 사용
+    final paymentData = TicketingPaymentData(
+      merchantUid: 'TKT_${DateTime.now().millisecondsSinceEpoch}',
+      amount: selectedZoneInfo.price,
+      concertInfo: widget.data['concertInfo'] ?? {},
+      selectedSession: widget.data['selectedSession'] ?? {},
+      performanceId: _performanceId,
+      performanceSessionId: _sessionId,
+      sessionSeatInfo: {
         'title': _sessionSeatInfo!.title,
         'performerName': _sessionSeatInfo!.performerName,
         'venueName': _sessionSeatInfo!.venueName,
         'sessionDatetime': _sessionSeatInfo!.sessionDatetime,
       },
-
-      'selectedZone': _selectedZone,
-      'selectedSeat': {
+      selectedZone: _selectedZone!,
+      selectedSeat: {
         'seatId': selectedSeat.seatId,
         'seatNumber': selectedSeat.seatNumber, // A1, B2 형태
         'seatRow': selectedSeat.seatRow, // A, B, C...
@@ -1173,20 +1170,16 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
         'status': selectedSeat.reservationStatus,
         'zone': _selectedZone,
       },
-
-      // 가격 정보
-      'seatGrade': selectedZoneInfo.seatGrade,
-      'price': selectedZoneInfo.price,
-      'priceDisplay': selectedZoneInfo.priceDisplay,
-
-      // 좌석 배치 정보
-      'seatLayout': {
+      seatGrade: selectedZoneInfo.seatGrade,
+      price: selectedZoneInfo.price,
+      priceDisplay: selectedZoneInfo.priceDisplay,
+      seatLayout: {
         'maxRow': _currentSeatLayout!.maxRow,
         'maxCol': _currentSeatLayout!.maxCol,
         'totalSeats': _currentSeatLayout!.totalSeats,
         'availableSeats': _currentSeatLayout!.availableSeatsCount,
       },
-    };
+    );
 
     Navigator.push(
       context,

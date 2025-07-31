@@ -3,9 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:we_ticket/features/transfer/presentation/screens/my_transfer_manage_screen.dart.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../auth/presentation/providers/auth_guard.dart';
-import '../../../shared/providers/api_provider.dart';
 import '../providers/transfer_provider.dart';
-import '../../../transfer/data/models/transfer_models.dart';
+import '../../data/transfer_models.dart';
 import 'transfer_detail_screen.dart';
 import 'private_transfer_screen.dart';
 

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:we_ticket/features/auth/presentation/providers/auth_guard.dart';
 import 'package:we_ticket/features/ticketing/presentation/screens/schedul_selection_screen.dart.dart';
 import 'package:we_ticket/features/shared/providers/api_provider.dart';
 import 'package:we_ticket/features/contents/data/performance_models.dart';
 import 'package:we_ticket/features/transfer/presentation/screens/transfer_market_screen.dart';
 import '../../../../core/constants/app_colors.dart';
+import 'package:intl/intl.dart';
 
 class ConcertDetailScreen extends StatefulWidget {
   final int performanceId;
@@ -203,24 +205,22 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
 
                         SizedBox(height: 20),
 
-                        if (_performanceDetail?.isTicketOpen == false)
-                          Text(
-                            '티켓 오픈 예정일 : ${_performanceDetail!.ticketOpenDatetime}',
-                            style: TextStyle(
-                              fontSize: 18,
-                              color: AppColors.warning,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-
-                        SizedBox(height: 20),
+                        if (!_performanceDetail!.isTicketOpen) ...[
+                          _buildTicketOpenInfoSection(),
+                          SizedBox(height: 20),
+                        ],
 
                         _buildDetailInfoCard(),
 
                         SizedBox(height: 20),
 
+                        // 공연 세션 정보
+                        _buildSessionInfoSection(),
+
+                        SizedBox(height: 20),
+
                         Text(
-                          '태그',
+                          '# 태그',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -263,6 +263,7 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
         child: SafeArea(
           child: Row(
             children: [
+              // 양도 마켓 버튼
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () {
@@ -297,28 +298,37 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
 
               SizedBox(width: 12),
 
-              // 예매 버튼
+              // 예매 버튼 - AuthGuard 적용
               Expanded(
                 flex: 2,
                 child: ElevatedButton(
                   onPressed: _getStatus() == 'available'
                       ? () {
-                          final Map<String, dynamic> _performanceInfo = {
-                            'performance_id': _performanceDetail!.performanceId,
-                            'title': _performanceDetail?.title ?? '제목 없음',
-                            'performer_name':
-                                _performanceDetail?.performerName ?? '미정',
-                            'venue_name':
-                                _performanceDetail?.venueName ?? '장소 미정',
-                            'main_image': _performanceDetail?.mainImage,
-                          };
-                          Navigator.push(
+                          // AuthGuard를 사용하여 로그인 + 인증 레벨 확인
+                          AuthGuard.requireAuthForTicketing(
                             context,
-                            MaterialPageRoute(
-                              builder: (_) => ScheduleSelectionScreen(
-                                performanceInfo: _performanceInfo,
-                              ),
-                            ),
+                            onAuthenticated: () {
+                              // 인증 완료 후 예매 진행
+                              final Map<String, dynamic> _performanceInfo = {
+                                'performance_id':
+                                    _performanceDetail!.performanceId,
+                                'title': _performanceDetail?.title ?? '제목 없음',
+                                'performer_name':
+                                    _performanceDetail?.performerName ?? '미정',
+                                'venue_name':
+                                    _performanceDetail?.venueName ?? '장소 미정',
+                                'main_image': _performanceDetail?.mainImage,
+                              };
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ScheduleSelectionScreen(
+                                    performanceInfo: _performanceInfo,
+                                  ),
+                                ),
+                              );
+                            },
+                            message: '안전한 티켓 예매를 위해 로그인과 본인 인증이 필요합니다.',
                           );
                         }
                       : null,
@@ -413,6 +423,29 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
           : '장소 미정';
     }
     return '장소 미정';
+  }
+
+  // 티켓 오픈 일시 정보
+  String _getTicketOpenDateTime() {
+    if (_performanceDetail != null) {
+      return _performanceDetail!.ticketOpenDatetime ?? '';
+    }
+    return '';
+  }
+
+  bool _getIsTicketOpen() {
+    if (_performanceDetail != null) {
+      return _performanceDetail!.isTicketOpen;
+    }
+    return false;
+  }
+
+  // 공연 세션 정보
+  List<String> _getSessions() {
+    if (_performanceDetail != null) {
+      return _performanceDetail!.sessionList ?? [];
+    }
+    return [];
   }
 
   List<String> _getTags() {
@@ -519,7 +552,11 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
             '${_performanceDetail?.startDate} ~ ${_performanceDetail?.endDate} ',
           ),
           Divider(color: AppColors.gray200, height: 24),
-          _buildDetailInfoRow(Icons.location_on, '공연장소', '${_getVenue()} '),
+          _buildDetailInfoRow(
+            Icons.location_on,
+            '공연장소',
+            '${_getVenue()}\n( ${_performanceDetail?.venueLocation} )',
+          ),
           Divider(color: AppColors.gray200, height: 24),
           _buildDetailInfoRow(Icons.local_offer, '가격', _getPrice()),
           Divider(color: AppColors.gray200, height: 24),
@@ -533,6 +570,255 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
         ],
       ),
     );
+  }
+
+  // 티켓 오픈 일시 섹션
+  Widget _buildTicketOpenInfoSection() {
+    final ticketOpenDateTime = _getTicketOpenDateTime();
+    final isTicketOpen = _getIsTicketOpen();
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.warning.withOpacity(0.3), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.schedule, size: 20, color: AppColors.warning),
+              SizedBox(width: 8),
+              Text(
+                '예매 오픈 예정',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.warning,
+                ),
+              ),
+            ],
+          ),
+          if (!isTicketOpen) ...[
+            SizedBox(height: 8),
+            Text(
+              _formatTicketOpenDateTime(_performanceDetail!.ticketOpenDatetime),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // 공연 세션 정보 섹션
+  Widget _buildSessionInfoSection() {
+    final sessions = _getSessions();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.event_note, size: 20, color: AppColors.primary),
+            SizedBox(width: 8),
+            Text(
+              '공연 회차',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            SizedBox(width: 8),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '${sessions.length}회차',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 12),
+
+        if (sessions.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.gray100,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              children: [
+                Icon(Icons.event_busy, size: 32, color: AppColors.gray400),
+                SizedBox(height: 8),
+                Text(
+                  '공연 회차 정보가 아직 없습니다',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.gray500,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.gray50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.gray200),
+            ),
+            child: Column(
+              children: sessions.asMap().entries.map((entry) {
+                final index = entry.key;
+                final session = entry.value;
+                final isLast = index == sessions.length - 1;
+
+                return Container(
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    border: isLast
+                        ? null
+                        : Border(
+                            bottom: BorderSide(
+                              color: AppColors.gray200,
+                              width: 1,
+                            ),
+                          ),
+                  ),
+                  child: _buildSessionItem(session, index + 1),
+                );
+              }).toList(),
+            ),
+          ),
+      ],
+    );
+  }
+
+  String _formatTicketOpenDateTime(String? dateTimeString) {
+    if (dateTimeString == null || dateTimeString.isEmpty) {
+      return '미정';
+    }
+
+    try {
+      // String을 DateTime으로 파싱
+      final DateTime dateTime = DateTime.parse(
+        dateTimeString.replaceAll(' ', 'T'),
+      );
+
+      // 한국어 포맷으로 변환
+      return DateFormat('M월 d일 (E) HH:mm', 'ko_KR').format(dateTime);
+    } catch (e) {
+      // 파싱 실패 시 원본 문자열 반환
+      print('날짜 파싱 실패: $e');
+      return dateTimeString;
+    }
+  }
+
+  Widget _buildSessionItem(String sessionDateTime, int sessionNumber) {
+    final DateTime? dateTime = _parseDateTime(sessionDateTime);
+
+    return Row(
+      children: [
+        Container(
+          width: 16,
+          height: 16,
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Center(
+            child: Text(
+              '$sessionNumber',
+              style: TextStyle(
+                color: AppColors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+        SizedBox(width: 12),
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                dateTime != null
+                    //TODO 이거 처음 써봄. 정리하기
+                    ? DateFormat('M월 d일 (E)', 'ko_KR').format(dateTime)
+                    : _extractDate(sessionDateTime),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              SizedBox(width: 12),
+
+              Text(
+                dateTime != null
+                    ? DateFormat('HH:mm').format(dateTime)
+                    : _extractTime(sessionDateTime),
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // 날짜/시간 파싱 헬퍼 메서드들
+  DateTime? _parseDateTime(String dateTimeString) {
+    try {
+      return DateTime.parse(dateTimeString.replaceAll(' ', 'T'));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  String _extractDate(String dateTimeString) {
+    try {
+      final date = dateTimeString.split(' ')[0];
+      final parts = date.split('-');
+      if (parts.length >= 3) {
+        return '${parts[1]}월 ${parts[2]}일';
+      }
+    } catch (e) {}
+    return dateTimeString.split(' ')[0];
+  }
+
+  String _extractTime(String dateTimeString) {
+    try {
+      final time = dateTimeString.split(' ')[1];
+      return time.substring(0, 5); // HH:MM 형태로 자르기
+    } catch (e) {
+      return dateTimeString;
+    }
   }
 
   Widget _buildDetailInfoRow(IconData icon, String label, String value) {

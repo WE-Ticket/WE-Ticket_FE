@@ -1,114 +1,169 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:we_ticket/features/shared/providers/api_provider.dart';
+import 'package:we_ticket/features/transfer/data/transfer_service.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../providers/transfer_provider.dart';
-import '../../../transfer/data/models/transfer_models.dart';
+import '../../data/transfer_models.dart';
 
 class TransferEditDialogs {
   // 양도 수정 메인 팝업
   static void showEditTransferDialog(
     BuildContext context,
-    MyTransferTicket ticket,
-    Function(MyTransferTicket) onUpdate,
+    int transferTicketId,
   ) {
     showDialog(
       context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        child: Container(
-          width: MediaQuery.of(context).size.width * 0.9,
-          padding: EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // 헤더
-              Row(
+      builder: (context) => Consumer<TransferProvider>(
+        builder: (context, transferProvider, child) {
+          // 현재 티켓 정보 찾기
+          MyTransferTicket? ticket;
+          if (transferProvider.myRegisteredTickets != null) {
+            try {
+              ticket = transferProvider.myRegisteredTickets!.firstWhere(
+                (t) => t.transferTicketId == transferTicketId,
+              );
+            } catch (e) {
+              // 티켓을 찾을 수 없는 경우
+            }
+          }
+
+          if (ticket == null) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Container(
+                padding: EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.error, color: AppColors.error, size: 48),
+                    SizedBox(height: 16),
+                    Text(
+                      '티켓 정보를 찾을 수 없습니다',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text('확인'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Container(
+              width: MediaQuery.of(context).size.width * 0.9,
+              padding: EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.edit, color: AppColors.primary, size: 24),
-                  SizedBox(width: 8),
+                  // 헤더
+                  Row(
+                    children: [
+                      Icon(Icons.edit, color: AppColors.primary, size: 24),
+                      SizedBox(width: 8),
+                      Text(
+                        '양도 정보 수정',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      Spacer(),
+                      IconButton(
+                        icon: Icon(Icons.close, color: AppColors.textSecondary),
+                        onPressed: () => Navigator.pop(context),
+                        padding: EdgeInsets.zero,
+                        constraints: BoxConstraints(
+                          minWidth: 24,
+                          minHeight: 24,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  SizedBox(height: 20),
+
+                  // 현재 양도 정보
+                  _buildCurrentTransferInfo(ticket),
+
+                  SizedBox(height: 20),
+
+                  // 수정 가능한 옵션들
                   Text(
-                    '양도 정보 수정',
+                    '수정할 항목을 선택하세요',
                     style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
+                      fontSize: 14,
+                      color: AppColors.textSecondary,
                     ),
                   ),
-                  Spacer(),
-                  IconButton(
-                    icon: Icon(Icons.close, color: AppColors.textSecondary),
-                    onPressed: () => Navigator.pop(context),
-                    padding: EdgeInsets.zero,
-                    constraints: BoxConstraints(minWidth: 24, minHeight: 24),
+
+                  SizedBox(height: 12),
+
+                  // 양도 방식 변경 (진행 중이 아닐 때만)
+                  if (ticket.canCancel)
+                    _buildEditOption(
+                      context,
+                      icon: Icons.swap_horiz,
+                      title: '양도 방식 변경',
+                      color: AppColors.primary,
+                      onTap: () {
+                        Navigator.pop(context);
+                        showChangeTransferTypeDialog(context, ticket!);
+                      },
+                    ),
+
+                  if (!ticket.isPublicTransfer && ticket.canCancel) ...[
+                    SizedBox(height: 8),
+                    // 고유 번호 재생성
+                    _buildEditOption(
+                      context,
+                      icon: Icons.refresh,
+                      title: '고유 번호 재생성',
+                      color: AppColors.secondary,
+                      onTap: () {
+                        Navigator.pop(context);
+                        showRegenerateCodeDialog(context, ticket!);
+                      },
+                    ),
+                  ],
+
+                  SizedBox(height: 20),
+
+                  // 취소 버튼
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.textSecondary,
+                        side: BorderSide(color: AppColors.border),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: Text('취소'),
+                    ),
                   ),
                 ],
               ),
-
-              SizedBox(height: 20),
-
-              // 현재 양도 정보
-              _buildCurrentTransferInfo(ticket),
-
-              SizedBox(height: 20),
-
-              // 수정 가능한 옵션들
-              Text(
-                '수정할 항목을 선택하세요',
-                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-              ),
-
-              SizedBox(height: 12),
-
-              // 양도 방식 변경 (진행 중이 아닐 때만)
-              if (ticket.canCancel)
-                _buildEditOption(
-                  context,
-                  icon: Icons.swap_horiz,
-                  title: '양도 방식 변경',
-                  color: AppColors.primary,
-                  onTap: () {
-                    Navigator.pop(context);
-                    showChangeTransferTypeDialog(context, ticket, onUpdate);
-                  },
-                ),
-
-              if (!ticket.isPublicTransfer && ticket.canCancel) ...[
-                SizedBox(height: 8),
-                // 고유 번호 재생성
-                _buildEditOption(
-                  context,
-                  icon: Icons.refresh,
-                  title: '고유 번호 재생성',
-                  color: AppColors.secondary,
-                  onTap: () {
-                    Navigator.pop(context);
-                    showRegenerateCodeDialog(context, ticket, onUpdate);
-                  },
-                ),
-              ],
-
-              SizedBox(height: 20),
-
-              // 취소 버튼
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.textSecondary,
-                    side: BorderSide(color: AppColors.border),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    padding: EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: Text('취소'),
-                ),
-              ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -223,7 +278,6 @@ class TransferEditDialogs {
   static void showChangeTransferTypeDialog(
     BuildContext context,
     MyTransferTicket ticket,
-    Function(MyTransferTicket) onUpdate,
   ) {
     bool currentIsPublic = ticket.isPublicTransfer;
     bool newIsPublic = !currentIsPublic;
@@ -291,7 +345,6 @@ class TransferEditDialogs {
                       newIsPublic,
                       newGeneratedCode,
                       ticket,
-                      onUpdate,
                     ),
                   ] else ...[
                     _buildChangeConfirmationState(
@@ -304,27 +357,26 @@ class TransferEditDialogs {
                         });
 
                         try {
-                          // final transferProvider = Provider.of<TransferProvider>(
-                          //   context,
-                          //   listen: false,
-                          // );
+                          final apiProvider = context.read<ApiProvider>();
+                          final transferService =
+                              apiProvider.apiService.transfer;
 
-                          // print('🔄 양도 방식 변경 API 호출 시작');
+                          print('🔄 양도 방식 변경 API 호출 시작');
 
-                          // final result = await transferProvider.toggleTransferType(
-                          //   ticket.transferTicketId,
-                          // );
+                          final result = await transferService
+                              .toggleTransferType(ticket.transferTicketId);
 
-                          // String? generatedCode;
-                          // if (result != null && result.containsKey('unique_code')) {
-                          //   generatedCode = result['unique_code'];
-                          // }
+                          String? generatedCode;
+                          if (result != null &&
+                              result.containsKey('unique_code')) {
+                            generatedCode = result['unique_code'];
+                          }
 
-                          // setState(() {
-                          //   isLoading = false;
-                          //   isCompleted = true;
-                          //   newGeneratedCode = generatedCode;
-                          // });
+                          setState(() {
+                            isLoading = false;
+                            isCompleted = true;
+                            newGeneratedCode = generatedCode;
+                          });
 
                           print('✅ 양도 방식 변경 완료');
                         } catch (e) {
@@ -357,7 +409,6 @@ class TransferEditDialogs {
   static void showRegenerateCodeDialog(
     BuildContext context,
     MyTransferTicket ticket,
-    Function(MyTransferTicket) onUpdate,
   ) {
     showDialog(
       context: context,
@@ -413,12 +464,7 @@ class TransferEditDialogs {
                   if (isLoading) ...[
                     _buildLoadingState('새로운 고유 번호를 생성하고 있습니다...'),
                   ] else if (isCompleted && newCode != null) ...[
-                    _buildRegenerateCompletedState(
-                      context,
-                      ticket,
-                      newCode!,
-                      onUpdate,
-                    ),
+                    _buildRegenerateCompletedState(context, ticket, newCode!),
                   ] else ...[
                     _buildRegenerateConfirmationState(
                       context,
@@ -643,7 +689,6 @@ class TransferEditDialogs {
     bool newIsPublic,
     String? newGeneratedCode,
     MyTransferTicket ticket,
-    Function(MyTransferTicket) onUpdate,
   ) {
     return Column(
       children: [
@@ -709,6 +754,12 @@ class TransferEditDialogs {
                   backgroundColor: AppColors.success,
                 ),
               );
+              // 데이터 새로고침
+              final transferProvider = Provider.of<TransferProvider>(
+                context,
+                listen: false,
+              );
+              transferProvider.refreshData(userId: 1); // TODO: 실제 사용자 ID로 변경
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
@@ -839,7 +890,6 @@ class TransferEditDialogs {
     BuildContext context,
     MyTransferTicket ticket,
     String newCode,
-    Function(MyTransferTicket) onUpdate,
   ) {
     return Column(
       children: [
@@ -938,7 +988,12 @@ class TransferEditDialogs {
                   backgroundColor: AppColors.success,
                 ),
               );
-              // 데이터 새로고침을 위해 상위에서 처리
+              // 데이터 새로고침
+              final transferProvider = Provider.of<TransferProvider>(
+                context,
+                listen: false,
+              );
+              transferProvider.refreshData(userId: 1); // TODO: 실제 사용자 ID로 변경
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,

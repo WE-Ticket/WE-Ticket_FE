@@ -209,21 +209,23 @@ class AuthResult<T> {
 }
 
 //FIXME
-/// AuthService Extension - OmniOne 인증 처리 (수정된 버전)
+/// AuthService Extension - OmniOne 인증 처리
 extension AuthServiceExtension on AuthService {
   /// 본인인증 결과 기록
   Future<AuthResult<IdentityVerificationResponse>> recordIdentityVerification({
     required int userId,
-    required String verificationMethod,
+    required String nextVerificationLevel,
     required bool isSuccess,
-    required VerificationResult verificationResult,
+    required String verificationResult,
   }) async {
     try {
-      print('🔐 본인인증 결과 기록 시작 (사용자 ID: $userId, 방법: $verificationMethod)');
+      print(
+        '🔐 본인인증 결과 기록 시작 (사용자 ID: $userId, 다음 Auth level: $nextVerificationLevel)',
+      );
 
       final request = IdentityVerificationRequest(
         userId: userId,
-        verificationMethod: verificationMethod,
+        nextVerificationLevel: nextVerificationLevel,
         isSuccess: isSuccess,
         verificationResult: verificationResult,
       );
@@ -250,7 +252,7 @@ extension AuthServiceExtension on AuthService {
     }
   }
 
-  /// OmniOne CX 인증 결과 처리 (수정된 버전)
+  /// OmniOne CX 인증 결과 처리
   Future<AuthResult<IdentityVerificationResponse>> processOmniOneResult({
     required int userId,
     required Map<String, dynamic> omniOneResult,
@@ -266,6 +268,13 @@ extension AuthServiceExtension on AuthService {
 
       if (!success) {
         return AuthResult.failure('인증이 실패했습니다.');
+      }
+      final String nextVerificationLevel;
+      switch (authType) {
+        case 'simple':
+          nextVerificationLevel = "general";
+        default:
+          nextVerificationLevel = 'mobile_id';
       }
 
       // rawData가 String인 경우 JSON 파싱
@@ -283,114 +292,11 @@ extension AuthServiceExtension on AuthService {
         return AuthResult.failure('잘못된 인증 데이터 형식입니다.');
       }
 
-      VerificationResult verificationResult;
-      String verificationMethod;
-
-      // 토큰이 있는 경우 서버 API를 통해 파싱
-      if (dataMap.containsKey('token')) {
-        final tokenString = dataMap['token'] as String;
-        print('🔍 토큰 길이: ${tokenString.length}');
-
-        // 모바일 신분증의 경우 서버 API를 통해 토큰 파싱
-        if (authType == 'mobile_id') {
-          final tokenResult = await _parseOmniOneTokenViaAPI(tokenString);
-          if (tokenResult.isSuccess && tokenResult.data != null) {
-            final parsedData = tokenResult.data!;
-            verificationResult = VerificationResult(
-              did: parsedData['userDid'],
-              //FIXME
-              provider: _extractProviderFromAuthType(authType),
-
-              // provider: 'mobile_id',
-              name: parsedData['name'] ?? '인증됨',
-              phone: _formatPhoneNumber(
-                parsedData['telno'] ?? parsedData['phone'] ?? '',
-              ),
-              birthday: _formatBirthday(
-                parsedData['birth'] ?? parsedData['birthday'] ?? '',
-              ),
-              sex: parsedData['sex'] ?? '',
-            );
-            // FIXME
-            verificationMethod = 'mobile_id';
-
-            // verificationMethod = _getVerificationMethod(
-            //   authType,
-            //   _extractProviderFromAuthType(authType),
-            // );
-          } else {
-            print('❌ 서버 토큰 파싱 실패, 로컬 디코딩 시도');
-            final tokenData = _decodeJWTPayload(tokenString);
-            if (tokenData != null) {
-              verificationResult = VerificationResult(
-                did: tokenData['userDid'],
-                provider: _extractProviderFromAuthType(authType),
-                name: tokenData['name'] ?? '인증됨',
-                phone: _formatPhoneNumber(
-                  tokenData['telno'] ?? tokenData['phone'] ?? '',
-                ),
-                birthday: _formatBirthday(
-                  tokenData['birth'] ?? tokenData['birthday'] ?? '',
-                ),
-                sex: tokenData['sex'] ?? '',
-              );
-              verificationMethod = _getVerificationMethod(
-                authType,
-                _extractProviderFromAuthType(authType),
-              );
-            } else {
-              return AuthResult.failure('토큰 파싱에 실패했습니다.');
-            }
-          }
-        } else {
-          // 간편인증의 경우 로컬에서 JWT 디코딩
-          final tokenData = _decodeJWTPayload(tokenString);
-          if (tokenData != null) {
-            verificationResult = VerificationResult(
-              did: tokenData['userDid'],
-              provider: tokenData['provider'] ?? tokenData['pid'] ?? 'unknown',
-              name: tokenData['name'] ?? '인증됨',
-              phone: _formatPhoneNumber(
-                tokenData['telno'] ?? tokenData['phone'] ?? '',
-              ),
-              birthday: _formatBirthday(
-                tokenData['birth'] ?? tokenData['birthday'] ?? '',
-              ),
-              sex: tokenData['sex'] ?? '',
-            );
-            verificationMethod = _getVerificationMethod(
-              authType,
-              tokenData['provider'] ?? tokenData['pid'],
-            );
-          } else {
-            return AuthResult.failure('토큰 디코딩에 실패했습니다.');
-          }
-        }
-      } else {
-        // 토큰이 없는 경우 기본 데이터로 처리
-        verificationResult = VerificationResult(
-          did: dataMap['userDid'],
-          provider: dataMap['provider'] ?? authType,
-          name: dataMap['name'] ?? '인증됨',
-          phone: _formatPhoneNumber(dataMap['phone'] ?? ''),
-          birthday: _formatBirthday(dataMap['birthday'] ?? ''),
-          sex: dataMap['sex'] ?? '',
-        );
-        verificationMethod = _getVerificationMethod(
-          authType,
-          dataMap['provider'],
-        );
-      }
-
-      print('✅ 인증 결과 파싱 완료');
-      print('📋 인증 방법: $verificationMethod');
-      print(
-        '📋 사용자 정보: ${verificationResult.name}, ${verificationResult.provider}',
-      );
+      String verificationResult = dataMap['token'];
 
       return await recordIdentityVerification(
         userId: userId,
-        verificationMethod: verificationMethod,
+        nextVerificationLevel: nextVerificationLevel,
         isSuccess: success,
         verificationResult: verificationResult,
       );

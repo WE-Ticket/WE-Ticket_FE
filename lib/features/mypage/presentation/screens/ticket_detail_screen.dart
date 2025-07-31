@@ -79,23 +79,6 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
 
   /// API 응답 데이터를 화면에서 사용하는 형식으로 변환
   Map<String, dynamic> _convertApiToLocalFormat(Map<String, dynamic> apiData) {
-    // API 응답 형식:
-    // {
-    //   "nft_ticket_id": "4444",
-    //   "performance_id": 2,
-    //   "performance_main_image": null,
-    //   "performance_title": "2025 aespa LIVE TOUR",
-    //   "performer_name": "aespa",
-    //   "session_datetime": "2025-08-29T09:00:00Z",
-    //   "venue_name": "올림픽 체조경기장",
-    //   "venue_location": "서울특별시 송파구 올림픽로 424",
-    //   "seat_number": "FLOOR층 4구역 16열 1번",
-    //   "seat_grade": "aeXIS석",
-    //   "seat_price": 170000,
-    //   "created_at": "2025-07-13T20:56:13.964549+09:00",
-    //   "transfer_history": []
-    // }
-
     try {
       final DateTime sessionDateTime = DateTime.parse(
         apiData['session_datetime'] ?? '2025-01-01T00:00:00Z',
@@ -107,9 +90,9 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
       final dday = sessionDateTime.difference(now).inDays;
 
       // 티켓 상태 결정 로직
-      String status = 'upcoming';
+      String status = 'pending';
       if (sessionDateTime.isBefore(now)) {
-        status = 'used';
+        status = 'expired';
       }
       // 양도 중인지는 별도 API나 필드가 필요할 수 있음
 
@@ -117,7 +100,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
         'id': apiData['nft_ticket_id'] ?? 'unknown',
         'performanceId': apiData['performance_id'] ?? 0,
         'title': apiData['performance_title'] ?? '제목 없음',
-        'artist': apiData['performer_name'] ?? '아티스트 미정',
+        'performerName': apiData['performer_name'] ?? '아티스트 미정',
         'date': _formatDate(sessionDateTime),
         'time': _formatTime(sessionDateTime),
         'venue': apiData['venue_name'] ?? '장소 미정',
@@ -140,7 +123,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
         'id': apiData['nft_ticket_id'] ?? 'unknown',
         'performanceId': apiData['performance_id'] ?? 0,
         'title': apiData['performance_title'] ?? '제목 없음',
-        'artist': apiData['performer_name'] ?? '아티스트 미정',
+        'performerName': apiData['performer_name'] ?? '아티스트 미정',
         'date': '날짜 미정',
         'time': '시간 미정',
         'venue': apiData['venue_name'] ?? '장소 미정',
@@ -149,7 +132,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
         'seatGrade': apiData['seat_grade'] ?? '',
         'price': _formatPrice(apiData['seat_price']),
         'poster': _getSafeImageUrl(apiData['performance_main_image']),
-        'status': 'upcoming',
+        'status': 'pending',
         'dday': 0,
         'createdAt': '날짜 미정',
         'transferHistory': apiData['transfer_history'] ?? [],
@@ -313,7 +296,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
               ),
               IconButton(
                 icon: Icon(Icons.share, color: AppColors.white),
-                onPressed: () => _shareTicket(),
+                onPressed: () {},
               ),
             ],
             flexibleSpace: FlexibleSpaceBar(
@@ -465,7 +448,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
           ),
           SizedBox(height: 4),
           Text(
-            ticket['artist'] ?? '아티스트 미정',
+            ticket['performerName'] ?? '아티스트 미정',
             style: TextStyle(
               fontSize: 16,
               color: AppColors.primary,
@@ -568,17 +551,14 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
           _buildDetailRow(
             Icons.event_seat,
             '좌석 정보',
-            ticket['seat'] ?? '좌석 미정',
-            subtitle:
-                (ticket['seatGrade'] != null && ticket['seatGrade'].isNotEmpty)
-                ? '(${ticket['seatGrade']})'
-                : null,
+            '${ticket['seatGrade']} ${ticket['seatZone']}구역 ${ticket['seatNumber']}',
           ),
-          _buildDetailRow(
-            Icons.local_offer,
-            '티켓 가격',
-            ticket['price'] ?? '가격 정보 없음',
-          ),
+          //FIXME -> API 호출 방식 수정 필요
+          // _buildDetailRow(
+          //   Icons.local_offer,
+          //   '티켓 가격',
+          //   ticket['price'] ?? '가격 정보 없음',
+          // ),
         ],
       ),
     );
@@ -642,13 +622,14 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
       margin: EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         children: [
-          if (ticket['status'] == 'upcoming') ...[
+          if (ticket['status'] == 'pending') ...[
             // NFC 입장하기 버튼 (모바일 신분증 인증자만)
             Consumer<AuthProvider>(
               builder: (context, authProvider, child) {
                 final canUseNFC =
                     authProvider.currentUserAuthLevel == 'mobile_id' ||
                     authProvider.currentUserAuthLevel == 'mobile_id_totally';
+                // final canUseNFC = true;
 
                 return SizedBox(
                   width: double.infinity,
@@ -743,7 +724,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                 ),
               ),
             ),
-          ] else if (ticket['status'] == 'used') ...[
+          ] else if (ticket['status'] == 'completed') ...[
             // 사용 완료된 티켓
             Container(
               width: double.infinity,
@@ -945,11 +926,11 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   // 상태 관련 헬퍼 메서드들
   Color _getStatusColor() {
     switch (_ticketDetail?['status']) {
-      case 'upcoming':
+      case 'pending':
         return AppColors.success;
       case 'transferring':
         return AppColors.warning;
-      case 'used':
+      case 'completed':
         return AppColors.primary;
       default:
         return AppColors.gray400;
@@ -958,11 +939,11 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
 
   String _getStatusText() {
     switch (_ticketDetail?['status']) {
-      case 'upcoming':
+      case 'pending':
         return '입장 대기';
       case 'transferring':
         return '양도 중';
-      case 'used':
+      case 'completed':
         return '사용 완료';
       default:
         return '알 수 없음';
@@ -991,25 +972,5 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text('양도 관리 화면으로 이동합니다')));
-  }
-
-  void _shareTicket() {
-    // 티켓 공유 기능
-    final ticket = _ticketDetail!;
-    final shareText =
-        '''
-🎫 ${ticket['title'] ?? '제목 없음'}
-🎤 ${ticket['artist'] ?? '아티스트 미정'}
-📅 ${ticket['date'] ?? '날짜 미정'} ${ticket['time'] ?? '시간 미정'}
-📍 ${ticket['venue'] ?? '장소 미정'}
-💺 ${ticket['seat'] ?? '좌석 미정'}
-
-NFT 티켓 ID: ${ticket['id'] ?? 'unknown'}
-''';
-
-    Clipboard.setData(ClipboardData(text: shareText));
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('티켓 정보가 클립보드에 복사되었습니다')));
   }
 }

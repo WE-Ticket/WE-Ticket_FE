@@ -1,6 +1,6 @@
-import '../../../../core/services/dio_client.dart';
-import '../../../../core/constants/api_endpoints.dart';
-import '../models/transfer_models.dart';
+import '../../../core/services/dio_client.dart';
+import '../../../core/constants/api_endpoints.dart';
+import 'transfer_models.dart';
 
 /// 양도 마켓 관련 API 서비스
 class TransferService {
@@ -78,32 +78,6 @@ class TransferService {
     }
   }
 
-  /// 비공개 티켓 상세 정보 조회
-  /// POST /api/transfers/private-ticket-detail/
-  Future<TransferTicketDetail> getPrivateTransferDetail(
-    String uniqueCode,
-  ) async {
-    try {
-      print('🔐 비공개 양도 티켓 상세 조회 시작 (코드: ${uniqueCode.substring(0, 4)}...)');
-
-      final response = await _dioClient.post(
-        ApiConstants.privateTransferDetail,
-        data: {'temp_unique_code': uniqueCode},
-      );
-
-      if (response.statusCode == 200) {
-        final detail = TransferTicketDetail.fromJson(response.data);
-        print('✅ 비공개 양도 티켓 상세 조회 성공');
-        return detail;
-      } else {
-        throw Exception('비공개 양도 티켓 상세 조회 실패: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('❌ 비공개 양도 티켓 상세 조회 오류: $e');
-      rethrow;
-    }
-  }
-
   /// 고유번호 조회
   /// POST /api/transfers/unique-code-lookup/
   Future<TransferUniqueCode> getUniqueCode(int transferTicketId) async {
@@ -111,7 +85,7 @@ class TransferService {
       print('🔑 고유번호 조회 시작 (티켓 ID: $transferTicketId)');
 
       final response = await _dioClient.post(
-        ApiConstants.uniqueCodeLookup, // Path Parameter 없음, 그냥 POST body 사용
+        ApiConstants.uniqueCodeLookup,
         data: {'transfer_ticket_id': transferTicketId},
       );
 
@@ -135,8 +109,7 @@ class TransferService {
       print('🔄 고유번호 재발급 시작 (티켓 ID: $transferTicketId)');
 
       final response = await _dioClient.post(
-        ApiConstants
-            .uniqueCodeRegeneration, // Path Parameter 없음, 그냥 POST body 사용
+        ApiConstants.uniqueCodeRegeneration,
         data: {'transfer_ticket_id': transferTicketId},
       );
 
@@ -149,6 +122,75 @@ class TransferService {
       }
     } catch (e) {
       print('❌ 고유번호 재발급 오류 (티켓 ID: $transferTicketId): $e');
+      rethrow;
+    }
+  }
+
+  //고유 번호로 양도 티켓 id 조회
+  Future<int> lookupPrivateTicket(String code) async {
+    try {
+      print('고유번호로 조회 시작 (티켓 ID: $code)');
+
+      final response = await _dioClient.post(
+        ApiConstants.lookupPrivateTicket,
+        data: {"temp_unique_code": code},
+      );
+
+      if (response.statusCode == 200) {
+        final result = response.data;
+        print('비공개 티켓 id 조회: ${result["transfer_ticket_id"]}');
+        return result["transfer_ticket_id"];
+      } else {
+        throw Exception('티켓 조회 실패');
+      }
+    } catch (e) {
+      print('❌ 비공개 티켓 조회 오류: $e');
+      rethrow;
+    }
+  }
+
+  /// 양도 방식 변경 (공개/비공개 토글)
+  /// POST /api/transfers/transfer-ticket-toggle-public/
+  Future<Map<String, dynamic>> toggleTransferType(int transferTicketId) async {
+    try {
+      print('🔄 양도 방식 변경 시작 (티켓 ID: $transferTicketId)');
+
+      final response = await _dioClient.post(
+        ApiConstants.transferTicketTogglePublic,
+        data: {'transfer_ticket_id': transferTicketId},
+      );
+
+      if (response.statusCode == 200) {
+        print('✅ 양도 방식 변경 성공');
+        return response.data;
+      } else {
+        throw Exception('양도 방식 변경 실패: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ 양도 방식 변경 오류 (티켓 ID: $transferTicketId): $e');
+      rethrow;
+    }
+  }
+
+  /// 양도 취소
+  /// POST /api/transfers/transfer-ticket-cancel/
+  Future<Map<String, dynamic>> cancelTransfer(int transferTicketId) async {
+    try {
+      print('🚫 양도 취소 시작 (티켓 ID: $transferTicketId)');
+
+      final response = await _dioClient.post(
+        ApiConstants.transferTicketCancel,
+        data: {'transfer_ticket_id': transferTicketId},
+      );
+
+      if (response.statusCode == 200) {
+        print('✅ 양도 취소 성공');
+        return response.data;
+      } else {
+        throw Exception('양도 취소 실패: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ 양도 취소 오류 (티켓 ID: $transferTicketId): $e');
       rethrow;
     }
   }
@@ -223,6 +265,38 @@ class TransferService {
     }
   }
 
+  Future<Map<String, dynamic>> postTransferTicketRegister({
+    required String ticketId,
+    required bool isPublicTransfer,
+    int? transferTicketPrice,
+  }) async {
+    try {
+      final data = <String, dynamic>{
+        'ticket_id': ticketId,
+        "is_public_transfer": isPublicTransfer,
+      };
+      if (transferTicketPrice != null)
+        data['transfer_ticket_price'] = transferTicketPrice;
+
+      final response = await _dioClient.post(
+        ApiConstants.transferTicketRegitster,
+        data: data,
+      );
+
+      if (response.statusCode == 201) {
+        print('✅ 양도 티켓 등록 완료');
+
+        Map<String, dynamic> result = response.data;
+        return result;
+      } else {
+        throw Exception('양도 티켓 등록 실패: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ 양도 티켓 등로 오류(티켓 ID: $ticketId): $e');
+      rethrow;
+    }
+  }
+
   /// 공연별 양도 티켓 필터링 (로컬 처리)
   Future<List<TransferTicketItem>> getTransferTicketsByPerformance(
     int performanceId,
@@ -238,6 +312,37 @@ class TransferService {
       return transferList.results;
     } catch (e) {
       print('❌ 공연별 양도 티켓 필터링 오류: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> postProcessTransfer({
+    required int userId,
+    required int transferTicketId,
+  }) async {
+    try {
+      print('📋 양도 진행 시작 (사용자 ID: $userId, 양도 티켓 ID : $transferTicketId)');
+
+      final data = <String, dynamic>{
+        "transfer_ticket_id": transferTicketId,
+        "buyer_user_id": userId,
+      };
+
+      final response = await _dioClient.post(
+        ApiConstants.processTransfer,
+        data: data,
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> result = response.data;
+
+        print('✅ 양도 이행 성공');
+        return result;
+      } else {
+        throw Exception('양도 이행  실패: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ 양도 이행 오류 (사용자 ID: $userId): $e');
       rethrow;
     }
   }

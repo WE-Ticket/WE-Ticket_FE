@@ -349,36 +349,154 @@ class CreateTicketRequest {
   }
 }
 
-// FIXME 모델 위치 고민
 /// 티켓 생성 응답 모델
+/// 티켓 생성 응답 모델 (개선된 버전)
 class CreateTicketResponse {
-  final String nftTicketId;
+  // 기본 티켓 정보
+  final int ticketId;
   final String nftStatus;
+  final String? transactionHash;
+  final int nftTokenId;
 
-  CreateTicketResponse({required this.nftTicketId, required this.nftStatus});
+  // 공연 정보
+  final String performanceTitle;
+  final String performerName;
+  final String sessionDatetime;
+  final String venueName;
+
+  // 좌석 정보
+  final String seatZone;
+  final String seatRow;
+  final int seatColumn;
+  final String seatGrade;
+
+  // 블록체인 정보
+  final String contractAddress;
+  final String blockchainNetwork;
+  final String issuedAt;
+  final String verificationLevel;
+
+  CreateTicketResponse({
+    required this.ticketId,
+    required this.nftStatus,
+    this.transactionHash,
+    required this.nftTokenId,
+    required this.performanceTitle,
+    required this.performerName,
+    required this.sessionDatetime,
+    required this.venueName,
+    required this.seatZone,
+    required this.seatRow,
+    required this.seatColumn,
+    required this.seatGrade,
+    required this.contractAddress,
+    required this.blockchainNetwork,
+    required this.issuedAt,
+    required this.verificationLevel,
+  });
 
   factory CreateTicketResponse.fromJson(Map<String, dynamic> json) {
     return CreateTicketResponse(
-      nftTicketId: JsonParserUtils.parseString(json['nft_ticket_id']),
+      ticketId: JsonParserUtils.parseInt(json['ticket_id']),
       nftStatus: JsonParserUtils.parseString(json['nft_status']),
+      transactionHash: json['transaction_hash'],
+      nftTokenId: JsonParserUtils.parseInt(json['nft_token_id']),
+      performanceTitle: JsonParserUtils.parseString(json['performance_title']),
+      performerName: JsonParserUtils.parseString(json['performer_name']),
+      sessionDatetime: JsonParserUtils.parseString(json['session_datetime']),
+      venueName: JsonParserUtils.parseString(json['venue_name']),
+      seatZone: JsonParserUtils.parseString(json['seat_zone']),
+      seatRow: JsonParserUtils.parseString(json['seat_row']),
+      seatColumn: JsonParserUtils.parseInt(json['seat_column']),
+      seatGrade: JsonParserUtils.parseString(json['seat_grade']),
+      contractAddress: JsonParserUtils.parseString(json['contract_address']),
+      blockchainNetwork: JsonParserUtils.parseString(
+        json['blockchain_network'],
+      ),
+      issuedAt: JsonParserUtils.parseString(json['issued_at']),
+      verificationLevel: JsonParserUtils.parseString(
+        json['verification_level'],
+      ),
     );
   }
 
   // 편의 메서드들
   bool get isPending => nftStatus == 'pending';
-  bool get isCompleted => nftStatus == 'completed';
+  bool get isIssued => nftStatus == 'issued';
   bool get isFailed => nftStatus == 'failed';
 
   String get statusDisplay {
     switch (nftStatus) {
       case 'pending':
         return '발행 중';
-      case 'completed':
+      case 'issued':
         return '발행 완료';
       case 'failed':
         return '발행 실패';
       default:
         return nftStatus;
+    }
+  }
+
+  // Complete 화면용 데이터 변환
+  Map<String, dynamic> toCompleteScreenData() {
+    return {
+      // NFT 기본 정보
+      'ticketId': ticketId,
+      'nftStatus': nftStatus,
+      'tokenId': nftTokenId.toString(),
+      'transactionHash': transactionHash,
+      'contractAddress': contractAddress,
+      'blockchainNetwork': blockchainNetwork,
+      'issuedAt': issuedAt,
+      'verificationLevel': verificationLevel,
+      'type': 'ticketing',
+
+      // 공연 정보 (Complete 화면 형식에 맞게)
+      'concertInfo': {
+        'title': performanceTitle,
+        'artist': performerName,
+        'venue': venueName,
+      },
+      'performanceTitle': performanceTitle,
+      'performerName': performerName,
+      'venueName': venueName,
+
+      // 스케줄 정보
+      'selectedSchedule': {
+        'date': _formatDate(sessionDatetime),
+        'time': _formatTime(sessionDatetime),
+        'datetime': sessionDatetime,
+      },
+
+      // 좌석 정보 (Complete 화면 형식에 맞게)
+      'selectedSeat': {'row': seatRow, 'col': seatColumn},
+      'selectedZone': seatZone,
+      'seatGrade': seatGrade,
+      'seatInfo': {
+        'zone': seatZone,
+        'row': seatRow,
+        'column': seatColumn,
+        'grade': seatGrade,
+      },
+    };
+  }
+
+  String _formatDate(String datetime) {
+    try {
+      final dt = DateTime.parse(datetime);
+      return '${dt.year}.${dt.month.toString().padLeft(2, '0')}.${dt.day.toString().padLeft(2, '0')}';
+    } catch (e) {
+      return datetime.split(' ').first;
+    }
+  }
+
+  String _formatTime(String datetime) {
+    try {
+      final dt = DateTime.parse(datetime);
+      return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    } catch (e) {
+      return datetime.split(' ').last;
     }
   }
 }

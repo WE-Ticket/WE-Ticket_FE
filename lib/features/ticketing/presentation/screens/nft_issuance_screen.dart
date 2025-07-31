@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:we_ticket/features/ticketing/data/models/patment_data.dart';
 import 'package:we_ticket/features/ticketing/data/models/ticket_models.dart';
 import 'package:we_ticket/features/ticketing/data/services/ticket_service.dart';
 import 'package:we_ticket/features/ticketing/presentation/screens/nft_ticket_complete_screen.dart.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/services/dio_client.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../shared/providers/api_provider.dart';
 
 class NFTIssuanceScreen extends StatefulWidget {
-  final Map<String, dynamic> paymentData;
+  final PaymentData paymentData;
 
   const NFTIssuanceScreen({Key? key, required this.paymentData})
     : super(key: key);
@@ -34,28 +34,25 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
   @override
   void initState() {
     super.initState();
-    print('🎫 NFT 발행 화면 초기화');
-    print('📦 paymentData: ${widget.paymentData}');
+    print('🎫 NFT 발행/양도 화면 초기화');
+    print('📦 paymentData: ${widget.paymentData.toMap()}');
 
-    // initState에서는 context.read를 사용할 수 없으므로
-    // didChangeDependencies에서 초기화하도록 연기
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initServices();
       _initSteps();
       _initAnimations();
-      _startIssuanceProcess();
+      _startProcessing();
     });
   }
 
   void _initServices() {
-    // ApiProvider에서 이미 초기화된 서비스 사용
     final apiProvider = context.read<ApiProvider>();
     _ticketService = apiProvider.apiService.ticket;
   }
 
   void _initSteps() {
-    final paymentType = widget.paymentData['paymentType'] as String?;
-    if (paymentType == 'transfer') {
+    final isTransfer = widget.paymentData.paymentType == 'transfer';
+    if (isTransfer) {
       _steps = ['양도 요청 검증 중...', '소유권 이전 처리 중...', '블록체인 기록 중...', '양도 이행 완료!'];
     } else {
       _steps = ['결제 정보 검증 중...', 'NFT 티켓 생성 중...', '블록체인 등록 중...', '티켓 발행 완료!'];
@@ -82,11 +79,11 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
     );
   }
 
-  void _startIssuanceProcess() async {
+  void _startProcessing() async {
     try {
-      final paymentType = widget.paymentData['paymentType'] as String?;
+      final isTransfer = widget.paymentData.paymentType == 'transfer';
 
-      if (paymentType == 'transfer') {
+      if (isTransfer) {
         await _processTransfer();
       } else {
         await _processTicketing();
@@ -99,9 +96,10 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
 
   /// 티켓 발행 프로세스
   Future<void> _processTicketing() async {
+    final ticketData = widget.paymentData as TicketingPaymentData;
+
     // 1단계: 결제 정보 검증
     await _executeStep(0, () async {
-      // 결제 검증 로직 (실제로는 PG사 검증 API 호출)
       await Future.delayed(Duration(milliseconds: 1500));
       print('✅ 결제 검증 완료');
     });
@@ -109,7 +107,6 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
     // 2단계: NFT 티켓 생성 요청
     CreateTicketResponse? ticketResponse;
     await _executeStep(1, () async {
-      // 인증된 사용자 ID 가져오기
       final authProvider = context.read<AuthProvider>();
       final userId = authProvider.currentUserId;
 
@@ -117,32 +114,19 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
         throw Exception('로그인이 필요합니다. 다시 로그인해주세요.');
       }
 
-      // 안전한 타입 변환
-      final performanceSessionId = _safeParseInt(
-        widget.paymentData['performanceSessionId'],
-      );
-      final seatId = _safeParseInt(
-        widget.paymentData['selectedSeat']?['seatId'] ??
-            widget.paymentData['seatId'],
-      );
-
-      print(
-        '🔍 티켓 생성 요청 데이터: performanceSessionId=$performanceSessionId, seatId=$seatId, userId=$userId',
-      );
-
       final request = CreateTicketRequest(
-        performanceSessionId: performanceSessionId,
-        seatId: seatId,
+        performanceSessionId: ticketData.performanceSessionId,
+        seatId: _safeParseInt(ticketData.selectedSeat['seatId']),
         userId: userId,
       );
 
+      print('🔍 티켓 생성 요청: ${request}');
       ticketResponse = await _ticketService.createTicket(request);
-      print('✅ NFT 티켓 생성 요청 완료: ${ticketResponse?.nftTicketId}');
+      print('✅ NFT 티켓 생성 완료: ${ticketResponse?.ticketId}');
     });
 
     // 3단계: 블록체인 등록 처리
     await _executeStep(2, () async {
-      // 블록체인 처리 대기 (실제 상황에서는 더 오래 걸릴 수 있음)
       await Future.delayed(Duration(milliseconds: 2000));
       print('✅ 블록체인 등록 완료');
     });
@@ -153,23 +137,38 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
       print('✅ 티켓 발행 완료');
     });
 
-    // 완료 화면으로 이동
     await Future.delayed(Duration(milliseconds: 500));
     _navigateToCompleteScreen(ticketResponse);
   }
 
   /// 양도 이행 프로세스
   Future<void> _processTransfer() async {
+    final transferData = widget.paymentData as TransferPaymentData;
+
     // 1단계: 양도 요청 검증
     await _executeStep(0, () async {
       await Future.delayed(Duration(milliseconds: 1200));
       print('✅ 양도 요청 검증 완료');
     });
 
-    // 2단계: 소유권 이전 처리
+    // 2단계: 소유권 이전 처리 (실제 API 호출)
+    Map<String, dynamic>? transferResponse;
     await _executeStep(1, () async {
-      await Future.delayed(Duration(milliseconds: 1800));
-      print('✅ 소유권 이전 처리 완료');
+      try {
+        // 실제 양도 API 호출
+        final apiRequest = transferData.toTransferApiRequest();
+        print('🔍 양도 API 호출: $apiRequest');
+
+        final apiProvider = context.read<ApiProvider>();
+        final transferService = apiProvider.apiService.transfer;
+
+        transferResponse = await transferService.postProcessTransfer(
+          transferTicketId: apiRequest['transfer_ticket_id'],
+          userId: apiRequest['buyer_user_id'],
+        );
+      } catch (e) {
+        print('❌ 양도 API 호출 실패: $e');
+      }
     });
 
     // 3단계: 블록체인 기록
@@ -184,12 +183,10 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
       print('✅ 양도 이행 완료');
     });
 
-    // 완료 화면으로 이동
     await Future.delayed(Duration(milliseconds: 500));
-    _navigateToCompleteScreen(null);
+    _navigateToCompleteScreen(null, transferResponse);
   }
 
-  /// 각 단계 실행
   Future<void> _executeStep(
     int stepIndex,
     Future<void> Function() action,
@@ -211,46 +208,82 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
     });
   }
 
-  void _navigateToCompleteScreen(CreateTicketResponse? ticketResponse) {
-    final paymentType = widget.paymentData['paymentType'] as String?;
+  void _navigateToCompleteScreen(
+    CreateTicketResponse? ticketResponse, [
+    Map<String, dynamic>? transferResponse,
+  ]) {
+    final isTransfer = widget.paymentData.paymentType == 'transfer';
 
     Map<String, dynamic> resultData;
 
-    if (paymentType == 'transfer') {
-      // 양도 이행 완료 데이터
+    if (isTransfer) {
+      final transferData = widget.paymentData as TransferPaymentData;
+
+      // 양도 완료 데이터 생성
       resultData = {
-        ...widget.paymentData,
-        'transferId': 'TRF_${DateTime.now().millisecondsSinceEpoch}',
-        'completedAt': DateTime.now().toIso8601String(),
         'type': 'transfer',
-      };
-    } else if (ticketResponse != null) {
-      // 실제 API 응답 데이터 사용
-      resultData = {
-        'ticketId': ticketResponse.nftTicketId,
-        'nftStatus': ticketResponse.nftStatus,
-        'type': 'ticketing',
-        'issuedAt': DateTime.now().toIso8601String(),
-        'performanceTitle':
-            widget.paymentData['performanceTitle'] ?? 'Unknown Performance',
-        'performerName':
-            widget.paymentData['performerName'] ?? 'Unknown Performer',
-        'venueName': widget.paymentData['venueName'] ?? 'Unknown Venue',
-        'seatInfo': widget.paymentData['seatInfo'] ?? {},
-        ...widget.paymentData,
+        'transferId':
+            transferResponse?['transfer_ticket_id']?.toString() ??
+            'TRF_${DateTime.now().millisecondsSinceEpoch}',
+        'transactionHash':
+            transferResponse?['transaction_hash'] ??
+            'TXN_${DateTime.now().millisecondsSinceEpoch}',
+        'completedAt':
+            transferResponse?['finished_datetime'] ??
+            DateTime.now().toIso8601String(),
+        'transferStatus': transferResponse?['transfer_status'] ?? 'completed',
+
+        // 공연 정보
+        'performanceTitle': transferData.performanceTitle,
+        'performerName': transferData.performerName,
+        'sessionDatetime': transferData.sessionDatetime,
+        'venueName': transferData.venueName,
+        'seatNumber': transferData.seatNumber,
+        'seatGrade': transferData.seatGrade,
+
+        // 가격 정보
+        'transferPrice': transferData.transferPrice,
+        'buyerFee': transferData.buyerFee,
+        'totalPrice': transferData.totalPrice,
+        'transferPriceDisplay': transferData.transferPriceDisplay,
+        'buyerFeeDisplay': transferData.buyerFeeDisplay,
+        'totalPriceDisplay': transferData.totalPriceDisplay,
+
+        // 결제 정보
+        'paymentAmount': transferData.amount,
+        'paymentMethod': transferData.paymentMethod,
+        'merchantUid': transferData.merchantUid,
       };
     } else {
-      // 더미 데이터 (API 응답이 없는 경우)
-      resultData = {
-        ...widget.paymentData,
-        'nftId': 'NFT_${DateTime.now().millisecondsSinceEpoch}',
-        'tokenId': '${DateTime.now().millisecondsSinceEpoch}',
-        'contractAddress':
-            '0x${DateTime.now().millisecondsSinceEpoch.toRadixString(16)}',
-        'blockchainNetwork': 'OmniOne Chain',
-        'issuedAt': DateTime.now().toIso8601String(),
-        'type': 'ticketing',
-      };
+      final ticketData = widget.paymentData as TicketingPaymentData;
+
+      if (ticketResponse != null) {
+        // 실제 API 응답 데이터 사용
+        resultData = ticketResponse.toCompleteScreenData();
+      } else {
+        // 더미 데이터 생성
+        resultData = {
+          'type': 'ticketing',
+          'nftId': 'NFT_${DateTime.now().millisecondsSinceEpoch}',
+          'tokenId': '${DateTime.now().millisecondsSinceEpoch}',
+          'contractAddress':
+              '0x${DateTime.now().millisecondsSinceEpoch.toRadixString(16)}',
+          'blockchainNetwork': 'OmniOne Chain',
+          'issuedAt': DateTime.now().toIso8601String(),
+        };
+      }
+
+      // 추가 정보 포함
+      resultData.addAll({
+        'concertInfo': ticketData.concertInfo,
+        'selectedSession': ticketData.selectedSession,
+        'selectedSeat': ticketData.selectedSeat,
+        'selectedZone': ticketData.selectedZone,
+        'seatGrade': ticketData.seatGrade,
+        'paymentAmount': ticketData.amount,
+        'paymentMethod': ticketData.paymentMethod,
+        'merchantUid': ticketData.merchantUid,
+      });
     }
 
     Navigator.pushReplacement(
@@ -261,22 +294,11 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
     );
   }
 
-  /// 안전한 int 파싱
   int _safeParseInt(dynamic value) {
-    if (value == null) {
-      print('⚠️ null 값을 기본값 0으로 변환');
-      return 0;
-    }
-    if (value is int) {
-      return value;
-    }
-    if (value is String) {
-      return int.tryParse(value) ?? 0;
-    }
-    if (value is double) {
-      return value.toInt();
-    }
-    print('⚠️ 알 수 없는 타입 ${value.runtimeType}을 기본값 0으로 변환');
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is String) return int.tryParse(value) ?? 0;
+    if (value is double) return value.toInt();
     return 0;
   }
 
@@ -286,7 +308,7 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
       _errorMessage = '';
       _currentStep = 0;
     });
-    _startIssuanceProcess();
+    _startProcessing();
   }
 
   @override
@@ -298,8 +320,10 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
 
   @override
   Widget build(BuildContext context) {
+    final isTransfer = widget.paymentData.paymentType == 'transfer';
+
     return WillPopScope(
-      onWillPop: () async => false, // 뒤로가기 방지
+      onWillPop: () async => false,
       child: Scaffold(
         backgroundColor: AppColors.background,
         body: SafeArea(
@@ -308,20 +332,20 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
             child: Column(
               children: [
                 SizedBox(height: 40),
-                _buildHeader(),
+                _buildHeader(isTransfer),
                 SizedBox(height: 60),
-                _buildNFTAnimation(),
+                _buildProcessingAnimation(isTransfer),
                 SizedBox(height: 60),
 
                 if (_hasError) ...[
-                  _buildErrorSection(),
+                  _buildErrorSection(isTransfer),
                   SizedBox(height: 40),
                 ] else ...[
                   _buildProgressSection(),
                   SizedBox(height: 40),
                   _buildCurrentStep(),
                   SizedBox(height: 60),
-                  _buildBottomMessage(),
+                  _buildBottomMessage(isTransfer),
                 ],
 
                 SizedBox(height: 20),
@@ -333,22 +357,21 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
     );
   }
 
-  Widget _buildHeader() {
-    final paymentType = widget.paymentData['paymentType'] as String?;
-    final isTransfer = paymentType == 'transfer';
-
+  Widget _buildHeader(bool isTransfer) {
     return Column(
       children: [
         Icon(
           isTransfer ? Icons.swap_horiz : Icons.verified,
           size: 48,
-          color: _hasError ? AppColors.error : AppColors.primary,
+          color: _hasError
+              ? AppColors.error
+              : (isTransfer ? AppColors.warning : AppColors.primary),
         ),
         SizedBox(height: 16),
         Text(
           _hasError
               ? (isTransfer ? '양도 이행 실패' : 'NFT 티켓 발행 실패')
-              : (isTransfer ? '양도 이행 중' : 'NFT 티켓 발행 중'),
+              : widget.paymentData.processTitle,
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
@@ -369,10 +392,7 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
     );
   }
 
-  Widget _buildNFTAnimation() {
-    final paymentType = widget.paymentData['paymentType'] as String?;
-    final isTransfer = paymentType == 'transfer';
-
+  Widget _buildProcessingAnimation(bool isTransfer) {
     return AnimatedBuilder(
       animation: _hasError ? AlwaysStoppedAnimation(1.0) : _pulseAnimation,
       builder: (context, child) {
@@ -392,15 +412,22 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
                       end: Alignment.bottomRight,
                     )
                   : LinearGradient(
-                      colors: AppColors.primaryGradient,
+                      colors: isTransfer
+                          ? [AppColors.warning, AppColors.warningLight]
+                          : AppColors.primaryGradient,
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: (_hasError ? AppColors.error : AppColors.primary)
-                      .withOpacity(0.4),
+                  color:
+                      (_hasError
+                              ? AppColors.error
+                              : (isTransfer
+                                    ? AppColors.warning
+                                    : AppColors.primary))
+                          .withOpacity(0.4),
                   spreadRadius: 8,
                   blurRadius: 20,
                   offset: Offset(0, 8),
@@ -572,7 +599,7 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
     );
   }
 
-  Widget _buildErrorSection() {
+  Widget _buildErrorSection(bool isTransfer) {
     return Container(
       padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -632,15 +659,24 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
               ),
             ),
           ),
+          TextButton(
+            onPressed: () =>
+                Navigator.of(context).popUntil((route) => route.isFirst),
+            child: Text(
+              '홈으로 돌아가기',
+              style: TextStyle(
+                fontSize: 14,
+                color: AppColors.textSecondary,
+                decoration: TextDecoration.underline,
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildBottomMessage() {
-    final paymentType = widget.paymentData['paymentType'] as String?;
-    final isTransfer = paymentType == 'transfer';
-
+  Widget _buildBottomMessage(bool isTransfer) {
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(

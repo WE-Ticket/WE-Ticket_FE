@@ -1,4 +1,4 @@
-import '../../../../core/utils/json_parser.dart';
+import '../../../core/utils/json_parser.dart';
 
 /// 양도 마켓 리스트 페이지네이션 응답 모델
 class TransferListResponse {
@@ -288,7 +288,7 @@ class MyTransferTicket {
 
 /// 양도 가능한 티켓 모델
 class TransferableTicket {
-  final String nftTicketId;
+  final String ticketId;
   final int performanceId;
   final String? performanceMainImage;
   final String performanceTitle;
@@ -302,7 +302,7 @@ class TransferableTicket {
   final bool isRegisterable;
 
   TransferableTicket({
-    required this.nftTicketId,
+    required this.ticketId,
     required this.performanceId,
     this.performanceMainImage,
     required this.performanceTitle,
@@ -318,7 +318,7 @@ class TransferableTicket {
 
   factory TransferableTicket.fromJson(Map<String, dynamic> json) {
     return TransferableTicket(
-      nftTicketId: JsonParserUtils.parseString(json['nft_ticket_id']),
+      ticketId: JsonParserUtils.parseString(json['ticket_id']),
       performanceId: JsonParserUtils.parseInt(json['performance_id']),
       performanceMainImage: json['performance_main_image'],
       performanceTitle: JsonParserUtils.parseString(json['performance_title']),
