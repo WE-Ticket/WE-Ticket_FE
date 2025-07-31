@@ -659,6 +659,18 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
               ),
             ),
           ),
+          TextButton(
+            onPressed: () =>
+                Navigator.of(context).popUntil((route) => route.isFirst),
+            child: Text(
+              '홈으로 돌아가기',
+              style: TextStyle(
+                fontSize: 14,
+                color: AppColors.textSecondary,
+                decoration: TextDecoration.underline,
+              ),
+            ),
+          ),
         ],
       ),
     );

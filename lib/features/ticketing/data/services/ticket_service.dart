@@ -129,6 +129,29 @@ class TicketService {
     }
   }
 
+  Future<String> postEntry(String ticketId, int gateId) async {
+    try {
+      print('📤 입장 API 호출 → ticketId: $ticketId, gateId: $gateId');
+
+      final response = await _dioClient.post(
+        ApiConstants.entryNFC,
+        data: {'ticket_id': ticketId, 'gate_id': gateId},
+      );
+
+      print('응답!!!1');
+      print(response);
+
+      if (response.statusCode == 200) {
+        return "200";
+      } else {
+        throw Exception('티켓 생성 실패: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ 티켓 생성 오류: $e');
+      rethrow;
+    }
+  }
+
   /// 좌석 예약 가능 여부 확인
   ///
   /// 실제 예매 전에 좌석이 아직 사용 가능한지 재확인

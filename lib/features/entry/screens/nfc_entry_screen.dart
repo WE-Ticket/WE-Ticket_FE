@@ -1,11 +1,11 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
-import 'package:we_ticket/features/auth/presentation/providers/auth_provider.dart';
+import 'package:we_ticket/features/shared/providers/api_provider.dart';
 import '../../../../core/constants/app_colors.dart';
-// import 'package:nfc_manager/nfc_manager.dart';  // 제거
-import 'package:flutter_nfc_kit/flutter_nfc_kit.dart'; // 추가
+import 'package:flutter_nfc_kit/flutter_nfc_kit.dart';
 
 class NFCEntryScreen extends StatefulWidget {
   final String ticketId;
@@ -112,15 +112,22 @@ class _NFCEntryScreenState extends State<NFCEntryScreen>
       final gateId = nfcData['gateId'];
 
       // 세션 ID 일치 여부 확인
-      if (sessionId != widget.ticketData['sessionId']) {
-        throw Exception('세션 ID가 일치하지 않습니다.');
-      }
+      //FIXME : 세션 id 읽을 수 있도록 앞선 api에서 수정 필요ㄴ
+      // print('티켓 데이터:  ${widget.ticketData}');
+      // if (sessionId != widget.ticketData['sessionId']) {
+      //   throw Exception('세션 ID가 일치하지 않습니다.');
+      // }
 
       // NFC 세션 종료
       await FlutterNfcKit.finish();
 
-      // 백엔드 API 호출
-      final success = await _sendGateEntry(widget.ticketId, gateId);
+      final apiProvider = context.read<ApiProvider>();
+      final success =
+          await apiProvider.apiService.ticket.postEntry(
+            widget.ticketId,
+            gateId,
+          ) ==
+          "200";
 
       setState(() {
         _isScanning = false;
@@ -146,124 +153,6 @@ class _NFCEntryScreenState extends State<NFCEntryScreen>
     }
   }
 
-  Future<void> _processNFCEntry() async {
-    setState(() {
-      _isScanning = false;
-      _isProcessing = true;
-    });
-
-    _rotationController.repeat();
-
-    try {
-      final authProvider = context.read<AuthProvider>();
-
-      // TODO: 백엔드 API 호출
-      // 1. ZKP 기반 DID 검증 (옴니원 영지식 인증)
-      final zkpResult = await _performZKPAuthentication(authProvider);
-
-      if (!zkpResult) {
-        throw Exception('신원 인증에 실패했습니다');
-      }
-
-      // 2. NFT 소유권 확인 (블록체인)
-      final nftResult = await _verifyNFTOwnership();
-
-      if (!nftResult) {
-        throw Exception('티켓 소유권 확인에 실패했습니다');
-      }
-
-      // 3. 입장 승인 및 블록체인 기록
-      final entryResult = await _recordEntryOnBlockchain();
-
-      await Future.delayed(Duration(seconds: 2)); // 처리 시간 시뮬레이션
-
-      setState(() {
-        _entryResult = entryResult;
-        _isProcessing = false;
-      });
-
-      _rotationController.stop();
-
-      if (entryResult) {
-        _showSuccessDialog();
-      }
-    } catch (e) {
-      print('❌ NFC 입장 처리 오류: $e');
-      setState(() {
-        _errorMessage = e.toString();
-        _entryResult = false;
-        _isProcessing = false;
-      });
-      _rotationController.stop();
-    }
-  }
-
-  /// TODO: 백엔드 API - ZKP 기반 DID 검증 (옴니원 영지식 인증)
-  Future<bool> _performZKPAuthentication(AuthProvider authProvider) async {
-    // 옴니원 영지식 증명 API 호출
-    // 개인정보 노출 없이 신원 확인
-    print('🔐 ZKP 인증 시작 - 사용자: ${authProvider.userName}');
-
-    final requestData = {
-      'user_id': authProvider.userId,
-      'did_type': 'mobile_id',
-      'auth_level': authProvider.currentUserAuthLevel,
-      'ticket_id': widget.ticketId,
-      'timestamp': DateTime.now().toIso8601String(),
-    };
-
-    print('📤 ZKP 인증 요청: $requestData');
-
-    // 실제 구현시:
-    // final response = await apiService.verifyZKP(requestData);
-    // return response.isSuccess;
-
-    await Future.delayed(Duration(milliseconds: 800)); // 시뮬레이션
-    return true; // 더미 응답
-  }
-
-  /// TODO: 백엔드 API - NFT 소유권 확인
-  Future<bool> _verifyNFTOwnership() async {
-    print('🎫 NFT 소유권 확인 시작');
-
-    final requestData = {
-      'ticket_id': widget.ticketId,
-      'user_id': context.read<AuthProvider>().userId,
-      'blockchain_address': 'dummy_address', // 실제 블록체인 주소
-    };
-
-    print('📤 NFT 소유권 확인 요청: $requestData');
-
-    // 실제 구현시:
-    // final response = await blockchainService.verifyNFTOwnership(requestData);
-    // return response.isOwner;
-
-    await Future.delayed(Duration(milliseconds: 600)); // 시뮬레이션
-    return true; // 더미 응답
-  }
-
-  /// TODO: 백엔드 API - 입장 기록 블록체인 저장
-  Future<bool> _recordEntryOnBlockchain() async {
-    print('⛓️ 블록체인 입장 기록 저장 시작');
-
-    final requestData = {
-      'ticket_id': widget.ticketId,
-      'user_id': context.read<AuthProvider>().userId,
-      'entry_method': 'nfc',
-      'venue_location': widget.ticketData['venue'],
-      'entry_timestamp': DateTime.now().toIso8601String(),
-    };
-
-    print('📤 블록체인 기록 요청: $requestData');
-
-    // 실제 구현시:
-    // final response = await blockchainService.recordEntry(requestData);
-    // return response.isSuccess;
-
-    await Future.delayed(Duration(milliseconds: 1000)); // 시뮬레이션
-    return true; // 더미 응답
-  }
-
   void _showSuccessDialog() {
     showDialog(
       context: context,
@@ -274,7 +163,7 @@ class _NFCEntryScreenState extends State<NFCEntryScreen>
           children: [
             Icon(Icons.check_circle, color: AppColors.success, size: 28),
             SizedBox(width: 12),
-            Text('입장 완료!'),
+            Text('입장 게이트 인증을 완료해주세요!'),
           ],
         ),
         content: Column(
@@ -318,24 +207,6 @@ class _NFCEntryScreenState extends State<NFCEntryScreen>
         ],
       ),
     );
-  }
-
-  Future<bool> _sendGateEntry(String ticketId, String gateId) async {
-    print('📤 입장 API 호출 → ticketId: $ticketId, gateId: $gateId');
-
-    // 실제 구현시
-    // final response = await http.post(
-    //   Uri.parse('https://api.yourbackend.com/gate/entry'),
-    //   body: jsonEncode({
-    //     'ticket_id': ticketId,
-    //     'gate_id': gateId,
-    //   }),
-    //   headers: {'Content-Type': 'application/json'},
-    // );
-    // return response.statusCode == 200;
-
-    await Future.delayed(Duration(seconds: 1)); // 시뮬레이션
-    return true; // 더미 성공 응답
   }
 
   @override

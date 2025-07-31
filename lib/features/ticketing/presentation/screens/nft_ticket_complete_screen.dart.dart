@@ -67,23 +67,26 @@ class _NFTTicketCompleteScreenState extends State<NFTTicketCompleteScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.all(24),
-          child: Column(
-            children: [
-              SizedBox(height: 40),
-              _buildSuccessHeader(),
-              SizedBox(height: 40),
-              _buildTicketCard(),
-              SizedBox(height: 32),
-              _buildDetailInfo(),
-              SizedBox(height: 32),
-              _buildActionButtons(),
-              SizedBox(height: 20),
-            ],
+    return WillPopScope(
+      onWillPop: () async => false,
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              children: [
+                SizedBox(height: 40),
+                _buildSuccessHeader(),
+                SizedBox(height: 40),
+                _buildActionButtons(),
+                SizedBox(height: 12),
+                _buildTicketCard(),
+                SizedBox(height: 32),
+                _buildDetailInfo(),
+                SizedBox(height: 32),
+              ],
+            ),
           ),
         ),
       ),
@@ -484,7 +487,7 @@ class _NFTTicketCompleteScreenState extends State<NFTTicketCompleteScreen>
             ),
           ),
 
-          SizedBox(height: 24),
+          SizedBox(height: 6),
 
           TextButton(
             onPressed: _goToHome,
@@ -512,21 +515,13 @@ class _NFTTicketCompleteScreenState extends State<NFTTicketCompleteScreen>
   }
 
   String _getPerformanceTitle() {
-    if (_isTransfer) {
-      return widget.nftData['performanceTitle'] ?? '공연명';
-    } else {
-      final concertInfo = widget.nftData['concertInfo'] ?? {};
-      return concertInfo['title'] ?? '공연명';
-    }
+    print('공연 정보 : ${widget.nftData}');
+
+    return widget.nftData['performanceTitle'] ?? '공연명';
   }
 
   String _getPerformerName() {
-    if (_isTransfer) {
-      return widget.nftData['performerName'] ?? '아티스트';
-    } else {
-      final concertInfo = widget.nftData['concertInfo'] ?? {};
-      return concertInfo['artist'] ?? '아티스트';
-    }
+    return widget.nftData['performerName'] ?? '아티스트';
   }
 
   String _getSessionDateTime() {
@@ -542,21 +537,13 @@ class _NFTTicketCompleteScreenState extends State<NFTTicketCompleteScreen>
       }
       return '날짜 정보 없음';
     } else {
-      final schedule =
-          widget.nftData['selectedSchedule'] ??
-          widget.nftData['selectedSession'] ??
-          {};
-      return '${schedule['date'] ?? ''} ${schedule['time'] ?? ''}';
+      final schedule = widget.nftData['selectedSession'] ?? {};
+      return '${schedule['dateTime'] ?? ''}';
     }
   }
 
   String _getVenueName() {
-    if (_isTransfer) {
-      return widget.nftData['venueName'] ?? '공연장';
-    } else {
-      final concertInfo = widget.nftData['concertInfo'] ?? {};
-      return concertInfo['venue'] ?? '공연장';
-    }
+    return widget.nftData['venueName'] ?? '공연장';
   }
 
   String _getSeatInfo() {
@@ -568,7 +555,7 @@ class _NFTTicketCompleteScreenState extends State<NFTTicketCompleteScreen>
       final seat = widget.nftData['selectedSeat'] ?? {};
       final zone = widget.nftData['selectedZone'] ?? '';
       final grade = widget.nftData['seatGrade'] ?? '';
-      return '$grade ${zone}구역 ${seat['row'] ?? ''}행 ${seat['col'] ?? ''}번';
+      return '$grade ${zone}구역 ${seat['seatRow'] ?? ''}행 ${seat['seatCol'] ?? ''}번';
     }
   }
 

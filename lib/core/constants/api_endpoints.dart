@@ -16,7 +16,9 @@ class ApiConstants {
       '/tickets/performance/{performance_id}/session/{performance_session_id}/seats/';
   static const String seatLayout =
       '/tickets/performance/{performance_id}/session/{performance_session_id}/zone/{seat_zone}/layout/';
+
   static const String createTicket = '/tickets/create/';
+  static const String entryNFC = '/tickets/gate-entry-start/';
 
   // Transfer
   static const String transferTicketList = '/transfers/ticket-list/';
