@@ -269,6 +269,13 @@ extension AuthServiceExtension on AuthService {
       if (!success) {
         return AuthResult.failure('인증이 실패했습니다.');
       }
+      final String nextVerificationLevel;
+      switch (authType) {
+        case 'simple':
+          nextVerificationLevel = "general";
+        default:
+          nextVerificationLevel = 'mobile_id';
+      }
 
       // rawData가 String인 경우 JSON 파싱
       Map<String, dynamic> dataMap;
@@ -289,7 +296,7 @@ extension AuthServiceExtension on AuthService {
 
       return await recordIdentityVerification(
         userId: userId,
-        nextVerificationLevel: authType,
+        nextVerificationLevel: nextVerificationLevel,
         isSuccess: success,
         verificationResult: verificationResult,
       );

@@ -629,6 +629,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                 final canUseNFC =
                     authProvider.currentUserAuthLevel == 'mobile_id' ||
                     authProvider.currentUserAuthLevel == 'mobile_id_totally';
+                // final canUseNFC = true;
 
                 return SizedBox(
                   width: double.infinity,
