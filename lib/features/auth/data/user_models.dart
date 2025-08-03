@@ -46,7 +46,7 @@ class LoginRequest {
   LoginRequest({required this.loginId, required this.loginPassword});
 
   Map<String, dynamic> toJson() {
-    return {'login_id': loginId, 'login_password': loginPassword};
+    return {'login_id': loginId, 'password': loginPassword};
   }
 }
 
