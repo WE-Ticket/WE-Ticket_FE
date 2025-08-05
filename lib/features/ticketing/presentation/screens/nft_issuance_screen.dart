@@ -168,8 +168,12 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
         );
       } catch (e) {
         print('❌ 양도 API 호출 실패: $e');
+        _handleError(e.toString());
+        return;
       }
     });
+
+    if (_hasError) return;
 
     // 3단계: 블록체인 기록
     await _executeStep(2, () async {
