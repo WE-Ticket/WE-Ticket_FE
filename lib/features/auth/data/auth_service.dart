@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:we_ticket/features/auth/data/auth_validators.dart';
 import 'package:we_ticket/features/auth/data/user_models.dart';
 import '../../../../core/services/dio_client.dart';
@@ -41,6 +42,18 @@ class AuthService {
 
       if (response.statusCode == 200) {
         final loginResponse = LoginResponse.fromJson(response.data);
+
+        final accessToken = loginResponse.accessToken;
+        final refreshToken = loginResponse.refreshToken;
+
+        // 1. DioClient에 설정
+        await _dioClient.setAccessToken(accessToken);
+        await _dioClient.setRefreshToken(refreshToken);
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('access_token', accessToken);
+        await prefs.setString('refresh_token', refreshToken);
+
         print('✅ 로그인 성공: 사용자 ID ${loginResponse.userId}');
         return AuthResult.success(loginResponse);
       } else {

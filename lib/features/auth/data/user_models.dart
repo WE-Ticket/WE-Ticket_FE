@@ -57,6 +57,8 @@ class LoginResponse {
   final String loginId;
   final String userName;
   final String userAuthLevel;
+  final String accessToken;
+  final String refreshToken;
 
   LoginResponse({
     required this.message,
@@ -64,6 +66,8 @@ class LoginResponse {
     required this.loginId,
     required this.userName,
     required this.userAuthLevel,
+    required this.accessToken,
+    required this.refreshToken,
   });
 
   factory LoginResponse.fromJson(Map<String, dynamic> json) {
@@ -73,12 +77,11 @@ class LoginResponse {
       loginId: JsonParserUtils.parseString(json['login_id']),
       userName: JsonParserUtils.parseString(json['full_name']),
       userAuthLevel: JsonParserUtils.parseString(json['verification_level']),
+      accessToken: JsonParserUtils.parseString(json['access_token']),
+      refreshToken: JsonParserUtils.parseString(json['refresh_token']),
     );
   }
 
-  bool get isSuccess => message.contains('성공');
-
-  /// UserModel로 변환
   UserModel toUserModel() {
     return UserModel(
       userId: userId,
@@ -87,6 +90,8 @@ class LoginResponse {
       userAuthLevel: userAuthLevel,
     );
   }
+
+  bool get isSuccess => message.contains('성공');
 }
 
 /// 회원가입 요청 모델

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:we_ticket/core/services/dio_client.dart';
 import 'package:we_ticket/features/auth/data/auth_service.dart';
 import 'package:we_ticket/features/auth/data/user_models.dart';
 
 class AuthProvider extends ChangeNotifier {
+  // final DioClient _dioClient;
+
   bool _isLoggedIn = false;
   UserModel? _user;
   bool _isLoading = false;
@@ -76,9 +79,11 @@ class AuthProvider extends ChangeNotifier {
       );
 
       if (result.isSuccess && result.data != null) {
-        final user = result.data!.toUserModel();
-        await _setLoggedInUser(user);
-        print('✅ 로그인 성공: ${user.userName}');
+        final loginResponse = result.data!;
+        final user = loginResponse.toUserModel();
+
+        // ✅ access_token 전달
+        await _setLoggedInUser(user, token: loginResponse.accessToken);
         return true;
       } else {
         _setError(result.errorMessage!);
@@ -275,8 +280,12 @@ class AuthProvider extends ChangeNotifier {
       await prefs.setString('user_auth_level', user.userAuthLevel);
 
       if (token != null) {
-        await prefs.setString('auth_token', token);
+        await prefs.setString('access_token', token);
       }
+
+      // if (_dioClient._refreshToken != null) {
+      //   await prefs.setString('refresh_token', _dioClient._refreshToken!);
+      // }
 
       notifyListeners();
     } catch (e) {
