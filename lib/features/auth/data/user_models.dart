@@ -94,14 +94,14 @@ class SignupRequest {
   final String fullName;
   final String loginId;
   final String phoneNumber;
-  final String loginPassword;
+  final String password;
   final List<Agreement> agreements;
 
   SignupRequest({
     required this.fullName,
     required this.loginId,
     required this.phoneNumber,
-    required this.loginPassword,
+    required this.password,
     required this.agreements,
   });
 
@@ -110,7 +110,7 @@ class SignupRequest {
       'full_name': fullName,
       'login_id': loginId,
       'phone_number': phoneNumber,
-      'login_password': loginPassword,
+      'password': password,
       'agreements': agreements.map((agreement) => agreement.toJson()).toList(),
     };
   }

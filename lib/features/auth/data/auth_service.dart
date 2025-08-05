@@ -106,7 +106,7 @@ class AuthService {
         fullName: fullName.trim(),
         loginId: loginId.trim(),
         phoneNumber: phoneNumber.trim(),
-        loginPassword: password,
+        password: password,
         agreements: agreements,
       );
 
