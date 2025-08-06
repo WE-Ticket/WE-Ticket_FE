@@ -769,44 +769,40 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
     }
   }
 
+  /// DID 생성 플로우 시작 (CI 코드 제거된 깔끔한 버전)
   Future<void> _startDidCreationFlow(
     IdentityVerificationResponse serverResponse,
   ) async {
-    if (_isDidCreationInProgress) return;
+    if (_isDidCreationInProgress) return; // 중복 실행 방지
 
-    setState(() => _isDidCreationInProgress = true);
+    setState(() {
+      _isDidCreationInProgress = true;
+    });
+
+    // 1. 진행 다이얼로그 표시
     _showDidCreationProgressDialog();
 
     try {
       print('[Flutter] WE-Ticket DID 생성 플로우 시작');
 
-      _registerBioKey();
-
-      // 1. DID 생성
+      // 2. DID 생성 (CI 없이 순수 랜덤 생성)
       final didResult = await _createWeTicketDid();
 
-      // 2. Proof 서명 (서버 등록 시 필수)
-      final proofResult = await platform.invokeMethod('signProof', {
-        'keyId': didResult['keyId'],
-      });
-      print('[Flutter] Proof 서명 완료: ${proofResult['proof']}');
-
-      // 3. (옵션) DIDAuth 생성 - 서버에서 DID 소유자 인증 요청 시 사용
-      final didAuthResult = await platform.invokeMethod('createDidAuth', {
-        // 'nonce': serverResponse.nonce, // 서버 응답에 nonce가 있는 경우
-      });
-      print('[Flutter] DIDAuth 생성 완료: ${didAuthResult['didAuth']}');
-
-      // 4. UI 상태 업데이트
+      // 3. DID 저장 및 상태 업데이트
       setState(() {
-        _userDid = didResult['did'];
+        _userDid = didResult['did']; // DID 문자열만 추출
         _isDidCreationInProgress = false;
       });
 
+      // 4. 성공 처리
       await _handleDidCreationSuccess(didResult, serverResponse);
+
       print('[Flutter] WE-Ticket DID 생성 플로우 완료');
     } catch (e) {
-      setState(() => _isDidCreationInProgress = false);
+      // 5. 실패 처리
+      setState(() {
+        _isDidCreationInProgress = false;
+      });
       await _handleDidCreationFailure(e, serverResponse);
       print('[Flutter] WE-Ticket DID 생성 플로우 실패: $e');
     }
@@ -850,11 +846,6 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
       print('[Flutter] ❌ WE-Ticket DID 생성 예외: $e');
       throw Exception('WE-Ticket DID 생성 중 예상치 못한 오류: $e');
     }
-  }
-
-  Future<void> _registerBioKey() async {
-    final result = await platform.invokeMethod('registerBioKey');
-    print('[Flutter] 생체 인증 키 등록 완료: ${result['bioKeyId']}');
   }
 
   /// DID 생성 성공 처리 (수정된 버전 - 무한재귀 해결)
