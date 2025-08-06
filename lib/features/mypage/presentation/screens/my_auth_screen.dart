@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:we_ticket/core/constants/app_colors.dart';
 import 'package:we_ticket/features/auth/presentation/providers/auth_provider.dart';
@@ -12,9 +13,14 @@ class MyAuthScreen extends StatefulWidget {
 }
 
 class _MyAuthScreenState extends State<MyAuthScreen> {
+  static const platform = MethodChannel('did_sdk');
+
   bool _isLoadingAuth = false;
   String? _errorMessage;
   Map<String, dynamic>? _authData;
+
+  String? _userDid;
+  bool _isDidCreationInProgress = false;
 
   final Map<String, int> _authLevelOrder = {
     'none': 0,
@@ -751,6 +757,9 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
           serverResponse.newVerificationLevel!,
         );
       }
+
+      // DID 생성 플로우 시작
+      await _startDidCreationFlow(serverResponse);
     } else if (serverError != null) {
       // 인증 성공했으나 서버 저장 실패
       await _showWarningDialog(
@@ -758,6 +767,692 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
         '잠시 후 다시 시도해주세요.\n\n오류: $serverError',
       );
     }
+  }
+
+  /// DID 생성 플로우 시작 (CI 코드 제거된 깔끔한 버전)
+  Future<void> _startDidCreationFlow(
+    IdentityVerificationResponse serverResponse,
+  ) async {
+    if (_isDidCreationInProgress) return; // 중복 실행 방지
+
+    setState(() {
+      _isDidCreationInProgress = true;
+    });
+
+    // 1. 진행 다이얼로그 표시
+    _showDidCreationProgressDialog();
+
+    try {
+      print('[Flutter] WE-Ticket DID 생성 플로우 시작');
+
+      // 2. DID 생성 (CI 없이 순수 랜덤 생성)
+      final didResult = await _createWeTicketDid();
+
+      // 3. DID 저장 및 상태 업데이트
+      setState(() {
+        _userDid = didResult['did']; // DID 문자열만 추출
+        _isDidCreationInProgress = false;
+      });
+
+      // 4. 성공 처리
+      await _handleDidCreationSuccess(didResult, serverResponse);
+
+      print('[Flutter] WE-Ticket DID 생성 플로우 완료');
+    } catch (e) {
+      // 5. 실패 처리
+      setState(() {
+        _isDidCreationInProgress = false;
+      });
+      await _handleDidCreationFailure(e, serverResponse);
+      print('[Flutter] WE-Ticket DID 생성 플로우 실패: $e');
+    }
+  }
+
+  /// WE-Ticket DID 생성 (CI 제거된 깔끔한 버전)
+  Future<Map<String, dynamic>> _createWeTicketDid() async {
+    try {
+      print('[Flutter] WE-Ticket DID 생성 시작');
+
+      // Android의 상세 DID 생성 메서드 호출
+      final response = await platform.invokeMethod('createDid');
+      final result = _safeMapConversion(response);
+
+      if (result['success'] == true) {
+        print('[Flutter] ✅ WE-Ticket DID 생성 성공');
+        print('[Flutter] 🆔 생성된 DID: ${result['did']}');
+        print('[Flutter] 🔑 Key ID: ${result['keyId']}');
+
+        // 공개키 길이에 따라 안전하게 표시
+        final publicKey = result['publicKey']?.toString() ?? '';
+        final displayKey = publicKey.length > 32
+            ? '${publicKey.substring(0, 32)}...'
+            : publicKey;
+        print('[Flutter] 🔓 공개키: $displayKey');
+
+        print(
+          '[Flutter] 📄 DID Document 크기: ${result['didDocument']?.toString().length ?? 0} 문자',
+        );
+        print('[Flutter] 🔐 Key Attestation: ${result['keyAttestation']}');
+
+        return result;
+      } else {
+        print('[Flutter] ❌ WE-Ticket DID 생성 실패: ${result['error']}');
+        throw Exception('WE-Ticket DID 생성 실패: ${result['error']}');
+      }
+    } on PlatformException catch (e) {
+      print('[Flutter] ❌ 플랫폼 예외: ${e.message}');
+      throw Exception('플랫폼 오류: ${e.message}');
+    } catch (e) {
+      print('[Flutter] ❌ WE-Ticket DID 생성 예외: $e');
+      throw Exception('WE-Ticket DID 생성 중 예상치 못한 오류: $e');
+    }
+  }
+
+  /// DID 생성 성공 처리 (수정된 버전 - 무한재귀 해결)
+  Future<void> _handleDidCreationSuccess(
+    Map<String, dynamic> didResult,
+    IdentityVerificationResponse serverResponse,
+  ) async {
+    // 진행 다이얼로그 닫기
+    Navigator.of(context).pop();
+
+    // 상세 정보 표시 다이얼로그
+    await _showDidDetailsDialog(
+      '🎉 WE-Ticket DID 생성 완료!',
+      '본인인증과 DID 생성이 모두 완료되었습니다.',
+      didResult,
+      serverResponse,
+    );
+  }
+
+  /// DID 상세 정보 표시 다이얼로그
+  Future<void> _showDidDetailsDialog(
+    String title,
+    String message,
+    Map<String, dynamic> didResult,
+    IdentityVerificationResponse serverResponse,
+  ) async {
+    return showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.success.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Icon(
+                Icons.check_circle,
+                color: AppColors.success,
+                size: 24,
+              ),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Container(
+          width: double.infinity,
+          constraints: BoxConstraints(maxHeight: 600),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 메인 메시지
+                Container(
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    message,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textSecondary,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+                SizedBox(height: 16),
+
+                // 인증 레벨 정보
+                _buildInfoCard(
+                  '📊 새로운 인증 레벨',
+                  serverResponse.newVerificationLevel ?? '업데이트됨',
+                  AppColors.primary,
+                ),
+                SizedBox(height: 12),
+
+                // DID 정보
+                _buildInfoCard(
+                  '🆔 생성된 WE-Ticket DID',
+                  didResult['did']?.toString() ?? 'N/A',
+                  AppColors.info,
+                ),
+                SizedBox(height: 12),
+
+                // 키 ID 정보
+                _buildInfoCard(
+                  '🔑 키 식별자',
+                  didResult['keyId']?.toString() ?? 'N/A',
+                  AppColors.secondary,
+                ),
+                SizedBox(height: 12),
+
+                // 공개키 정보 (안전하게 길이 체크)
+                _buildInfoCard(
+                  '🔓 공개키',
+                  _safeSubstring(didResult['publicKey']?.toString(), 32),
+                  AppColors.warning,
+                ),
+                SizedBox(height: 12),
+
+                // Key Attestation 정보
+                if (didResult['keyAttestation'] != null)
+                  _buildAttestationCard(
+                    _safeMapConversion(didResult['keyAttestation']),
+                  ),
+                SizedBox(height: 12),
+
+                // DID Document 정보
+                _buildInfoCard(
+                  '📄 DID Document 크기',
+                  '${didResult['didDocument']?.toString().length ?? 0} 문자',
+                  AppColors.success,
+                ),
+                SizedBox(height: 16),
+
+                // 보안 안내
+                Container(
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.security, color: AppColors.primary, size: 16),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '개인키는 Android KeyStore에 안전하게 저장됩니다',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          // DID Document 전체 보기 버튼
+          TextButton(
+            onPressed: () => _showFullDidDocument(
+              didResult['didDocument']?.toString() ?? '',
+            ),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.textSecondary,
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            ),
+            child: Text('DID Document 전체 보기', style: TextStyle(fontSize: 12)),
+          ),
+          // 확인 버튼
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            style: TextButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.white,
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text(
+              '확인',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 안전한 문자열 자르기 헬퍼 함수
+  String _safeSubstring(String? text, int maxLength) {
+    if (text == null || text.isEmpty) return 'N/A';
+    if (text.length <= maxLength) return text;
+    return '${text.substring(0, maxLength)}...';
+  }
+
+  /// 안전한 Map 변환 헬퍼 함수
+  Map<String, dynamic> _safeMapConversion(dynamic input) {
+    if (input == null) return <String, dynamic>{};
+    if (input is Map<String, dynamic>) return input;
+    if (input is Map) {
+      return Map<String, dynamic>.from(
+        input.map((key, value) => MapEntry(key.toString(), value)),
+      );
+    }
+    return <String, dynamic>{};
+  }
+
+  /// 정보 카드 위젯
+  Widget _buildInfoCard(String title, String content, Color color) {
+    return Container(
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+          SizedBox(height: 4),
+          Text(
+            content,
+            style: TextStyle(
+              fontSize: 11,
+              color: AppColors.textSecondary,
+              fontFamily: 'monospace',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Key Attestation 카드 위젯
+  Widget _buildAttestationCard(Map<String, dynamic> attestation) {
+    return Container(
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.success.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.success.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '🔐 Key Attestation',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.success,
+            ),
+          ),
+          SizedBox(height: 8),
+          ...attestation.entries
+              .map(
+                (entry) => Padding(
+                  padding: EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    children: [
+                      Text(
+                        '${entry.key}: ',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          entry.value?.toString() ?? 'N/A',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                            fontFamily: 'monospace',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+              .toList(),
+        ],
+      ),
+    );
+  }
+
+  /// DID Document 전체 내용 표시
+  void _showFullDidDocument(String didDocument) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          '📄 DID Document 전체 내용',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        content: Container(
+          width: double.maxFinite,
+          height: 400,
+          child: SingleChildScrollView(
+            child: Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.gray300),
+              ),
+              child: Text(
+                didDocument,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: AppColors.textSecondary,
+                  fontFamily: 'monospace',
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('닫기'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// DID 생성 실패 처리 (향후 롤백 확장점)
+  Future<void> _handleDidCreationFailure(
+    dynamic error,
+    IdentityVerificationResponse serverResponse,
+  ) async {
+    // 진행 다이얼로그 닫기
+    Navigator.of(context).pop();
+
+    print('[Flutter] DID 생성 실패 처리: $error');
+
+    await _showDidCreationFailureDialog(
+      '보안 인증서 생성 실패',
+      '본인인증은 성공했으나 보안 인증서 생성 중 문제가 발생했습니다.\n\n'
+          '오류 내용: ${error.toString()}\n\n'
+          '잠시 후 다시 시도해주시거나 고객센터에 문의해주세요.',
+      serverResponse,
+    );
+  }
+
+  /// DID 생성 진행 다이얼로그 표시
+  void _showDidCreationProgressDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // 사용자가 임의로 닫을 수 없음
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        content: Container(
+          padding: EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 로딩 애니메이션
+              CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                strokeWidth: 3,
+              ),
+              SizedBox(height: 24),
+              // 제목
+              Text(
+                '보안 인증서 생성 중',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              SizedBox(height: 12),
+              // 설명
+              Text(
+                '안전한 서비스 이용을 위한\n보안 인증서를 생성하고 있습니다.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                  height: 1.4,
+                ),
+              ),
+              SizedBox(height: 8),
+              // 안내 메시지
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      color: AppColors.primary,
+                      size: 16,
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '잠시만 기다려주세요',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// DID 생성 실패 다이얼로그
+  Future<void> _showDidCreationFailureDialog(
+    String title,
+    String message,
+    IdentityVerificationResponse serverResponse,
+  ) async {
+    return showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.error.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Icon(
+                Icons.error_outline,
+                color: AppColors.error,
+                size: 24,
+              ),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Container(
+          width: double.infinity,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 부분 성공 알림
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.success.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.check_circle,
+                      color: AppColors.success,
+                      size: 16,
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '본인인증은 정상적으로 완료되었습니다',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.success,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 12),
+              // 오류 메시지
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  message,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textSecondary,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+              SizedBox(height: 12),
+              // 안내 메시지
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '일부 고급 기능은 제한될 수 있으나, 기본 서비스는 정상적으로 이용 가능합니다.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                    height: 1.3,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          // 다시 시도 버튼
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(); // 다이얼로그 닫기
+              // DID 생성 재시도
+              _startDidCreationFlow(serverResponse);
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.textSecondary,
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            ),
+            child: Text('다시 시도', style: TextStyle(fontSize: 14)),
+          ),
+          // 확인 버튼 (나중에 시도)
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(); // 다이얼로그 닫기
+            },
+            style: TextButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.white,
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text(
+              '나중에 시도',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// DID 생성 상태 확인
+  bool get isDidCreated => _userDid != null && _userDid!.isNotEmpty;
+
+  /// DID 생성 진행 상태 확인
+  bool get isDidCreationInProgress => _isDidCreationInProgress;
+
+  /// 현재 사용자의 DID 반환
+  String? get currentUserDid => _userDid;
+
+  /// DID 초기화 (로그아웃 시 등에 사용)
+  void _clearDidData() {
+    setState(() {
+      _userDid = null;
+      _isDidCreationInProgress = false;
+    });
   }
 
   /// 성공 다이얼로그 표시

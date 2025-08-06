@@ -7,7 +7,8 @@ import '../../../core/services/dio_client.dart';
 /// API 서비스를 앱 전체에서 공유하기 위한 Provider
 class ApiProvider extends ChangeNotifier {
   late final ApiService _apiService;
-  late final AuthService _authService; // AuthService 추가
+  late final AuthService _authService;
+  late final DioClient _dioClient; // ✅ DioClient 직접 관리
 
   // 로딩 상태 관리
   bool _isLoading = false;
@@ -18,17 +19,18 @@ class ApiProvider extends ChangeNotifier {
   List<PerformanceAvailableItem>? _cachedAvailablePerformances;
   DateTime? _lastDataLoadTime;
 
-  /// 생성자
+  /// ✅ 생성자 - DioClient 공유
   ApiProvider() {
-    final dioClient = DioClient(); // DioClient 생성
-    _apiService = ApiService.create();
-    _authService = AuthService(dioClient); // AuthService 초기화
+    _dioClient = DioClient(); // DioClient 하나만 생성
+    _apiService = ApiService.withCustomClient(_dioClient); // 같은 DioClient 사용
+    _authService = AuthService(_dioClient); // 같은 DioClient 사용
     _initializeProvider();
   }
 
   /// Getter들
   ApiService get apiService => _apiService;
-  AuthService get authService => _authService; // AuthService getter 추가
+  AuthService get authService => _authService;
+  DioClient get dioClient => _dioClient; // ✅ DioClient getter 추가
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
@@ -47,7 +49,7 @@ class ApiProvider extends ChangeNotifier {
   /// Provider 초기화
   Future<void> _initializeProvider() async {
     try {
-      print(' ApiProvider 초기화 시작');
+      print('🚀 ApiProvider 초기화 시작');
 
       // 네트워크 연결 확인
       final isConnected = await _apiService.checkConnection();
@@ -60,6 +62,26 @@ class ApiProvider extends ChangeNotifier {
     } catch (e) {
       print('❌ ApiProvider 초기화 실패: $e');
       _setError('앱 초기화 중 오류가 발생했습니다.');
+    }
+  }
+
+  /// ✅ 토큰 상태 디버그 (개발용)
+  Future<void> debugTokens() async {
+    await _dioClient.debugTokenStatus();
+  }
+
+  /// ✅ 강제 로그아웃 (토큰 만료 시)
+  Future<void> forceLogout() async {
+    try {
+      print('🚨 강제 로그아웃 실행 - 토큰 만료');
+      await _dioClient.clearTokens();
+
+      // ⚠️ 임시: Refresh API 없음으로 인한 로그아웃 안내
+      _setError('로그인이 만료되었습니다.\n다시 로그인해주세요.');
+
+      notifyListeners();
+    } catch (e) {
+      print('❌ 강제 로그아웃 오류: $e');
     }
   }
 
@@ -107,7 +129,13 @@ class ApiProvider extends ChangeNotifier {
       print('✅ 대시보드 데이터 로드 완료');
     } catch (e) {
       print('❌ 대시보드 데이터 로드 실패: $e');
-      _setError('공연 정보를 불러올 수 없습니다. 다시 시도해주세요.');
+
+      // 401 오류인 경우 강제 로그아웃
+      if (e.toString().contains('401') || e.toString().contains('인증')) {
+        await forceLogout();
+      } else {
+        _setError('공연 정보를 불러올 수 없습니다. 다시 시도해주세요.');
+      }
     } finally {
       _setLoading(false);
     }
@@ -132,7 +160,13 @@ class ApiProvider extends ChangeNotifier {
       }
     } catch (e) {
       print('❌ 네트워크 재연결 실패: $e');
-      _setError('재연결 중 오류가 발생했습니다.');
+
+      // 401 오류인 경우 강제 로그아웃
+      if (e.toString().contains('401') || e.toString().contains('인증')) {
+        await forceLogout();
+      } else {
+        _setError('재연결 중 오류가 발생했습니다.');
+      }
     } finally {
       _setLoading(false);
     }
@@ -163,17 +197,26 @@ class ApiProvider extends ChangeNotifier {
       return results;
     } catch (e) {
       print('❌ API 서비스 진단 실패: $e');
-      _setError('서비스 상태 확인 중 오류가 발생했습니다.');
+
+      // 401 오류인 경우 강제 로그아웃
+      if (e.toString().contains('401') || e.toString().contains('인증')) {
+        await forceLogout();
+      } else {
+        _setError('서비스 상태 확인 중 오류가 발생했습니다.');
+      }
       return {};
     } finally {
       _setLoading(false);
     }
   }
 
-  /// Provider 리소스 정리
+  /// ✅ Provider 리소스 정리
   @override
   void dispose() {
+    print('🗑️ ApiProvider dispose 시작');
     _apiService.dispose();
+    // DioClient는 여기서 명시적으로 dispose하지 않음 (Dio가 자동 관리)
     super.dispose();
+    print('✅ ApiProvider dispose 완료');
   }
 }
