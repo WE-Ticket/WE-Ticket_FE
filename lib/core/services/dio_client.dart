@@ -6,6 +6,7 @@ class DioClient {
   late Dio _dio;
   String? _accessToken;
   String? _refreshToken;
+  bool _isRefreshing = false; // 토큰 갱신 중복 방지
 
   DioClient() {
     _dio = Dio(
@@ -21,31 +22,33 @@ class DioClient {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
+          // ✅ 매번 SharedPreferences에서 최신 토큰 로드
           final prefs = await SharedPreferences.getInstance();
-          _accessToken ??= prefs.getString('access_token');
+          final storedAccessToken = prefs.getString('access_token');
+          final storedRefreshToken = prefs.getString('refresh_token');
 
-          if (_accessToken != null) {
+          // 메모리 토큰을 최신 상태로 동기화
+          _accessToken = storedAccessToken;
+          _refreshToken = storedRefreshToken;
+
+          if (_accessToken != null && _accessToken!.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $_accessToken';
+            print('🔑 요청에 토큰 추가: ${_accessToken!.substring(0, 20)}...');
+          } else {
+            print('⚠️ 토큰 없음 - 인증 없이 요청');
           }
 
           return handler.next(options);
         },
         onError: (error, handler) async {
-          // access_token 만료 시 refresh_token으로 재발급 시도
+          // ⚠️ 임시: Refresh API가 없으므로 401 오류 시 바로 토큰 삭제
           if (error.response?.statusCode == 401) {
-            final prefs = await SharedPreferences.getInstance();
-            _refreshToken ??= prefs.getString('refresh_token');
+            print('🚨 토큰 만료 감지 - Refresh API 없음으로 토큰 삭제');
 
-            final success = await _refreshAccessToken();
-            if (success) {
-              // 요청 재시도
-              final retryOptions = error.requestOptions;
+            // 토큰 완전 삭제
+            await clearTokens();
 
-              retryOptions.headers['Authorization'] = 'Bearer $_accessToken';
-
-              final cloneResponse = await _dio.fetch(retryOptions);
-              return handler.resolve(cloneResponse);
-            }
+            print('❌ 인증 만료 - 재로그인 필요');
           }
 
           return handler.next(error);
@@ -67,48 +70,115 @@ class DioClient {
 
   Dio get dio => _dio;
 
-  /// ✅ 토큰 설정
+  /// ✅ 토큰 설정 - SharedPreferences와 메모리 동기화
   Future<void> setAccessToken(String token) async {
     _accessToken = token;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('access_token', token);
+    print('💾 Access 토큰 저장 완료');
   }
 
   Future<void> setRefreshToken(String token) async {
     _refreshToken = token;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('refresh_token', token);
+    print('💾 Refresh 토큰 저장 완료');
   }
 
-  /// ✅ 토큰 제거
+  /// ✅ 토큰 제거 - 완전한 정리
   Future<void> clearTokens() async {
+    print('🗑️ 모든 토큰 삭제 시작');
+
+    // 메모리에서 삭제
     _accessToken = null;
     _refreshToken = null;
+
+    // SharedPreferences에서 삭제
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('access_token');
     await prefs.remove('refresh_token');
+
+    print('✅ 모든 토큰 삭제 완료');
   }
 
-  /// ✅ access_token 갱신
+  /// ⚠️ 임시 비활성화: access_token 갱신 (백엔드 API 대기 중)
   Future<bool> _refreshAccessToken() async {
     try {
-      if (_refreshToken == null) return false;
+      print('⚠️ Refresh API 미구현 - 토큰 갱신 불가');
+
+      // TODO: 백엔드에서 refresh API 구현 후 활성화
+      /*
+      print('🔄 토큰 갱신 시작');
+      
+      // SharedPreferences에서 최신 refresh 토큰 로드
+      final prefs = await SharedPreferences.getInstance();
+      final storedRefreshToken = prefs.getString('refresh_token');
+      
+      if (storedRefreshToken == null || storedRefreshToken.isEmpty) {
+        print('❌ Refresh 토큰 없음');
+        return false;
+      }
+
+      _refreshToken = storedRefreshToken;
 
       final response = await _dio.post(
         '/users/token/refresh/', // ⚠️ 실제 서버의 refresh endpoint 확인 필요
         data: {'refresh': _refreshToken},
+        options: Options(
+          headers: {
+            'Authorization': null, // refresh 요청 시에는 기존 토큰 제거
+          },
+        ),
       );
 
       if (response.statusCode == 200) {
         final newAccessToken = response.data['access'];
         await setAccessToken(newAccessToken);
+        
+        // refresh 토큰도 새로 발급된 경우
+        final newRefreshToken = response.data['refresh'];
+        if (newRefreshToken != null) {
+          await setRefreshToken(newRefreshToken);
+        }
+        
+        print('✅ 토큰 갱신 성공');
         return true;
+      } else {
+        print('❌ 토큰 갱신 응답 오류: ${response.statusCode}');
+        return false;
       }
-    } catch (e) {
-      print('🔁 토큰 갱신 실패: $e');
-    }
+      */
 
-    return false;
+      return false;
+    } catch (e) {
+      print('❌ 토큰 갱신 예외: $e');
+      return false;
+    }
+  }
+
+  /// ✅ 토큰 상태 확인
+  Future<bool> hasValidTokens() async {
+    final prefs = await SharedPreferences.getInstance();
+    final accessToken = prefs.getString('access_token');
+    final refreshToken = prefs.getString('refresh_token');
+
+    return accessToken != null &&
+        accessToken.isNotEmpty &&
+        refreshToken != null &&
+        refreshToken.isNotEmpty;
+  }
+
+  /// ✅ 현재 토큰 정보 출력 (디버깅용)
+  Future<void> debugTokenStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final storedAccess = prefs.getString('access_token');
+    final storedRefresh = prefs.getString('refresh_token');
+
+    print('🔍 토큰 상태 디버그:');
+    print('  메모리 Access: ${_accessToken?.substring(0, 20) ?? 'null'}...');
+    print('  저장된 Access: ${storedAccess?.substring(0, 20) ?? 'null'}...');
+    print('  메모리 Refresh: ${_refreshToken?.substring(0, 20) ?? 'null'}...');
+    print('  저장된 Refresh: ${storedRefresh?.substring(0, 20) ?? 'null'}...');
   }
 
   /// ✅ 기존 요청 함수 유지
@@ -139,6 +209,7 @@ class DioClient {
         return '연결 시간이 초과되었습니다.';
       case DioExceptionType.badResponse:
         final statusCode = error.response?.statusCode;
+        if (statusCode == 401) return '인증이 만료되었습니다. 다시 로그인해주세요.';
         if (statusCode == 404) return '요청한 데이터를 찾을 수 없습니다.';
         if (statusCode == 500) return '서버 오류가 발생했습니다.';
         return '서버 오류: $statusCode';
