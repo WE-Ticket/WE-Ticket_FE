@@ -49,11 +49,11 @@ class MainActivity : FlutterActivity() {
 
                             // key 타입 결정 및 키 생성 (generateKey API)
                             val bioKeyRequest = SecureKeyGenRequest(
-    keyId,
-    AlgorithmType.ALGORITHM_TYPE.SECP256R1,
-    StorageOption.STORAGE_OPTION.KEYSTORE,
-    KeyStoreAccessMethod.KEYSTORE_ACCESS_METHOD.BIOMETRY
-)
+                                keyId,
+                                AlgorithmType.ALGORITHM_TYPE.SECP256R1,
+                                StorageOption.STORAGE_OPTION.KEYSTORE,
+                                KeyStoreAccessMethod.KEYSTORE_ACCESS_METHOD.BIOMETRY
+                            )
                             keyManager.generateKey(bioKeyRequest)
 
                             Log.i(TAG, "BIO 개인키 생성 완료 (Android KeyStore)")
@@ -102,17 +102,17 @@ class MainActivity : FlutterActivity() {
                             // )
 
                             val didKeyInfos = listOf(
-    DIDKeyInfo(
-        keyInfo,
-        listOf(DIDMethodType.DID_METHOD_TYPE.authentication),
-        did
-    ),
-    DIDKeyInfo(
-        keyInfo,
-        listOf(DIDMethodType.DID_METHOD_TYPE.assertionMethod),
-        did
-    )
-)
+                                DIDKeyInfo(
+                                    keyInfo,
+                                    listOf(DIDMethodType.DID_METHOD_TYPE.authentication),
+                                    did
+                                ),
+                                DIDKeyInfo(
+                                    keyInfo,
+                                    listOf(DIDMethodType.DID_METHOD_TYPE.assertionMethod),
+                                    did
+                                )
+                            )
 
                             
                             
@@ -139,37 +139,37 @@ class MainActivity : FlutterActivity() {
 
                             //7. 서명
                              val now = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US).apply {
-        timeZone = java.util.TimeZone.getTimeZone("UTC")
-    }.format(java.util.Date())
+                                timeZone = java.util.TimeZone.getTimeZone("UTC")
+                            }.format(java.util.Date())
 
-     // Proof 객체 생성
-    val proof = Proof().apply {
-        created = now
-        proofPurpose = ProofPurpose.PROOF_PURPOSE.assertionMethod
-        verificationMethod = "${didDocument.id}?versionId=${didDocument.versionId}#$keyId"
-        type = ProofType.PROOF_TYPE.secp256r1Signature2018
-    }
-    didDocument.proof = proof
+                            // Proof 객체 생성
+                            val proof = Proof().apply {
+                                created = now
+                                proofPurpose = ProofPurpose.PROOF_PURPOSE.assertionMethod
+                                verificationMethod = "${didDocument.id}?versionId=${didDocument.versionId}#$keyId"
+                                type = ProofType.PROOF_TYPE.secp256r1Signature2018
+                            }
+                            didDocument.proof = proof
 
-    // JSON 직렬화 → SHA-256 해시
-val jsonData = didDocument.toJson().toByteArray()
-val digest = DigestUtils.getDigest(jsonData, DigestEnum.DIGEST_ENUM.SHA_256)
+                                // JSON 직렬화 → SHA-256 해시
+                            val jsonData = didDocument.toJson().toByteArray()
+                            val digest = DigestUtils.getDigest(jsonData, DigestEnum.DIGEST_ENUM.SHA_256)
 
-// 3. KeyManager로 서명
-val signature = keyManager.sign(keyId, null, digest)
+                            // 3. KeyManager로 서명
+                            val signature = keyManager.sign(keyId, null, digest)
 
-// 4. 서명값을 base58btc 인코딩
-val encodedSignature = MultibaseUtils.encode(
-    MultibaseType.MULTIBASE_TYPE.BASE_58_BTC,
-    signature
-)
+                            // 4. 서명값을 base58btc 인코딩
+                            val encodedSignature = MultibaseUtils.encode(
+                                MultibaseType.MULTIBASE_TYPE.BASE_58_BTC,
+                                signature
+                            )
 
-// 5. 인코딩된 서명을 proof에 대입
-proof.proofValue = encodedSignature
+                            // 5. 인코딩된 서명을 proof에 대입
+                            proof.proofValue = encodedSignature
 
-didDocument.proof = proof
+                            didDocument.proof = proof
 
-Log.d(TAG, "서명 후 DID Document 내용 조회")
+                            Log.d(TAG, "서명 후 DID Document 내용 조회")
                             Log.d(TAG, didDocument.toJson())
 
 
@@ -206,11 +206,43 @@ Log.d(TAG, "서명 후 DID Document 내용 조회")
                             result.success(errorResult)
                         }
                     }
-                    else -> {
+                
+                "saveDidDoc" -> {
+                    try {
+                        Log.i(TAG, "WE-Ticket DID 저장 플로우 시작")
+                        val didManager = DIDManager<BaseObject>("weticket_did", this)
+                        didManager.saveDocument();
+                        Log.i(TAG, "DID Document 저장 완료")
+
+                        val didDocument = didManager.getDocument()
+                        Log.d(TAG, "DID Document 내용 조회 완료")
+                        Log.d(TAG, didDocument.toJson())
+
+                        val detailedResult = mapOf(
+                                "success" to true,
+                                "didDocument" to didDocument.toString(),
+                                "timestamp" to System.currentTimeMillis()
+                            )
+
+                        Log.i(TAG, "WE-Ticket DID 저장 플로우 완료")
+                        result.success(detailedResult)
+
+                    }catch (e: Exception) {
+                            Log.e(TAG, "❌ WE-Ticket DID 저장 실패: ${e.message}", e)
+                            val errorResult = mapOf(
+                                "success" to false,
+                                "error" to e.message,
+                                "timestamp" to System.currentTimeMillis()
+                            )
+                            result.success(errorResult)
+                        }
+                }
+                else -> {
                         Log.w(TAG, "⚠️ 알 수 없는 메서드 호출: ${call.method}")
                         result.notImplemented()
-                    }
                 }
             }
+
+        }
     }
 }
