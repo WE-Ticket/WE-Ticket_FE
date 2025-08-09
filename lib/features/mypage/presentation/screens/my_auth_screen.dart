@@ -1,6 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:we_ticket/core/constants/app_colors.dart';
 import 'package:we_ticket/features/auth/presentation/providers/auth_provider.dart';
 import 'package:we_ticket/features/auth/presentation/screens/omnione_cx_auth_screen.dart';
@@ -758,8 +762,15 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
         );
       }
 
+      final authProvider = context.read<AuthProvider>();
+      final userId = authProvider.currentUserId; // 현재 로그인한 사용자 ID
+
       // DID 생성 플로우 시작
-      await _startDidCreationFlow(serverResponse);
+      await _startDidCreationFlow(serverResponse, userId!);
+
+      //FIXME test
+      // await _saveDidDoc();
+      await _didAuth();
     } else if (serverError != null) {
       // 인증 성공했으나 서버 저장 실패
       await _showWarningDialog(
@@ -769,9 +780,10 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
     }
   }
 
-  /// DID 생성 플로우 시작 (CI 코드 제거된 깔끔한 버전)
+  /// DID 생성 플로우 시작
   Future<void> _startDidCreationFlow(
     IdentityVerificationResponse serverResponse,
+    int userId,
   ) async {
     if (_isDidCreationInProgress) return; // 중복 실행 방지
 
@@ -785,8 +797,11 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
     try {
       print('[Flutter] WE-Ticket DID 생성 플로우 시작');
 
-      // 2. DID 생성 (CI 없이 순수 랜덤 생성)
+      // 2. DID 생성
       final didResult = await _createWeTicketDid();
+
+      await registerDid(didResult, userId);
+      print('[Flutter] DID 서버 등록 완료 ');
 
       // 3. DID 저장 및 상태 업데이트
       setState(() {
@@ -829,9 +844,6 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
             : publicKey;
         print('[Flutter] 🔓 공개키: $displayKey');
 
-        print(
-          '[Flutter] 📄 DID Document 크기: ${result['didDocument']?.toString().length ?? 0} 문자',
-        );
         print('[Flutter] 🔐 Key Attestation: ${result['keyAttestation']}');
 
         return result;
@@ -845,6 +857,123 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
     } catch (e) {
       print('[Flutter] ❌ WE-Ticket DID 생성 예외: $e');
       throw Exception('WE-Ticket DID 생성 중 예상치 못한 오류: $e');
+    }
+  }
+
+  Future<void> registerDid(Map<String, dynamic> didData, int userId) async {
+    print('DID 등록 API 시작 ');
+    final url = Uri.parse('http://13.236.171.188:8000/api/users/did/register/');
+
+    final payload = {
+      'user_id': userId,
+      'key_attestation': {
+        'keyId': didData['keyAttestation']['keyId'],
+        'algorithm': didData['keyAttestation']['algorithm'],
+        'storage': didData['keyAttestation']['storage'],
+        'createdAt': didData['keyAttestation']['createdAt'], // ISO 8601 형식의 문자열
+      },
+      'owner_did_doc': didData['didDocument'], // JSON 객체
+    };
+
+    print('DID 등록 payload : $payload ');
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final storedAccessToken = prefs.getString('access_token');
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $storedAccessToken',
+        },
+        body: jsonEncode(payload),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print('[Flutter] ✅ DID 등록 성공: ${response.body}');
+      } else {
+        print('[Flutter] ❌ DID 등록 실패: ${response.statusCode}');
+        print('[Flutter] 응답 내용: ${response.body}');
+        //FIXME
+        // await _delDidDoc();
+      }
+    } catch (e) {
+      print('[Flutter] ❌ 요청 예외 발생: $e');
+      throw Exception('DID 등록 중 오류 발생: $e');
+    }
+  }
+
+  // Future<void> _saveDidDoc() async {
+  //   try {
+  //     print('[Flutter] WE-Ticket DID 저장장 시작');
+
+  //     // Android의 상세 DID 생성 메서드 호출
+  //     final response = await platform.invokeMethod('saveDidDoc', {
+  //       "didDoc": didDoc,
+  //     });
+  //     final result = _safeMapConversion(response);
+
+  //     if (result['success'] == true) {
+  //       print('[Flutter] WE-Ticket DID 저장 성공');
+  //       print('[Flutter] 생성된 DID: ${result['didDocument']}');
+  //     } else {
+  //       print('[Flutter] ❌ WE-Ticket DID 저장 실패: ${result['error']}');
+  //       throw Exception('WE-Ticket DID 저장장 실패: ${result['error']}');
+  //     }
+  //   } on PlatformException catch (e) {
+  //     print('[Flutter] ❌ 플랫폼 예외: ${e.message}');
+  //     throw Exception('플랫폼 오류: ${e.message}');
+  //   } catch (e) {
+  //     print('[Flutter] ❌ WE-Ticket DID 저장 예외: $e');
+  //     throw Exception('WE-Ticket DID 저장 중 예상치 못한 오류: $e');
+  //   }
+  // }
+
+  Future<void> _delDidDoc() async {
+    try {
+      print('[Flutter] WE-Ticket did del 시작');
+
+      // Android의 상세 DID 생성 메서드 호출
+      final response = await platform.invokeMethod('delDidDoc');
+      final result = _safeMapConversion(response);
+
+      if (result['success'] == true) {
+        print('[Flutter] WE-Ticket DID DOC 삭제  성공');
+      } else {
+        print('[Flutter] ❌ WE-Ticket DID 삭제 실패: ${result['error']}');
+        throw Exception('WE-Ticket DID 삭제 실패: ${result['error']}');
+      }
+    } on PlatformException catch (e) {
+      print('[Flutter] ❌ 플랫폼 예외: ${e.message}');
+      throw Exception('플랫폼 오류: ${e.message}');
+    } catch (e) {
+      print('[Flutter] ❌ WE-Ticket DID 삭제 예외: $e');
+      throw Exception('WE-Ticket DID 삭제 중 예상치 못한 오류: $e');
+    }
+  }
+
+  Future<void> _didAuth() async {
+    try {
+      print('[Flutter] WE-Ticket auth did 시작');
+
+      // Android의 상세 DID 생성 메서드 호출
+      final response = await platform.invokeMethod('didAuth');
+      final result = _safeMapConversion(response);
+
+      if (result['success'] == true) {
+        print('[Flutter] WE-Ticket Auth DID 성공');
+        print('[Flutter] 생성된 DID: ${result['didDocument']}');
+        print('[Flutter] 생성된 DID Auth : ${result['didAuth']}');
+      } else {
+        print('[Flutter] ❌ WE-Ticket DID Auth 실패: ${result['error']}');
+        throw Exception('WE-Ticket DID Auth 실패: ${result['error']}');
+      }
+    } on PlatformException catch (e) {
+      print('[Flutter] ❌ 플랫폼 예외: ${e.message}');
+      throw Exception('플랫폼 오류: ${e.message}');
+    } catch (e) {
+      print('[Flutter] ❌ WE-Ticket DID Auth 예외: $e');
+      throw Exception('WE-Ticket DID Auth 중 예상치 못한 오류: $e');
     }
   }
 
@@ -1407,7 +1536,10 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
             onPressed: () {
               Navigator.of(context).pop(); // 다이얼로그 닫기
               // DID 생성 재시도
-              _startDidCreationFlow(serverResponse);
+              final authProvider = context.read<AuthProvider>();
+              final userId = authProvider.currentUserId; // 현재 로그인한 사용자 ID
+
+              _startDidCreationFlow(serverResponse, userId!);
             },
             style: TextButton.styleFrom(
               foregroundColor: AppColors.textSecondary,
