@@ -299,6 +299,9 @@ class MainActivity : FlutterActivity() {
                     try {
                         Log.i(TAG, "WE-Ticket DID 검증 플로우 시작")
 
+                        val nonce = call.argument<String>("nonce")
+                        Log.i(TAG, "전달 받은 nonce : ${nonce}")
+
                         val keyManager = KeyManager<DetailKeyInfo>("WETicketWallet", this)
                         val didManager = DIDManager<BaseObject>("weticket_did", this)
                         Log.i(TAG, "KeyManager, DID Manager 생성 완료 ")
@@ -327,7 +330,7 @@ class MainActivity : FlutterActivity() {
 
                         var didAuth = DIDAuth().apply{
                             did = didDocument.id
-                            authNonce = "auth_nonce_dummy_dddddd"
+                            authNonce = nonce
                             this.proof = proof
                         }
                         Log.d(TAG, "DID Auth 객체 생성 완료")

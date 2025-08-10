@@ -770,7 +770,7 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
 
       //FIXME test
       // await _saveDidDoc();
-      await _didAuth();
+      // await _didAuth();
     } else if (serverError != null) {
       // 인증 성공했으나 서버 저장 실패
       await _showWarningDialog(
@@ -894,8 +894,7 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
       } else {
         print('[Flutter] ❌ DID 등록 실패: ${response.statusCode}');
         print('[Flutter] 응답 내용: ${response.body}');
-        //FIXME
-        // await _delDidDoc();
+        await _delDidDoc();
       }
     } catch (e) {
       print('[Flutter] ❌ 요청 예외 발생: $e');
