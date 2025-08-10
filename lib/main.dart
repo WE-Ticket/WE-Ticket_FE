@@ -18,13 +18,25 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // AuthProvider를 먼저 생성
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
-
-        // 🔧 수정: ApiProvider 생성자 변경 (AuthProvider 의존성 제거)
+        // ✅ 1. ApiProvider를 먼저 생성 (DioClient 포함)
         ChangeNotifierProvider(create: (_) => ApiProvider()),
 
-        // TransferProvider는 ApiProvider에 의존
+        // ✅ 2. AuthProvider는 ApiProvider의 DioClient를 사용
+        ChangeNotifierProxyProvider<ApiProvider, AuthProvider>(
+          create: (context) {
+            final apiProvider = Provider.of<ApiProvider>(
+              context,
+              listen: false,
+            );
+            return AuthProvider(apiProvider.dioClient);
+          },
+          update: (context, apiProvider, previousAuthProvider) {
+            // 기존 AuthProvider가 있으면 재사용, 없으면 새로 생성
+            return previousAuthProvider ?? AuthProvider(apiProvider.dioClient);
+          },
+        ),
+
+        // ✅ 3. TransferProvider는 ApiProvider에 의존
         ChangeNotifierProxyProvider<ApiProvider, TransferProvider>(
           create: (context) => TransferProvider(
             Provider.of<ApiProvider>(context, listen: false).apiService,
@@ -36,7 +48,6 @@ class MyApp extends StatelessWidget {
       ],
       child: MaterialApp(
         title: 'WE-Ticket',
-
         localizationsDelegates: [
           GlobalMaterialLocalizations.delegate,
           GlobalWidgetsLocalizations.delegate,
@@ -47,8 +58,8 @@ class MyApp extends StatelessWidget {
           Locale('en', 'US'), // 영어
         ],
         locale: Locale('ko', 'KR'), // 기본 로케일을 한국어로 설정
-
         home: MainApp(),
+        debugShowCheckedModeBanner: false,
       ),
     );
   }
@@ -63,10 +74,33 @@ class _MainAppState extends State<MainApp> {
   @override
   void initState() {
     super.initState();
-    // 앱 시작시 로그인 상태 확인
+    // ✅ 앱 시작시 초기화 로직
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AuthProvider>().checkAuthStatus();
+      _initializeApp();
     });
+  }
+
+  /// ✅ 앱 초기화 로직
+  Future<void> _initializeApp() async {
+    try {
+      print('🚀 앱 초기화 시작');
+
+      // 1. AuthProvider의 로그인 상태 확인
+      final authProvider = context.read<AuthProvider>();
+      await authProvider.checkAuthStatus();
+
+      // 2. 로그인 상태인 경우 초기 데이터 로드
+      if (authProvider.isLoggedIn) {
+        final apiProvider = context.read<ApiProvider>();
+        await apiProvider.loadDashboardData();
+        print('✅ 로그인 사용자 초기 데이터 로드 완료');
+      }
+
+      print('✅ 앱 초기화 완료');
+    } catch (e) {
+      print('❌ 앱 초기화 실패: $e');
+      // 초기화 실패해도 앱은 정상 실행
+    }
   }
 
   @override

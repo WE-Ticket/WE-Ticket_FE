@@ -1,8 +1,11 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:we_ticket/features/auth/presentation/providers/auth_provider.dart';
 import 'package:we_ticket/features/shared/providers/api_provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import 'package:flutter_nfc_kit/flutter_nfc_kit.dart';
@@ -32,6 +35,8 @@ class _NFCEntryScreenState extends State<NFCEntryScreen>
   late AnimationController _rotationController;
   late Animation<double> _pulseAnimation;
   late Animation<double> _rotationAnimation;
+
+  static const platform = MethodChannel('did_sdk');
 
   @override
   void initState() {
@@ -207,6 +212,166 @@ class _NFCEntryScreenState extends State<NFCEntryScreen>
         ],
       ),
     );
+  }
+
+  Map<String, dynamic> _safeMapConversion(dynamic input) {
+    if (input == null) return <String, dynamic>{};
+    if (input is Map<String, dynamic>) return input;
+    if (input is Map) {
+      return Map<String, dynamic>.from(
+        input.map((key, value) => MapEntry(key.toString(), value)),
+      );
+    }
+    return <String, dynamic>{};
+  }
+
+  Future<void> _entryAccess(int userId, String ticketId, String gateId) async {
+    setState(() {
+      _isProcessing = true;
+    });
+    try {
+      print('WE-Ticket 입장 시스템 시작');
+
+      print('[입장시스템] nonce 요청 시작');
+      final nonceResult = await entryNonce(userId, ticketId, gateId);
+      final nonce = nonceResult['nonce'];
+      print('[입장시스템] nonce 받아오기 성공 - nonce : $nonce');
+
+      print('[입장시스템] nonce로 auth DID 생성');
+      final response = await platform.invokeMethod('didAuth', {'nonce': nonce});
+      final result = _safeMapConversion(response);
+
+      if (result['success'] == true) {
+        print('[Flutter] auth DID 생성 성공');
+        print('[Flutter] 생성된 auth did : ${result['didAuth']}');
+      } else {
+        print('[Flutter] ❌ WE-Ticket DID Auth  생성 실패: ${result['error']}');
+        throw Exception('WE-Ticket DID Auth  생성 실패: ${result['error']}');
+      }
+
+      print('didAuth 검증 서버에 요청 시작');
+      final success = await postDidAuth(userId, ticketId, result);
+
+      //TODO 후속 절차
+      if (success) {
+        print('[입장 시스템] 입장 성공!');
+        setState(() {
+          _entryResult = true;
+          _isProcessing = false;
+        });
+      } else {
+        print('[입장 시스템] 입장 실패ㅠㅠ');
+        setState(() {
+          _entryResult = false;
+          _isProcessing = false;
+        });
+      }
+    } on PlatformException catch (e) {
+      print('[Flutter] ❌ 플랫폼 예외: ${e.message}');
+      throw Exception('플랫폼 오류: ${e.message}');
+    } catch (e) {
+      print('[Flutter] ❌ WE-Ticket DID Auth 예외: $e');
+      throw Exception('WE-Ticket DID Auth 중 예상치 못한 오류: $e');
+    }
+  }
+
+  //FIXME 임시 방편용 http
+  Future<Map<String, dynamic>> entryNonce(
+    int userId,
+    String ticketId,
+    String gateId,
+  ) async {
+    print('입장을 위한 nonce 요청');
+    final url = Uri.parse(
+      'http://13.236.171.188:8000/api/tickets/entry-nonce/',
+    );
+
+    final payload = {
+      'user_id': userId,
+      'ticket_id': ticketId,
+      'gate_id': gateId,
+    };
+
+    print('nonce 요청 payload : $payload ');
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final storedAccessToken = prefs.getString('access_token');
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $storedAccessToken',
+        },
+        body: jsonEncode(payload),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        //FIXME 타임 스탬프도 받아야 함!!
+        Map<String, dynamic> result = jsonDecode(response.body);
+        print('[Flutter] ✅ nonce 요청 성공: ${response.body}');
+        return result;
+      } else {
+        print('[Flutter] ❌ nonce 요청 성공: ${response.statusCode}');
+        print('[Flutter] 응답 내용: ${response.body}');
+        return {};
+      }
+    } catch (e) {
+      print('[Flutter] ❌ 요청 예외 발생: $e');
+      throw Exception('nonce 요청 중 오류 발생: $e');
+    }
+  }
+
+  //FIXME Key Attenstation 넘기기
+  Future<bool> postDidAuth(
+    int userId,
+    String ticketId,
+    Map<String, dynamic> didData,
+  ) async {
+    print('입장을 위한 auth DID API 시작');
+    final url = Uri.parse(
+      'http://13.236.171.188:8000/api/users/did-auth/entry/',
+    );
+
+    final payload = {
+      'user_id': userId,
+      'ticket_id': ticketId,
+      //FIXME 더미
+      'key_attestation': {
+        'keyId': 'weticket_key',
+        'algorithm': 'algorithm',
+        'storage': 'aos',
+        'createdAt': '1234',
+      },
+      'did_auth': didData['didAuth'],
+    };
+
+    print('입장 요청 did auth payload : $payload ');
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final storedAccessToken = prefs.getString('access_token');
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $storedAccessToken',
+        },
+        body: jsonEncode(payload),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print('[Flutter] ✅ auth did 요청 성공: ${response.body}');
+        return true;
+      } else {
+        print('[Flutter] ❌ did auth 요청 실패: ${response.statusCode}');
+        print('[Flutter] 응답 내용: ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      print('[Flutter] ❌ did auth 요청 예외 발생: $e');
+      throw Exception('did auth 요청 중 오류 발생: $e');
+    }
   }
 
   @override
@@ -484,6 +649,16 @@ class _NFCEntryScreenState extends State<NFCEntryScreen>
                   ],
                 ),
               ),
+            ),
+
+            // FIXME
+            TextButton(
+              onPressed: () {
+                final authProvider = context.read<AuthProvider>();
+                final userId = authProvider.currentUserId; // 현재 로그인한 사용자 ID
+                _entryAccess(userId!, widget.ticketId, "C");
+              },
+              child: Text("디버깅용 입장 버튼"),
             ),
 
             // 안내 정보

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:we_ticket/features/auth/data/auth_validators.dart';
 import 'package:we_ticket/features/auth/data/user_models.dart';
 import '../../../../core/services/dio_client.dart';
@@ -41,6 +42,18 @@ class AuthService {
 
       if (response.statusCode == 200) {
         final loginResponse = LoginResponse.fromJson(response.data);
+
+        final accessToken = loginResponse.accessToken;
+        final refreshToken = loginResponse.refreshToken;
+
+        // 1. DioClient에 설정
+        await _dioClient.setAccessToken(accessToken);
+        await _dioClient.setRefreshToken(refreshToken);
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('access_token', accessToken);
+        await prefs.setString('refresh_token', refreshToken);
+
         print('✅ 로그인 성공: 사용자 ID ${loginResponse.userId}');
         return AuthResult.success(loginResponse);
       } else {
@@ -106,7 +119,7 @@ class AuthService {
         fullName: fullName.trim(),
         loginId: loginId.trim(),
         phoneNumber: phoneNumber.trim(),
-        loginPassword: password,
+        password: password,
         agreements: agreements,
       );
 
@@ -332,18 +345,6 @@ extension AuthServiceExtension on AuthService {
     }
   }
 
-  /// authType에서 provider 추출
-  String _extractProviderFromAuthType(String authType) {
-    switch (authType) {
-      case 'simple':
-        return 'comdl_v1.5';
-      case 'mobile_id':
-        return 'coidentitydocument_v1.5';
-      default:
-        return 'unknown';
-    }
-  }
-
   /// JWT 토큰의 페이로드 디코딩
   Map<String, dynamic>? _decodeJWTPayload(String token) {
     try {
@@ -376,40 +377,6 @@ extension AuthServiceExtension on AuthService {
     } catch (e) {
       print('❌ JWT 디코딩 오류: $e');
       return null;
-    }
-  }
-
-  /// 인증 방법 결정
-  String _getVerificationMethod(String authType, String? provider) {
-    if (provider != null) {
-      // provider 기반 우선 판단
-      switch (provider.toLowerCase()) {
-        case 'comdl':
-        case 'comdl_v1.5':
-          return 'omni_mobile_license'; // 모바일 운전면허증
-        case 'coidentitydocument':
-        case 'coidentitydocument_v1.5':
-          return 'mobile_id'; // 모바일 신분증
-        case 'coresidence':
-        case 'coresidence_v1.5':
-          return 'omni_residence_card'; // 거주증
-        case 'cokakao':
-          return 'cokakao'; // 카카오 간편인증
-        default:
-          return 'omni_${provider}';
-      }
-    }
-
-    // authType 기반 fallback
-    switch (authType) {
-      case 'simple':
-        return 'omni_simple';
-      case 'mobile_id':
-        return 'mobile_id';
-      case 'mobile_license':
-        return 'omni_mobile_license';
-      default:
-        return 'omni_unknown';
     }
   }
 

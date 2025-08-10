@@ -42,3 +42,8 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    implementation(project(":didclientsdk"))
+    implementation("com.google.code.gson:gson:2.10.1")
+}

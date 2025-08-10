@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:we_ticket/core/services/dio_client.dart';
 import 'package:we_ticket/features/auth/data/auth_service.dart';
 import 'package:we_ticket/features/auth/data/user_models.dart';
 
 class AuthProvider extends ChangeNotifier {
+  final DioClient _dioClient; // ✅ DioClient 참조 추가
+
   bool _isLoggedIn = false;
   UserModel? _user;
   bool _isLoading = false;
@@ -12,6 +15,9 @@ class AuthProvider extends ChangeNotifier {
   // 인증 처리 관련 상태 추가
   bool _isProcessingAuth = false;
   String? _currentAuthType;
+
+  // ✅ 생성자에서 DioClient 주입받기
+  AuthProvider(this._dioClient);
 
   // Getters
   bool get isLoggedIn => _isLoggedIn;
@@ -28,9 +34,20 @@ class AuthProvider extends ChangeNotifier {
     'mobile_id_totally': '안전 인증',
   };
 
-  /// 앱 시작시 로그인 상태 확인
+  /// ✅ 앱 시작시 로그인 상태 확인 - 개선된 로직
   Future<void> checkAuthStatus() async {
     try {
+      print('🔍 로그인 상태 확인 시작');
+
+      // DioClient 토큰 상태 먼저 확인
+      final hasValidTokens = await _dioClient.hasValidTokens();
+
+      if (!hasValidTokens) {
+        print('⚠️ 유효한 토큰 없음 - 로그아웃 상태');
+        await _clearAllUserData();
+        return;
+      }
+
       final prefs = await SharedPreferences.getInstance();
       final isLoggedIn = prefs.getBool('is_logged_in') ?? false;
 
@@ -53,14 +70,18 @@ class AuthProvider extends ChangeNotifier {
           _isLoggedIn = true;
           print('✅ 저장된 로그인 상태 복원: $userName');
           notifyListeners();
+        } else {
+          print('⚠️ 불완전한 사용자 데이터 - 로그아웃 처리');
+          await _clearAllUserData();
         }
       }
     } catch (e) {
       print('❌ 로그인 상태 확인 오류: $e');
+      await _clearAllUserData();
     }
   }
 
-  /// 로그인
+  /// ✅ 로그인 - 토큰 설정 강화
   Future<bool> login({
     required String loginId,
     required String password,
@@ -70,15 +91,32 @@ class AuthProvider extends ChangeNotifier {
     _clearError();
 
     try {
+      print('🔐 로그인 시작: $loginId');
+
+      // 기존 토큰 완전 삭제
+      await _dioClient.clearTokens();
+
       final result = await authService.login(
         loginId: loginId,
         password: password,
       );
 
       if (result.isSuccess && result.data != null) {
-        final user = result.data!.toUserModel();
-        await _setLoggedInUser(user);
-        print('✅ 로그인 성공: ${user.userName}');
+        final loginResponse = result.data!;
+        final user = loginResponse.toUserModel();
+
+        print('✅ 로그인 API 성공');
+
+        // 토큰을 DioClient에 설정
+        await _dioClient.setAccessToken(loginResponse.accessToken);
+        await _dioClient.setRefreshToken(loginResponse.refreshToken);
+
+        // 사용자 정보 저장
+        await _setLoggedInUser(user, token: loginResponse.accessToken);
+
+        // 토큰 상태 디버그
+        await _dioClient.debugTokenStatus();
+
         return true;
       } else {
         _setError(result.errorMessage!);
@@ -238,20 +276,18 @@ class AuthProvider extends ChangeNotifier {
     await _setLoggedInUser(user, token: token);
   }
 
-  /// 로그아웃
+  /// ✅ 로그아웃 - 완전한 정리
   Future<void> logout() async {
     try {
-      _user = null;
-      _isLoggedIn = false;
-      _clearError();
-      _setAuthProcessing(false, null);
+      print('🚪 로그아웃 시작');
 
-      // 저장된 상태 삭제
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
+      // 1. DioClient 토큰 완전 삭제
+      await _dioClient.clearTokens();
+
+      // 2. 모든 사용자 데이터 삭제
+      await _clearAllUserData();
 
       print('✅ 로그아웃 완료');
-      notifyListeners();
     } catch (e) {
       print('❌ 로그아웃 오류: $e');
       _setError('로그아웃 중 오류가 발생했습니다');
@@ -260,7 +296,28 @@ class AuthProvider extends ChangeNotifier {
 
   // Private methods
 
-  /// 로그인 사용자 설정 및 저장
+  /// ✅ 모든 사용자 데이터 완전 삭제
+  Future<void> _clearAllUserData() async {
+    try {
+      // 메모리 상태 초기화
+      _user = null;
+      _isLoggedIn = false;
+      _clearError();
+      _setAuthProcessing(false, null);
+
+      // SharedPreferences 완전 삭제
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+
+      print('🗑️ 모든 사용자 데이터 삭제 완료');
+      notifyListeners();
+    } catch (e) {
+      print('❌ 사용자 데이터 삭제 오류: $e');
+      rethrow;
+    }
+  }
+
+  /// ✅ 로그인 사용자 설정 및 저장 - 개선된 로직
   Future<void> _setLoggedInUser(UserModel user, {String? token}) async {
     try {
       _user = user;
@@ -274,10 +331,16 @@ class AuthProvider extends ChangeNotifier {
       await prefs.setString('user_name', user.userName);
       await prefs.setString('user_auth_level', user.userAuthLevel);
 
+      // 토큰이 제공된 경우 저장 (하지만 DioClient에서 이미 저장했으므로 중복 확인)
       if (token != null) {
-        await prefs.setString('auth_token', token);
+        final storedToken = prefs.getString('access_token');
+        if (storedToken != token) {
+          await prefs.setString('access_token', token);
+          print('⚠️ 토큰 불일치 감지 - 동기화 완료');
+        }
       }
 
+      print('💾 사용자 정보 저장 완료: ${user.userName}');
       notifyListeners();
     } catch (e) {
       print('❌ 사용자 정보 저장 오류: $e');
