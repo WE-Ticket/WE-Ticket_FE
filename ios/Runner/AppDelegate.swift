@@ -94,7 +94,7 @@ extension AppDelegate {
         // 6) 저장
         try didManager.saveDocument()
 
-        // 7) Flutter로 반환 (안드로이드와 동일한 키 구성)
+        // 7) Flutter로 반환
         let payload: [String: Any] = [
           "success": true,
           "did": did,
