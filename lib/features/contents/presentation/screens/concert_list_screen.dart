@@ -22,7 +22,7 @@ class _ConcertListScreenState extends State<ConcertListScreen> {
   String? _errorMessage;
 
   final List<String> _categories = ['전체', '콘서트', '뮤지컬', '연극', '기타'];
-  final List<String> _sortOptions = ['최신순', '인기순', '가격순', '날짜순'];
+  final List<String> _sortOptions = ['최신순', '인기순', '공연 임박순', '가격 낮은순'];
 
   @override
   void initState() {
@@ -101,7 +101,7 @@ class _ConcertListScreenState extends State<ConcertListScreen> {
       case '인기순':
         converted.sort((a, b) => (b.isHot ? 1 : 0) - (a.isHot ? 1 : 0));
         break;
-      case '가격순':
+      case '가격 낮은순':
         converted.sort((a, b) {
           String priceA = a.minPrice.toString().replaceAll(
             RegExp(r'[^0-9]'),
@@ -116,7 +116,7 @@ class _ConcertListScreenState extends State<ConcertListScreen> {
           return numA.compareTo(numB);
         });
         break;
-      case '날짜순':
+      case '공연 임박순':
         converted.sort(
           (a, b) => a.startDate.toString().compareTo(b.startDate.toString()),
         );
