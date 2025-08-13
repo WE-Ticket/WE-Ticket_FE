@@ -1,5 +1,6 @@
 import UIKit
 import Flutter
+import DIDWalletSDK
 
 @UIApplicationMain
 class AppDelegate: FlutterAppDelegate {
@@ -49,7 +50,7 @@ extension AppDelegate {
 
         let keyId = "weticket_key_\(Int(Date().timeIntervalSince1970 * 1000))"
         let bioKeyRequest = SecureKeyGenRequest(id: keyId,
-                                        accessMethod: .currentSet
+                                        accessMethod: .currentSet,
                                         prompt : "Need to authenticate user")
         try keyManager.generateKey(keyGenRequest: bioKeyRequest)
         print("[ios] BIO 개인키 생성 완료 : \(keyId)")
