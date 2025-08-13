@@ -106,14 +106,12 @@ class DioClient {
     try {
       print('⚠️ Refresh API 미구현 - 토큰 갱신 불가');
 
-      // TODO: 백엔드에서 refresh API 구현 후 활성화
-      /*
       print('🔄 토큰 갱신 시작');
-      
+
       // SharedPreferences에서 최신 refresh 토큰 로드
       final prefs = await SharedPreferences.getInstance();
       final storedRefreshToken = prefs.getString('refresh_token');
-      
+
       if (storedRefreshToken == null || storedRefreshToken.isEmpty) {
         print('❌ Refresh 토큰 없음');
         return false;
@@ -122,7 +120,7 @@ class DioClient {
       _refreshToken = storedRefreshToken;
 
       final response = await _dio.post(
-        '/users/token/refresh/', // ⚠️ 실제 서버의 refresh endpoint 확인 필요
+        '/users/token/refresh/',
         data: {'refresh': _refreshToken},
         options: Options(
           headers: {
@@ -134,20 +132,19 @@ class DioClient {
       if (response.statusCode == 200) {
         final newAccessToken = response.data['access'];
         await setAccessToken(newAccessToken);
-        
+
         // refresh 토큰도 새로 발급된 경우
         final newRefreshToken = response.data['refresh'];
         if (newRefreshToken != null) {
           await setRefreshToken(newRefreshToken);
         }
-        
+
         print('✅ 토큰 갱신 성공');
         return true;
       } else {
         print('❌ 토큰 갱신 응답 오류: ${response.statusCode}');
         return false;
       }
-      */
 
       return false;
     } catch (e) {
