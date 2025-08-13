@@ -14,12 +14,22 @@ class TransferMarketScreen extends StatefulWidget {
 }
 
 class _TransferMarketScreenState extends State<TransferMarketScreen> {
-  String _selectedFilter = '전체보기';
-  final List<String> _filterOptions = ['전체보기', '공연별로 보기'];
+  // 기존 필터 관련 변수들 (주석 처리하여 보존)
+  // String _selectedFilter = '전체보기';
+  // final List<String> _filterOptions = ['전체보기', '공연별로 보기'];
 
   // 검색 관련
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  bool _showPerformanceDropdown = false;
+
+  // 공연 검색 관련
+  final TextEditingController _performanceSearchController =
+      TextEditingController();
+  List<Map<String, dynamic>> _performanceSearchResults = [];
+  Map<String, dynamic>? _selectedPerformance;
+  bool _isSearchingPerformances = false;
+  final FocusNode _performanceSearchFocusNode = FocusNode();
 
   @override
   void initState() {
@@ -27,11 +37,20 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadInitialData();
     });
+
+    // 포커스 리스너 추가
+    _performanceSearchFocusNode.addListener(() {
+      setState(() {
+        _showPerformanceDropdown = _performanceSearchFocusNode.hasFocus;
+      });
+    });
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _performanceSearchController.dispose();
+    _performanceSearchFocusNode.dispose();
     super.dispose();
   }
 
@@ -74,8 +93,9 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
       body: Column(
         children: [
           _buildPurposeHeader(),
-          // _buildSearchBar(),
-          _buildFilterAndActions(),
+          _buildPerformanceSearchBar(),
+          if (_selectedPerformance != null) _buildSelectedPerformanceCard(),
+          _buildActionButtons(),
           Expanded(child: _buildTransferTicketList()),
           SizedBox(height: 40),
         ],
@@ -112,162 +132,407 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
     );
   }
 
-  Widget _buildSearchBar() {
+  Widget _buildPerformanceSearchBar() {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: TextField(
-        controller: _searchController,
-        decoration: InputDecoration(
-          hintText: '공연 제목이나 아티스트로 검색...',
-          hintStyle: TextStyle(color: AppColors.textSecondary),
-          prefixIcon: Icon(Icons.search, color: AppColors.textSecondary),
-          suffixIcon: _searchQuery.isNotEmpty
-              ? IconButton(
-                  icon: Icon(Icons.clear, color: AppColors.textSecondary),
-                  onPressed: () {
-                    _searchController.clear();
-                    setState(() {
-                      _searchQuery = '';
-                    });
-                    _performSearch('');
-                  },
-                )
-              : null,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: AppColors.border),
+      child: Stack(
+        children: [
+          Row(
+            children: [
+              // 공연 검색창
+              Expanded(
+                flex: 6,
+                child: Container(
+                  height: 45,
+                  child: TextField(
+                    controller: _performanceSearchController,
+                    focusNode: _performanceSearchFocusNode,
+                    decoration: InputDecoration(
+                      hintText: '공연명으로 검색...',
+                      hintStyle: TextStyle(color: AppColors.textSecondary),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: AppColors.textSecondary,
+                      ),
+                      suffixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_performanceSearchController.text.isNotEmpty)
+                            IconButton(
+                              icon: Icon(
+                                Icons.clear,
+                                color: AppColors.textSecondary,
+                              ),
+                              onPressed: () {
+                                _performanceSearchController.clear();
+                                _clearPerformanceSearch();
+                              },
+                            ),
+                          if (_selectedPerformance != null)
+                            Container(
+                              margin: EdgeInsets.only(right: 8),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                '선택됨',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: AppColors.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: AppColors.primary),
+                      ),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      filled: true,
+                      fillColor: AppColors.surface,
+                    ),
+                    onChanged: _onPerformanceSearchChanged,
+                  ),
+                ),
+              ),
+
+              SizedBox(width: 8),
+
+              // 양도관리 버튼
+              GestureDetector(
+                onTap: () {
+                  AuthGuard.requireAuth(
+                    context,
+                    onAuthenticated: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => MyTransferManageScreen(),
+                        ),
+                      );
+                    },
+                    message: '양도 관리는 로그인이 필요합니다',
+                  );
+                },
+                child: Container(
+                  height: 45,
+                  width: 45,
+                  alignment: Alignment.center,
+                  padding: EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.gray200,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.gray300),
+                  ),
+                  child: Icon(Icons.person, color: AppColors.secondary),
+                ),
+              ),
+
+              SizedBox(width: 6),
+
+              // 비공개 버튼
+              GestureDetector(
+                onTap: () {
+                  AuthGuard.requireAuth(
+                    context,
+                    onAuthenticated: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PrivateTransferScreen(),
+                        ),
+                      );
+                    },
+                    message: '비공개 양도는 로그인이 필요합니다',
+                  );
+                },
+
+                child: Container(
+                  height: 45,
+                  width: 45,
+                  alignment: Alignment.center,
+                  padding: EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.gray200,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.gray300),
+                  ),
+                  child: Icon(Icons.lock, color: AppColors.secondary),
+                ),
+              ),
+            ],
           ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: AppColors.primary),
-          ),
-          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          filled: true,
-          fillColor: AppColors.surface,
-        ),
-        onChanged: (value) {
-          setState(() {
-            _searchQuery = value;
-          });
-          _performSearch(value);
-        },
-        onSubmitted: _performSearch,
+
+          // 공연 검색 결과 드롭다운
+          if (_showPerformanceDropdown && _performanceSearchResults.isNotEmpty)
+            Positioned(
+              top: 53,
+              left: 0,
+              right: 140, // 버튼 영역 제외
+              child: _buildPerformanceDropdown(),
+            ),
+        ],
       ),
     );
   }
 
-  Widget _buildFilterAndActions() {
+  Widget _buildPerformanceDropdown() {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Column(
+      constraints: BoxConstraints(maxHeight: 200),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadowLight,
+            spreadRadius: 1,
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ListView.separated(
+        shrinkWrap: true,
+        itemCount: _performanceSearchResults.length,
+        separatorBuilder: (context, index) =>
+            Divider(height: 1, color: AppColors.border),
+        itemBuilder: (context, index) {
+          final performance = _performanceSearchResults[index];
+          return ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            title: Text(
+              performance['title'] ?? '',
+              style: TextStyle(fontSize: 14, color: AppColors.textPrimary),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            subtitle: Text(
+              '${performance['venue'] ?? ''} • ${performance['date'] ?? ''}',
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            onTap: () => _selectPerformance(performance),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildSelectedPerformanceCard() {
+    if (_selectedPerformance == null) return SizedBox.shrink();
+
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+      ),
+      child: Row(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _selectedFilter,
-                      items: _filterOptions.map((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(
-                            value,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          _selectedFilter = newValue!;
-                        });
-                        _applyFilter(newValue!);
-                      },
-                      icon: Icon(
-                        Icons.arrow_drop_down,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
+          Icon(Icons.filter_alt, color: AppColors.primary, size: 18),
+          SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '선택된 공연',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-              ),
-              Row(
-                children: [
-                  SizedBox(width: 4),
-                  GestureDetector(
-                    onTap: () {
-                      AuthGuard.requireAuth(
-                        context,
-                        onAuthenticated: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => MyTransferManageScreen(),
-                            ),
-                          );
-                        },
-                        message: '양도 관리는 로그인이 필요합니다',
-                      );
-                    },
-                    child: Container(
-                      alignment: Alignment.center,
-                      width: 45,
-                      height: 45,
-                      padding: EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.gray200,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.gray300),
-                      ),
-                      child: Icon(Icons.person, color: AppColors.secondary),
-                    ),
+                Text(
+                  _selectedPerformance!['title'] ?? '',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w500,
                   ),
-                  SizedBox(width: 4),
-                  GestureDetector(
-                    onTap: () {
-                      AuthGuard.requireAuth(
-                        context,
-                        onAuthenticated: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => PrivateTransferScreen(),
-                            ),
-                          );
-                        },
-                        message: '비공개 양도는 로그인이 필요합니다',
-                      );
-                    },
-                    child: Container(
-                      width: 45,
-                      height: 45,
-                      alignment: Alignment.center,
-                      padding: EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.gray200,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.gray300),
-                      ),
-                      child: Icon(Icons.lock, color: AppColors.secondary),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.close, color: AppColors.primary, size: 18),
+            onPressed: _clearSelectedPerformance,
           ),
         ],
       ),
     );
   }
+
+  Widget _buildActionButtons() {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          Text(
+            '전체 양도 티켓',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          Spacer(),
+          if (_selectedPerformance != null)
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.warning.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '필터링 중',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.warning,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // 기존 코드 보존 - 주석 처리된 기존 필터 위젯
+  /*
+ Widget _buildFilterAndActions() {
+   return Container(
+     padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+     child: Column(
+       children: [
+         Row(
+           children: [
+             Expanded(
+               child: Container(
+                 padding: EdgeInsets.symmetric(horizontal: 12),
+                 decoration: BoxDecoration(
+                   color: AppColors.surface,
+                   borderRadius: BorderRadius.circular(8),
+                   border: Border.all(color: AppColors.border),
+                 ),
+                 child: DropdownButtonHideUnderline(
+                   child: DropdownButton<String>(
+                     value: _selectedFilter,
+                     items: _filterOptions.map((String value) {
+                       return DropdownMenuItem<String>(
+                         value: value,
+                         child: Text(
+                           value,
+                           style: TextStyle(
+                             fontSize: 14,
+                             color: AppColors.textPrimary,
+                           ),
+                         ),
+                       );
+                     }).toList(),
+                     onChanged: (String? newValue) {
+                       setState(() {
+                         _selectedFilter = newValue!;
+                       });
+                       _applyFilter(newValue!);
+                     },
+                     icon: Icon(
+                       Icons.arrow_drop_down,
+                       color: AppColors.textSecondary,
+                     ),
+                   ),
+                 ),
+               ),
+             ),
+             Row(
+               children: [
+                 SizedBox(width: 4),
+                 GestureDetector(
+                   onTap: () {
+                     AuthGuard.requireAuth(
+                       context,
+                       onAuthenticated: () {
+                         Navigator.push(
+                           context,
+                           MaterialPageRoute(
+                             builder: (context) => MyTransferManageScreen(),
+                           ),
+                         );
+                       },
+                       message: '양도 관리는 로그인이 필요합니다',
+                     );
+                   },
+                   child: Container(
+                     alignment: Alignment.center,
+                     width: 45,
+                     height: 45,
+                     padding: EdgeInsets.all(12),
+                     decoration: BoxDecoration(
+                       color: AppColors.gray200,
+                       borderRadius: BorderRadius.circular(8),
+                       border: Border.all(color: AppColors.gray300),
+                     ),
+                     child: Icon(Icons.person, color: AppColors.secondary),
+                   ),
+                 ),
+                 SizedBox(width: 4),
+                 GestureDetector(
+                   onTap: () {
+                     AuthGuard.requireAuth(
+                       context,
+                       onAuthenticated: () {
+                         Navigator.push(
+                           context,
+                           MaterialPageRoute(
+                             builder: (context) => PrivateTransferScreen(),
+                           ),
+                         );
+                       },
+                       message: '비공개 양도는 로그인이 필요합니다',
+                     );
+                   },
+                   child: Container(
+                     width: 45,
+                     height: 45,
+                     alignment: Alignment.center,
+                     padding: EdgeInsets.all(12),
+                     decoration: BoxDecoration(
+                       color: AppColors.gray200,
+                       borderRadius: BorderRadius.circular(8),
+                       border: Border.all(color: AppColors.gray300),
+                     ),
+                     child: Icon(Icons.lock, color: AppColors.secondary),
+                   ),
+                 ),
+               ],
+             ),
+           ],
+         ),
+       ],
+     ),
+   );
+ }
+ */
 
   Widget _buildTransferTicketList() {
     return Consumer<TransferProvider>(
@@ -338,7 +603,9 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
                 ),
                 SizedBox(height: 16),
                 Text(
-                  _searchQuery.isNotEmpty ? '검색 결과가 없습니다' : '현재 양도 중인 티켓이 없습니다',
+                  _selectedPerformance != null
+                      ? '선택한 공연의 양도 티켓이 없습니다'
+                      : '현재 양도 중인 티켓이 없습니다',
                   style: TextStyle(
                     fontSize: 16,
                     color: AppColors.textSecondary,
@@ -346,8 +613,8 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
                 ),
                 SizedBox(height: 8),
                 Text(
-                  _searchQuery.isNotEmpty
-                      ? '다른 검색어로 시도해보세요'
+                  _selectedPerformance != null
+                      ? '다른 공연을 선택해보세요'
                       : '새로고침을 통해 최신 목록을 확인해보세요',
                   style: TextStyle(fontSize: 14, color: AppColors.textTertiary),
                 ),
@@ -622,7 +889,136 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
     );
   }
 
-  /// 검색 수행
+  // === 새로운 공연 검색 관련 메서드들 ===
+
+  /// 공연 검색어 변경 시 호출
+  void _onPerformanceSearchChanged(String query) {
+    if (query.isEmpty) {
+      setState(() {
+        _performanceSearchResults.clear();
+        _showPerformanceDropdown = false;
+      });
+      return;
+    }
+
+    // TODO: 실제 공연 검색 API 호출
+    _searchPerformances(query);
+  }
+
+  /// 공연 검색 API 호출
+  Future<void> _searchPerformances(String query) async {
+    if (query.length < 2) return; // 최소 2글자 이상 입력 시 검색
+
+    setState(() {
+      _isSearchingPerformances = true;
+    });
+
+    try {
+      // TODO: 실제 API 호출로 교체
+      // final response = await ApiService.searchPerformances(query);
+      // List<Map<String, dynamic>> results = response.data;
+
+      // 임시 더미 데이터
+      await Future.delayed(Duration(milliseconds: 300)); // API 호출 시뮬레이션
+
+      List<Map<String, dynamic>> results =
+          [
+                {
+                  'id': '1',
+                  'title': '아이유 콘서트 2025',
+                  'venue': '올림픽공원 체조경기장',
+                  'date': '2025.03.15',
+                  'performerId': 'iu_2025',
+                },
+                {
+                  'id': '2',
+                  'title': 'BTS 월드투어',
+                  'venue': '잠실종합운동장',
+                  'date': '2025.04.20',
+                  'performerId': 'bts_2025',
+                },
+              ]
+              .where(
+                (performance) => performance['title']!.toLowerCase().contains(
+                  query.toLowerCase(),
+                ),
+              )
+              .toList();
+
+      setState(() {
+        _performanceSearchResults = results;
+        _showPerformanceDropdown = results.isNotEmpty;
+        _isSearchingPerformances = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isSearchingPerformances = false;
+        _performanceSearchResults.clear();
+        _showPerformanceDropdown = false;
+      });
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('공연 검색 중 오류가 발생했습니다')));
+    }
+  }
+
+  /// 공연 선택
+  void _selectPerformance(Map<String, dynamic> performance) {
+    setState(() {
+      _selectedPerformance = performance;
+      _performanceSearchController.text = performance['title'] ?? '';
+      _showPerformanceDropdown = false;
+    });
+
+    _performanceSearchFocusNode.unfocus();
+    _applyPerformanceFilter(performance['id']);
+  }
+
+  /// 공연 검색 초기화
+  void _clearPerformanceSearch() {
+    setState(() {
+      _performanceSearchResults.clear();
+      _showPerformanceDropdown = false;
+    });
+  }
+
+  /// 선택된 공연 초기화
+  void _clearSelectedPerformance() {
+    setState(() {
+      _selectedPerformance = null;
+      _performanceSearchController.clear();
+      _showPerformanceDropdown = false;
+    });
+
+    // TODO: 전체 목록으로 다시 로드
+    _applyPerformanceFilter(null);
+  }
+
+  /// 공연별 필터 적용
+  void _applyPerformanceFilter(String? performanceId) {
+    final transferProvider = Provider.of<TransferProvider>(
+      context,
+      listen: false,
+    );
+
+    // TODO: TransferProvider에 공연별 필터 메서드 추가
+    // transferProvider.setPerformanceFilter(performanceId);
+
+    // 임시로 기존 메서드 사용 (실제 구현 시 교체)
+    if (performanceId != null) {
+      // TODO: API 호출로 해당 공연의 양도 티켓만 가져오기
+      // transferProvider.loadTransferTicketsByPerformance(performanceId);
+      print('필터 적용: 공연 ID $performanceId');
+    } else {
+      // 전체 목록으로 복구
+      transferProvider.loadTransferTickets(forceRefresh: true);
+    }
+  }
+
+  // === 기존 메서드들 (보존) ===
+
+  /// 검색 수행 (기존 메서드 - 보존)
   void _performSearch(String query) {
     final transferProvider = Provider.of<TransferProvider>(
       context,
@@ -631,7 +1027,8 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
     transferProvider.setSearchQuery(query);
   }
 
-  /// 필터 적용
+  /// 필터 적용 (기존 메서드 - 보존)
+  /*
   void _applyFilter(String filter) {
     // TODO: 공연별 필터링 구현
     if (filter == '공연별로 보기') {
@@ -646,14 +1043,17 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
       transferProvider.setPerformanceFilter(null);
     }
   }
+  */
 
-  /// 공연별 필터 다이얼로그
+  /// 공연별 필터 다이얼로그 (기존 메서드 - 보존)
+  /*
   void _showPerformanceFilterDialog() {
     // TODO: 공연 목록 API 연결 후 구현
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text('공연별 필터링 기능 준비 중입니다')));
   }
+  */
 
   /// 시간 형식 변환
   String _formatTimeAgo(DateTime dateTime) {

@@ -769,9 +769,9 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => NFCEntryScreen(
-          // ticketId: _ticketDetail!['id'],
+          ticketId: _ticketDetail!['id'],
           //FIXME 더미 테스트 삭제
-          ticketId: "1",
+          // ticketId: "1",
           ticketData: _ticketDetail!,
         ),
       ),
