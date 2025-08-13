@@ -413,26 +413,26 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
           _buildLevelItem(
             'general',
             '일반 인증 회원',
-            '휴대폰 또는 간편인증으로 기본 티켓 구매',
+            '본인 인증으로 기본 티켓 구매와 3초 간편 입장',
             AppColors.info,
             currentLevel,
           ),
           SizedBox(height: 12),
           _buildLevelItem(
             'mobile_id',
-            '모바일 신분증 인증 회원',
-            '모바일신분증으로 강화된 보안과 3초 간편입장',
+            '안전 인증 회원',
+            '모바일신분증으로 강화된 보안',
             AppColors.primary,
             currentLevel,
           ),
-          SizedBox(height: 12),
-          _buildLevelItem(
-            'mobile_id_totally',
-            '완전 인증 회원',
-            '모든 서비스 이용 가능 및 안전한 양도 거래',
-            AppColors.success,
-            currentLevel,
-          ),
+          // SizedBox(height: 12),
+          // _buildLevelItem(
+          //   'mobile_id_totally',
+          //   '완전 인증 회원',
+          //   '모든 서비스 이용 가능 및 안전한 양도 거래',
+          //   AppColors.success,
+          //   currentLevel,
+          // ),
         ],
       ),
     );
@@ -862,7 +862,9 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
 
   Future<void> registerDid(Map<String, dynamic> didData, int userId) async {
     print('DID 등록 API 시작 ');
-    final url = Uri.parse('http://13.236.171.188:8000/api/users/did/register/');
+    final url = Uri.parse(
+      'http://http://43.201.185.8:8000/api/users/did/register/',
+    );
 
     final payload = {
       'user_id': userId,
@@ -948,31 +950,6 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
     } catch (e) {
       print('[Flutter] ❌ WE-Ticket DID 삭제 예외: $e');
       throw Exception('WE-Ticket DID 삭제 중 예상치 못한 오류: $e');
-    }
-  }
-
-  Future<void> _didAuth() async {
-    try {
-      print('[Flutter] WE-Ticket auth did 시작');
-
-      // Android의 상세 DID 생성 메서드 호출
-      final response = await platform.invokeMethod('didAuth');
-      final result = _safeMapConversion(response);
-
-      if (result['success'] == true) {
-        print('[Flutter] WE-Ticket Auth DID 성공');
-        print('[Flutter] 생성된 DID: ${result['didDocument']}');
-        print('[Flutter] 생성된 DID Auth : ${result['didAuth']}');
-      } else {
-        print('[Flutter] ❌ WE-Ticket DID Auth 실패: ${result['error']}');
-        throw Exception('WE-Ticket DID Auth 실패: ${result['error']}');
-      }
-    } on PlatformException catch (e) {
-      print('[Flutter] ❌ 플랫폼 예외: ${e.message}');
-      throw Exception('플랫폼 오류: ${e.message}');
-    } catch (e) {
-      print('[Flutter] ❌ WE-Ticket DID Auth 예외: $e');
-      throw Exception('WE-Ticket DID Auth 중 예상치 못한 오류: $e');
     }
   }
 
