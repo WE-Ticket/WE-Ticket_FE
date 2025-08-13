@@ -123,7 +123,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
       final dday = sessionDateTime.difference(now).inDays;
 
       return {
-        'id': (apiData['ticket_id'] ?? 'unknown').toString(),
+        'id': (apiData['ticket'] ?? 'unknown').toString(),
         'performanceId': apiData['performance_id'] ?? 0,
         'title': (apiData['performance_title'] ?? '제목 없음').toString(),
         'performerName': (apiData['performer_name'] ?? '아티스트 미정').toString(),
