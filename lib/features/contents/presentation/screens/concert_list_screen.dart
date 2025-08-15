@@ -1,23 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:we_ticket/features/contents/presentation/widgets/performace_view_card.dart';
-import 'package:we_ticket/features/shared/providers/api_provider.dart';
-import 'package:we_ticket/features/contents/data/performance_models.dart';
+import 'package:we_ticket/features/contents/presentation/providers/contents_provider.dart';
+import 'package:we_ticket/features/contents/data/mappers/performance_mapper.dart';
+import 'package:we_ticket/features/contents/domain/entities/performance.dart';
+import 'package:we_ticket/core/utils/app_logger.dart';
 import '../../../../core/constants/app_colors.dart';
 
 // 뷰 모드 열거형
 enum ViewMode { list, bigCard, grid }
 
 class ConcertListScreen extends StatefulWidget {
+  const ConcertListScreen({super.key});
+
   @override
-  _ConcertListScreenState createState() => _ConcertListScreenState();
+  State<ConcertListScreen> createState() => _ConcertListScreenState();
 }
 
 class _ConcertListScreenState extends State<ConcertListScreen> {
   String _selectedCategory = '전체';
   String _sortBy = '최신순';
   ViewMode _viewMode = ViewMode.bigCard; // 기본 뷰 모드
-  List<PerformanceListItem> _allPerformances = [];
+  List<Performance> _allPerformances = [];
+  final PerformanceMapper _mapper = PerformanceMapper();
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -37,20 +42,30 @@ class _ConcertListScreenState extends State<ConcertListScreen> {
     });
 
     try {
-      final apiProvider = context.read<ApiProvider>();
-      final response = await apiProvider.apiService.performance
-          .getAllPerformances();
+      final contentsProvider = context.read<ContentsProvider>();
+      await contentsProvider.loadAllPerformances();
+      
+      final allPerformances = contentsProvider.allPerformances;
+      final error = contentsProvider.errorMessage;
 
       setState(() {
-        _allPerformances = response.results;
-        _isLoading = false;
+        if (error != null) {
+          _errorMessage = error;
+          _isLoading = false;
+          AppLogger.error('공연 목록 로드 실패', error, null, 'CONCERT_LIST');
+        } else if (allPerformances != null) {
+          _allPerformances = allPerformances.results
+              .map((item) => _mapper.listItemToDomain(item))
+              .toList();
+          _isLoading = false;
+        }
       });
     } catch (e) {
       setState(() {
         _errorMessage = '공연 목록을 불러올 수 없습니다. 다시 시도해주세요.';
         _isLoading = false;
       });
-      print('❌ 전체 공연 목록 로드 실패: $e');
+      AppLogger.error('공연 목록 로드 예외', e.toString(), null, 'CONCERT_LIST');
     }
   }
 
@@ -83,13 +98,13 @@ class _ConcertListScreenState extends State<ConcertListScreen> {
     }
   }
 
-  List<PerformanceListItem> get _filteredConcerts {
-    List<PerformanceListItem> converted = _allPerformances;
+  List<Performance> get _filteredConcerts {
+    List<Performance> converted = _allPerformances;
 
     // 카테고리 필터링
     if (_selectedCategory != '전체') {
       converted = converted
-          .where((performance) => performance.genre == _selectedCategory)
+          .where((performance) => performance.genre.displayName == _selectedCategory)
           .toList();
     }
 
@@ -102,24 +117,10 @@ class _ConcertListScreenState extends State<ConcertListScreen> {
         converted.sort((a, b) => (b.isHot ? 1 : 0) - (a.isHot ? 1 : 0));
         break;
       case '가격 낮은순':
-        converted.sort((a, b) {
-          String priceA = a.minPrice.toString().replaceAll(
-            RegExp(r'[^0-9]'),
-            '',
-          );
-          String priceB = b.minPrice.toString().replaceAll(
-            RegExp(r'[^0-9]'),
-            '',
-          );
-          int numA = int.tryParse(priceA) ?? 0;
-          int numB = int.tryParse(priceB) ?? 0;
-          return numA.compareTo(numB);
-        });
+        converted.sort((a, b) => a.minPrice.compareTo(b.minPrice));
         break;
       case '공연 임박순':
-        converted.sort(
-          (a, b) => a.startDate.toString().compareTo(b.startDate.toString()),
-        );
+        converted.sort((a, b) => a.startDate.compareTo(b.startDate));
         break;
     }
 
@@ -299,7 +300,7 @@ class _ConcertListScreenState extends State<ConcertListScreen> {
     );
   }
 
-  Widget _buildPerformanceList(List<PerformanceListItem> performances) {
+  Widget _buildPerformanceList(List<Performance> performances) {
     switch (_viewMode) {
       case ViewMode.list:
         return ListView.builder(

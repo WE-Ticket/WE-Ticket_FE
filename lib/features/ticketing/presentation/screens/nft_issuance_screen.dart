@@ -3,10 +3,10 @@ import 'package:provider/provider.dart';
 import 'package:we_ticket/features/ticketing/data/models/patment_data.dart';
 import 'package:we_ticket/features/ticketing/data/models/ticket_models.dart';
 import 'package:we_ticket/features/ticketing/data/services/ticket_service.dart';
-import 'package:we_ticket/features/ticketing/presentation/screens/nft_ticket_complete_screen.dart.dart';
+import 'package:we_ticket/features/ticketing/presentation/screens/nft_ticket_complete_screen.dart';
+import 'package:we_ticket/shared/presentation/providers/api_provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
-import '../../../shared/providers/api_provider.dart';
 
 class NFTIssuanceScreen extends StatefulWidget {
   final PaymentData paymentData;
@@ -121,8 +121,13 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
       );
 
       print('🔍 티켓 생성 요청: ${request}');
-      ticketResponse = await _ticketService.createTicket(request);
-      print('✅ NFT 티켓 생성 완료: ${ticketResponse?.ticketId}');
+      final result = await _ticketService.createTicket(request);
+      if (result.isSuccess) {
+        ticketResponse = result.data;
+        print('✅ NFT 티켓 생성 완료: ${ticketResponse?.ticketId}');
+      } else {
+        throw Exception(result.errorMessage ?? 'NFT 티켓 생성 실패');
+      }
     });
 
     // 3단계: 블록체인 등록 처리
@@ -162,10 +167,15 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
         final apiProvider = context.read<ApiProvider>();
         final transferService = apiProvider.apiService.transfer;
 
-        transferResponse = await transferService.postProcessTransfer(
+        final result = await transferService.postProcessTransfer(
           transferTicketId: apiRequest['transfer_ticket_id'],
           userId: apiRequest['buyer_user_id'],
         );
+        if (result.isSuccess) {
+          transferResponse = result.data;
+        } else {
+          throw Exception(result.errorMessage ?? '양도 처리 실패');
+        }
       } catch (e) {
         print('❌ 양도 API 호출 실패: $e');
         _handleError(e.toString());
@@ -326,8 +336,8 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
   Widget build(BuildContext context) {
     final isTransfer = widget.paymentData.paymentType == 'transfer';
 
-    return WillPopScope(
-      onWillPop: () async => false,
+    return PopScope(
+      canPop: false,
       child: Scaffold(
         backgroundColor: AppColors.background,
         body: SafeArea(
@@ -431,7 +441,7 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
                               : (isTransfer
                                     ? AppColors.warning
                                     : AppColors.primary))
-                          .withOpacity(0.4),
+                          .withValues(alpha: 0.4),
                   spreadRadius: 8,
                   blurRadius: 20,
                   offset: Offset(0, 8),
@@ -509,7 +519,7 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
             color: AppColors.shadowLight,
@@ -527,7 +537,7 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: AppColors.primary.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(Icons.sync, color: AppColors.primary, size: 20),
@@ -607,9 +617,9 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
     return Container(
       padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.error.withOpacity(0.1),
+        color: AppColors.error.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.error.withOpacity(0.3)),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [
@@ -684,9 +694,9 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.info.withOpacity(0.1),
+        color: AppColors.info.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.info.withOpacity(0.3)),
+        border: Border.all(color: AppColors.info.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [

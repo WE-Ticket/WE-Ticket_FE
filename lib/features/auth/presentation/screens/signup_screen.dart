@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:we_ticket/features/auth/data/auth_service.dart';
-import '../../../../core/services/dio_client.dart';
+import '../../../../core/network/dio_client.dart';
 import '../../../../core/constants/app_colors.dart';
 
 class SignupScreen extends StatefulWidget {

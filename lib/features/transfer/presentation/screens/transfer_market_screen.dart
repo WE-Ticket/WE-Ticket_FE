@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:we_ticket/features/transfer/presentation/screens/my_transfer_manage_screen.dart.dart';
+import 'package:we_ticket/features/transfer/presentation/screens/my_transfer_manage_screen.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../auth/presentation/providers/auth_guard.dart';
 import '../providers/transfer_provider.dart';

@@ -1,7 +1,7 @@
 import 'package:we_ticket/features/mypage/data/payment_history_model.dart';
 
-import '../../../../../core/services/dio_client.dart';
-import '../../../../../core/constants/api_endpoints.dart';
+import '../../../../../core/network/dio_client.dart';
+import '../../../../../core/constants/api_constants.dart';
 
 /// 내 티켓 관련 API 서비스
 class MyTicketService {

@@ -2,14 +2,15 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:we_ticket/core/constants/app_colors.dart';
+import 'package:we_ticket/core/utils/app_logger.dart';
+import 'package:we_ticket/features/auth/data/user_models.dart';
 import 'package:we_ticket/features/auth/presentation/providers/auth_provider.dart';
 import 'package:we_ticket/features/auth/presentation/screens/omnione_cx_auth_screen.dart';
-import 'package:we_ticket/features/auth/data/user_models.dart';
-import 'package:we_ticket/features/shared/providers/api_provider.dart';
+import 'package:we_ticket/shared/presentation/providers/api_provider.dart';
 
 class MyAuthScreen extends StatefulWidget {
   @override
@@ -45,7 +46,7 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
     final userId = authProvider.currentUserId; // 현재 로그인한 사용자 ID
 
     if (userId == null) {
-      print('❌ 사용자 ID가 없습니다');
+      AppLogger.error('사용자 ID가 없습니다', null, null, 'AUTH');
       return;
     }
 
@@ -60,7 +61,7 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
       final result = await apiProvider.authService.loadUserAuthLevel(userId);
 
       if (result.isSuccess) {
-        print('✅ API 성공: ${result.data}');
+        AppLogger.success('API 성공: ${result.data}', 'AUTH');
         setState(() {
           _authData = result.data; // 응답 데이터 저장
         });
@@ -795,13 +796,13 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
     _showDidCreationProgressDialog();
 
     try {
-      print('[Flutter] WE-Ticket DID 생성 플로우 시작');
+      AppLogger.info('WE-Ticket DID 생성 플로우 시작', 'DID');
 
       // 2. DID 생성
       final didResult = await _createWeTicketDid();
 
       await registerDid(didResult, userId);
-      print('[Flutter] DID 서버 등록 완료 ');
+      AppLogger.success('DID 서버 등록 완료', 'DID');
 
       // 3. DID 저장 및 상태 업데이트
       setState(() {
@@ -812,30 +813,30 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
       // 4. 성공 처리
       await _handleDidCreationSuccess(didResult, serverResponse);
 
-      print('[Flutter] WE-Ticket DID 생성 플로우 완료');
+      AppLogger.success('WE-Ticket DID 생성 플로우 완료', 'DID');
     } catch (e) {
       // 5. 실패 처리
       setState(() {
         _isDidCreationInProgress = false;
       });
       await _handleDidCreationFailure(e, serverResponse);
-      print('[Flutter] WE-Ticket DID 생성 플로우 실패: $e');
+      AppLogger.error('WE-Ticket DID 생성 플로우 실패', e, null, 'DID');
     }
   }
 
   /// WE-Ticket DID 생성 (CI 제거된 깔끔한 버전)
   Future<Map<String, dynamic>> _createWeTicketDid() async {
     try {
-      print('[Flutter] WE-Ticket DID 생성 시작');
+      AppLogger.info('WE-Ticket DID 생성 시작', 'DID');
 
       // Android의 상세 DID 생성 메서드 호출
       final response = await platform.invokeMethod('createDid');
       final result = _safeMapConversion(response);
 
       if (result['success'] == true) {
-        print('[Flutter] ✅ WE-Ticket DID 생성 성공');
-        print('[Flutter] 🆔 생성된 DID: ${result['did']}');
-        print('[Flutter] 🔑 Key ID: ${result['keyId']}');
+        AppLogger.success('WE-Ticket DID 생성 성공', 'DID');
+        AppLogger.info('생성된 DID: ${result['did']}', 'DID');
+        AppLogger.info('Key ID: ${result['keyId']}', 'DID');
 
         // 공개키 길이에 따라 안전하게 표시
         final publicKey = result['publicKey']?.toString() ?? '';
@@ -877,29 +878,23 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
       'owner_did_doc': didData['didDocument'], // JSON 객체
     };
 
-    print('DID 등록 payload : $payload ');
+    AppLogger.debug('DID 등록 payload : $payload', 'DID');
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final storedAccessToken = prefs.getString('access_token');
-      final response = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $storedAccessToken',
-        },
-        body: jsonEncode(payload),
+      final apiProvider = context.read<ApiProvider>();
+      final response = await apiProvider.dioClient.post(
+        '/users/did-register/', // Extract endpoint from URL
+        data: payload,
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print('[Flutter] ✅ DID 등록 성공: ${response.body}');
+        AppLogger.success('DID 등록 성공', 'DID');
       } else {
-        print('[Flutter] ❌ DID 등록 실패: ${response.statusCode}');
-        print('[Flutter] 응답 내용: ${response.body}');
+        AppLogger.error('DID 등록 실패: ${response.statusCode}', null, null, 'DID');
         await _delDidDoc();
       }
     } catch (e) {
-      print('[Flutter] ❌ 요청 예외 발생: $e');
+      AppLogger.error('DID 등록 중 오류 발생', e, null, 'DID');
       throw Exception('DID 등록 중 오류 발생: $e');
     }
   }

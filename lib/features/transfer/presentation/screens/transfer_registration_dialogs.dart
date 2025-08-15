@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:we_ticket/features/shared/providers/api_provider.dart';
+import 'package:we_ticket/shared/presentation/providers/api_provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import 'package:provider/provider.dart';
 
@@ -122,7 +122,7 @@ class TransferRegistrationDialogs {
           width: 60,
           height: 60,
           decoration: BoxDecoration(
-            color: AppColors.success.withOpacity(0.1),
+            color: AppColors.success.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(30),
           ),
           child: Icon(Icons.check, color: AppColors.success, size: 30),
@@ -330,9 +330,9 @@ class TransferRegistrationDialogs {
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.secondary.withOpacity(0.1),
+        color: AppColors.secondary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.secondary.withOpacity(0.3)),
+        border: Border.all(color: AppColors.secondary.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [
@@ -382,10 +382,15 @@ class TransferRegistrationDialogs {
         transferTicketPrice: ticket['originalPrice'],
       );
 
+      // ✅ 응답 처리
+      if (!response.isSuccess) {
+        throw Exception(response.errorMessage ?? '양도 등록 실패');
+      }
+      
       // ✅ 응답에서 코드가 오면 (비공개일 경우)
       String? generatedCode;
-      if (transferType == 'private') {
-        generatedCode = response['unique_code']; // 백엔드 반환 키 확인 필요
+      if (transferType == 'private' && response.data != null) {
+        generatedCode = response.data!['unique_code']; // 백엔드 반환 키 확인 필요
       }
 
       // ✅ 등록 완료 상태로 UI 업데이트

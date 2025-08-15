@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:we_ticket/features/ticketing/data/models/patment_data.dart';
 import 'package:we_ticket/features/ticketing/presentation/screens/payment_webview_screen.dart';
-import '../../../shared/providers/api_provider.dart';
+import 'package:we_ticket/shared/presentation/providers/api_provider.dart';
 import '../../data/models/ticket_models.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/json_parser.dart';
@@ -79,17 +79,23 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
       });
 
       final apiProvider = context.read<ApiProvider>();
-      final seatInfo = await apiProvider.apiService.ticket.getSessionSeatInfo(
+      final result = await apiProvider.apiService.ticket.getSessionSeatInfo(
         _performanceId,
         _sessionId,
       );
 
-      setState(() {
-        _sessionSeatInfo = seatInfo;
-        _isLoadingSeatInfo = false;
-      });
-
-      print('✅ 세션별 좌석 정보 로딩 완료: ${seatInfo.seatPricingInfo.length}개 구역');
+      if (result.isSuccess) {
+        setState(() {
+          _sessionSeatInfo = result.data;
+          _isLoadingSeatInfo = false;
+        });
+        print('✅ 세션별 좌석 정보 로딩 완료: ${result.data!.seatPricingInfo.length}개 구역');
+      } else {
+        setState(() {
+          _errorMessage = result.errorMessage ?? '좌석 정보 로딩 실패';
+          _isLoadingSeatInfo = false;
+        });
+      }
     } catch (e) {
       setState(() {
         _errorMessage = '좌석 정보를 불러올 수 없습니다.\n$e';
@@ -111,18 +117,21 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
       final apiProvider = context.read<ApiProvider>();
 
       // 실제 API 호출
-      final seatLayout = await apiProvider.apiService.ticket.getSeatLayout(
+      final result = await apiProvider.apiService.ticket.getSeatLayout(
         _performanceId,
         _sessionId,
         seatZone,
       );
 
-      setState(() {
-        _currentSeatLayout = seatLayout;
-        _isLoadingSeatLayout = false;
-      });
-
-      print('✅ 좌석 배치 정보 로딩 완료: ${seatLayout.totalSeats}석');
+      if (result.isSuccess) {
+        setState(() {
+          _currentSeatLayout = result.data;
+          _isLoadingSeatLayout = false;
+        });
+        print('✅ 좌석 배치 정보 로딩 완료: ${result.data!.totalSeats}석');
+      } else {
+        throw Exception(result.errorMessage ?? '좌석 배치 정보 로딩 실패');
+      }
     } catch (e) {
       print('❌ 좌석 배치 정보 로딩 실패: $e');
       // API 실패 시 더미 데이터로 대체

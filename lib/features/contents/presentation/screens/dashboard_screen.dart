@@ -7,8 +7,9 @@ import 'package:we_ticket/features/mypage/presentation/screens/my_page_screen.da
 import 'package:we_ticket/features/mypage/presentation/screens/my_tickets_screen.dart';
 import 'package:we_ticket/features/transfer/presentation/screens/transfer_market_screen.dart';
 import 'package:we_ticket/features/auth/presentation/providers/auth_guard.dart';
-import 'package:we_ticket/features/shared/providers/api_provider.dart';
-import 'package:we_ticket/features/contents/data/performance_models.dart';
+import 'package:we_ticket/features/contents/presentation/providers/contents_provider.dart';
+import 'package:we_ticket/features/contents/data/mappers/performance_mapper.dart';
+import 'package:we_ticket/features/contents/domain/entities/performance_list.dart';
 import 'dart:async';
 import '../../../../core/constants/app_colors.dart';
 
@@ -21,13 +22,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final PageController _pageController = PageController();
   int _currentSlide = 0;
   Timer? _timer;
+  final PerformanceMapper _mapper = PerformanceMapper();
 
   @override
   void initState() {
     super.initState();
     // API 데이터 로드
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ApiProvider>().loadDashboardData();
+      context.read<ContentsProvider>().loadDashboardData();
     });
   }
 
@@ -56,8 +58,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<ApiProvider>(
-      builder: (context, apiProvider, child) {
+    return Consumer<ContentsProvider>(
+      builder: (context, contentsProvider, child) {
         return Scaffold(
           backgroundColor: AppColors.background,
           appBar: AppBar(
@@ -101,19 +103,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           body: RefreshIndicator(
             color: AppColors.primary,
-            onRefresh: () => apiProvider.loadDashboardData(forceRefresh: true),
+            onRefresh: () => contentsProvider.loadDashboardData(),
             child: SingleChildScrollView(
               physics: AlwaysScrollableScrollPhysics(),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SizedBox(height: 7),
-                  _buildFeaturedSlider(apiProvider),
+                  _buildFeaturedSlider(contentsProvider),
                   SizedBox(height: 20),
                   _buildQuickAccess(),
                   SizedBox(height: 20),
 
-                  _buildUpcomingConcerts(apiProvider),
+                  _buildUpcomingConcerts(contentsProvider),
                 ],
               ),
             ),
@@ -123,9 +125,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildFeaturedSlider(ApiProvider apiProvider) {
+  Widget _buildFeaturedSlider(ContentsProvider contentsProvider) {
     // 로딩 상태
-    if (apiProvider.isLoading && apiProvider.cachedHotPerformances == null) {
+    if (contentsProvider.isLoading && (contentsProvider.hotPerformances?.isEmpty ?? true)) {
       return Container(
         height: 220,
         child: Column(
@@ -175,8 +177,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     // 에러 상태
-    if (apiProvider.errorMessage != null &&
-        apiProvider.cachedHotPerformances == null) {
+    if (contentsProvider.errorMessage != null &&
+        (contentsProvider.hotPerformances?.isEmpty ?? true)) {
       return Container(
         height: 220,
         child: Column(
@@ -209,7 +211,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       SizedBox(height: 8),
                       TextButton(
                         onPressed: () =>
-                            apiProvider.loadDashboardData(forceRefresh: true),
+                            contentsProvider.loadDashboardData(),
                         child: Text(
                           '다시 시도',
                           style: TextStyle(color: AppColors.primary),
@@ -241,7 +243,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
 
-    final hotPerformances = apiProvider.cachedHotPerformances;
+    final hotPerformances = contentsProvider.hotPerformances;
 
     // 빈 상태
     if (hotPerformances == null || hotPerformances.isEmpty) {
@@ -439,7 +441,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ),
                                 SizedBox(height: 4),
                                 Text(
-                                  '${performance.startDate.isNotEmpty ? performance.startDate : '날짜 미정'} | ${performance.venueName.isNotEmpty ? performance.venueName : '장소 미정'}',
+                                  '장르: ${performance.genre}',
                                   style: TextStyle(
                                     color: AppColors.white.withOpacity(0.7),
                                     fontSize: 14,
@@ -566,7 +568,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildUpcomingConcerts(ApiProvider apiProvider) {
+  Widget _buildUpcomingConcerts(ContentsProvider contentsProvider) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -600,8 +602,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         SizedBox(height: 8),
 
         // 로딩 상태
-        if (apiProvider.isLoading &&
-            apiProvider.cachedAvailablePerformances == null) ...[
+        if (contentsProvider.isLoading &&
+            (contentsProvider.availablePerformances?.isEmpty ?? true)) ...[
           ListView.builder(
             shrinkWrap: true,
             physics: NeverScrollableScrollPhysics(),
@@ -657,8 +659,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ]
         // 에러 상태
-        else if (apiProvider.errorMessage != null &&
-            apiProvider.cachedAvailablePerformances == null) ...[
+        else if (contentsProvider.errorMessage != null &&
+            (contentsProvider.availablePerformances?.isEmpty ?? true)) ...[
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
             child: Container(
@@ -682,7 +684,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   SizedBox(height: 8),
                   TextButton(
                     onPressed: () =>
-                        apiProvider.loadDashboardData(forceRefresh: true),
+                        contentsProvider.loadDashboardData(),
                     child: Text(
                       '다시 시도',
                       style: TextStyle(color: AppColors.primary),
@@ -696,7 +698,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         // 정상 데이터 또는 빈 상태
         else ...[
           _buildAvailablePerformancesList(
-            apiProvider.cachedAvailablePerformances,
+            (contentsProvider.availablePerformances ?? [])
+                .map((item) => _mapper.availableItemToDomain(item))
+                .toList(),
           ),
         ],
       ],
@@ -704,9 +708,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildAvailablePerformancesList(
-    List<PerformanceAvailableItem>? performances,
+    List<PerformanceAvailable> performances,
   ) {
-    if (performances == null || performances.isEmpty) {
+    if (performances.isEmpty) {
       return Padding(
         padding: EdgeInsets.symmetric(horizontal: 16),
         child: Container(

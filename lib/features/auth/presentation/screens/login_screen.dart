@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:we_ticket/features/auth/data/auth_service.dart';
 import '../providers/auth_provider.dart';
-import '../../../../core/services/dio_client.dart';
+import '../../../../core/network/dio_client.dart';
 import '../../../../core/constants/app_colors.dart';
 import 'signup_screen.dart';
 

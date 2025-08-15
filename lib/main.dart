@@ -1,13 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
-import 'package:we_ticket/features/contents/presentation/screens/dashboard_screen.dart';
+
+import 'package:we_ticket/core/utils/app_logger.dart';
 import 'package:we_ticket/features/auth/presentation/providers/auth_provider.dart';
-import 'package:we_ticket/features/shared/providers/api_provider.dart';
+import 'package:we_ticket/features/contents/presentation/screens/dashboard_screen.dart';
+import 'package:we_ticket/features/contents/presentation/providers/contents_provider.dart';
+import 'package:we_ticket/features/contents/data/performance_service.dart';
 import 'package:we_ticket/features/transfer/presentation/providers/transfer_provider.dart';
+import 'package:we_ticket/injection/injection_container.dart';
+import 'package:we_ticket/shared/presentation/providers/api_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize dependencies
+  try {
+    await initializeDependencies();
+    AppLogger.success('🚀 App starting with Clean Architecture setup', 'MAIN');
+  } catch (e) {
+    AppLogger.error('Failed to initialize dependencies', e, null, 'MAIN');
+  }
+  
   runApp(MyApp());
 }
 
@@ -36,7 +50,23 @@ class MyApp extends StatelessWidget {
           },
         ),
 
-        // ✅ 3. TransferProvider는 ApiProvider에 의존
+        // ✅ 3. ContentsProvider는 ApiProvider의 DioClient를 사용
+        ChangeNotifierProxyProvider<ApiProvider, ContentsProvider>(
+          create: (context) {
+            final apiProvider = Provider.of<ApiProvider>(context, listen: false);
+            return ContentsProvider(
+              performanceService: PerformanceService(apiProvider.dioClient),
+            );
+          },
+          update: (context, apiProvider, previousContentsProvider) {
+            return previousContentsProvider ??
+                ContentsProvider(
+                  performanceService: PerformanceService(apiProvider.dioClient),
+                );
+          },
+        ),
+
+        // ✅ 4. TransferProvider는 ApiProvider에 의존
         ChangeNotifierProxyProvider<ApiProvider, TransferProvider>(
           create: (context) => TransferProvider(
             Provider.of<ApiProvider>(context, listen: false).apiService,

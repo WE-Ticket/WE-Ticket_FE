@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:we_ticket/features/shared/providers/api_provider.dart';
-import 'package:we_ticket/features/shared/services/api_service.dart';
+import 'package:we_ticket/shared/presentation/providers/api_provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../providers/transfer_provider.dart';
 import 'transfer_detail_screen.dart';
@@ -65,9 +64,9 @@ class _PrivateTransferScreenState extends State<PrivateTransferScreen> {
       width: double.infinity,
       padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.secondary.withOpacity(0.1),
+        color: AppColors.secondary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.secondary.withOpacity(0.3)),
+        border: Border.all(color: AppColors.secondary.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -103,7 +102,7 @@ class _PrivateTransferScreenState extends State<PrivateTransferScreen> {
           Container(
             padding: EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.warning.withOpacity(0.1),
+              color: AppColors.warning.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
@@ -224,7 +223,7 @@ class _PrivateTransferScreenState extends State<PrivateTransferScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 elevation: 2,
-                shadowColor: AppColors.secondary.withOpacity(0.3),
+                shadowColor: AppColors.secondary.withValues(alpha: 0.3),
               ),
               child: _isLoading
                   ? SizedBox(
@@ -318,9 +317,15 @@ class _PrivateTransferScreenState extends State<PrivateTransferScreen> {
       print('🔐 비공개 양도 티켓 조회 시작: ${uniqueCode.substring(0, 4)}...');
 
       // 비공개 양도 티켓 조회 API 호출
-      final int transferTicketId = await transferService.lookupPrivateTicket(
+      final result = await transferService.lookupPrivateTicket(
         uniqueCode,
       );
+      
+      if (!result.isSuccess) {
+        throw Exception(result.errorMessage ?? '비공개 양도 티켓 조회 실패');
+      }
+      
+      final int transferTicketId = result.data!;
 
       // 조회 성공 시 상세 화면으로 이동
       print('✅ 비공개 양도 티켓 id 조회 성공');

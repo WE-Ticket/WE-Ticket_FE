@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:we_ticket/features/auth/presentation/providers/auth_provider.dart';
-import 'package:we_ticket/features/shared/providers/api_provider.dart';
+import 'package:we_ticket/shared/presentation/providers/api_provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import 'package:flutter_nfc_kit/flutter_nfc_kit.dart';
 

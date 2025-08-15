@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:we_ticket/core/services/dio_client.dart';
+import 'package:we_ticket/core/network/dio_client.dart';
 import 'package:we_ticket/features/auth/data/auth_service.dart';
 import 'package:we_ticket/features/auth/data/user_models.dart';
 

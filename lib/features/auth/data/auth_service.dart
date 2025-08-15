@@ -2,10 +2,13 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:we_ticket/core/constants/api_constants.dart';
+import 'package:we_ticket/core/network/dio_client.dart';
+import 'package:we_ticket/core/network/api_result.dart';
+import 'package:we_ticket/core/utils/app_logger.dart';
 import 'package:we_ticket/features/auth/data/auth_validators.dart';
 import 'package:we_ticket/features/auth/data/user_models.dart';
-import '../../../../core/services/dio_client.dart';
-import '../../../../core/constants/api_endpoints.dart';
 
 class AuthService {
   final DioClient _dioClient;
@@ -13,12 +16,12 @@ class AuthService {
   AuthService(this._dioClient);
 
   /// 로그인
-  Future<AuthResult<LoginResponse>> login({
+  Future<ApiResult<LoginResponse>> login({
     required String loginId,
     required String password,
   }) async {
     try {
-      print('🔐 로그인 시도 시작 (아이디: $loginId)');
+      AppLogger.auth('로그인 시도 시작 (아이디: $loginId)');
 
       // 기본 입력 검증
       final validation = AuthValidators.validateLoginData(
@@ -27,7 +30,7 @@ class AuthService {
       );
 
       if (!validation.isValid) {
-        return AuthResult.failure(validation.firstError!);
+        return ApiResult.validationError(validation.firstError!);
       }
 
       final request = LoginRequest(
@@ -54,21 +57,21 @@ class AuthService {
         await prefs.setString('access_token', accessToken);
         await prefs.setString('refresh_token', refreshToken);
 
-        print('✅ 로그인 성공: 사용자 ID ${loginResponse.userId}');
-        return AuthResult.success(loginResponse);
+        AppLogger.success('로그인 성공: 사용자 ID ${loginResponse.userId}', 'AUTH');
+        return ApiResult.success(loginResponse);
       } else {
-        return AuthResult.failure('로그인 요청 실패: ${response.statusCode}');
+        return ApiResult.failure('로그인 요청 실패: ${response.statusCode}', statusCode: response.statusCode);
       }
     } on DioException catch (e) {
       return _handleDioError(e, '로그인');
     } catch (e) {
-      print('❌ 로그인 오류: $e');
-      return AuthResult.failure('알 수 없는 오류가 발생했습니다');
+      AppLogger.error('로그인 오류', e, null, 'AUTH');
+      return ApiResult.failure('알 수 없는 오류가 발생했습니다');
     }
   }
 
   /// 회원가입
-  Future<AuthResult<SignupResponse>> signup({
+  Future<ApiResult<SignupResponse>> signup({
     required String fullName,
     required String loginId,
     required String phoneNumber,
@@ -77,7 +80,7 @@ class AuthService {
     required bool agreePrivacy,
   }) async {
     try {
-      print('📝 회원가입 시도 시작 (아이디: $loginId)');
+      AppLogger.auth('회원가입 시도 시작 (아이디: $loginId)');
 
       final validation = AuthValidators.validateSignupData(
         fullName: fullName,
@@ -89,7 +92,7 @@ class AuthService {
       );
 
       if (!validation.isValid) {
-        return AuthResult.failure(validation.firstError!);
+        return ApiResult.validationError(validation.firstError!);
       }
 
       final currentDate = DateTime.now().toIso8601String().split('T')[0];
@@ -123,33 +126,33 @@ class AuthService {
         agreements: agreements,
       );
 
-      print(request);
+      AppLogger.debug('Signup request: ${request.toString()}', 'AUTH');
 
       final response = await _dioClient.post(
         ApiConstants.signup,
         data: request.toJson(),
       );
 
-      print(response);
+      AppLogger.debug('Signup response: ${response.toString()}', 'AUTH');
 
       if (response.statusCode == 201) {
         final signupResponse = SignupResponse.fromJson(response.data);
-        print('✅ 회원가입 성공');
-        return AuthResult.success(signupResponse);
+        AppLogger.success('회원가입 성공', 'AUTH');
+        return ApiResult.success(signupResponse);
       } else {
-        return AuthResult.failure('회원가입 요청 실패: ${response.statusCode}');
+        return ApiResult.failure('회원가입 요청 실패: ${response.statusCode}', statusCode: response.statusCode);
       }
     } on DioException catch (e) {
       return _handleDioError(e, '회원가입');
     } catch (e) {
-      print('❌ 회원가입 오류: $e');
-      return AuthResult.failure('알 수 없는 오류가 발생했습니다');
+      AppLogger.error('회원가입 오류', e, null, 'AUTH');
+      return ApiResult.failure('알 수 없는 오류가 발생했습니다');
     }
   }
 
-  Future<AuthResult<Map<String, dynamic>>> loadUserAuthLevel(int userId) async {
+  Future<ApiResult<Map<String, dynamic>>> loadUserAuthLevel(int userId) async {
     try {
-      print('인증 사용자 - 아이디: $userId');
+      AppLogger.auth('인증 사용자 - 아이디: $userId');
 
       final response = await _dioClient.post(
         ApiConstants.loadUserAuthLevel,
@@ -161,62 +164,41 @@ class AuthService {
         final Map<String, dynamic> responseData =
             response.data as Map<String, dynamic>;
 
-        print('✅ 인증 레벨 조회 성공: $responseData');
+        AppLogger.success('인증 레벨 조회 성공: $responseData', 'AUTH');
 
-        return AuthResult.success(responseData);
+        return ApiResult.success(responseData);
       } else {
-        return AuthResult.failure('인증 조회 실패: ${response.statusCode}');
+        return ApiResult.failure('인증 조회 실패: ${response.statusCode}', statusCode: response.statusCode);
       }
     } on DioException catch (e) {
       return _handleDioError(e, '인증 조회');
     } catch (e) {
-      print('❌ 인증 조회 오류: $e');
-      return AuthResult.failure('알 수 없는 오류가 발생했습니다: $e');
+      AppLogger.error('인증 조회 오류', e, null, 'AUTH');
+      return ApiResult.failure('알 수 없는 오류가 발생했습니다: $e');
     }
   }
 
-  AuthResult<T> _handleDioError<T>(DioException e, String action) {
-    print('❌ $action DioException: ${e.response?.statusCode}');
+  ApiResult<T> _handleDioError<T>(DioException e, String action) {
+    AppLogger.error('$action DioException: ${e.response?.statusCode}', e, null, 'AUTH');
 
     if (e.response?.statusCode == 400) {
       if (action == '로그인') {
-        // FIXME: 400일 때, 에러 메시지 error 두개로 분기 되어서 전달됨. (존재X 아이디, 비밀번호 오류)
-        return AuthResult.failure('로그인 정보가 올바르지 않습니다');
+        // Parse specific error message from response if available
+        final errorData = e.response?.data;
+        if (errorData != null && errorData is Map<String, dynamic>) {
+          final errorMessage = errorData['error'] ?? errorData['message'] ?? errorData['detail'];
+          if (errorMessage != null) {
+            return ApiResult.validationError(errorMessage.toString());
+          }
+        }
+        return ApiResult.validationError('로그인 정보가 올바르지 않습니다');
       } else {
-        return AuthResult.failure('입력 정보를 확인해주세요');
+        return ApiResult.validationError('입력 정보를 확인해주세요');
       }
     } else if (e.response?.statusCode == 409) {
-      return AuthResult.failure('이미 사용 중인 아이디이거나 휴대폰 번호입니다');
+      return ApiResult.failure('이미 사용 중인 아이디이거나 휴대폰 번호입니다', statusCode: 409);
     } else {
-      return AuthResult.failure('네트워크 오류가 발생했습니다');
-    }
-  }
-}
-
-/// 인증 결과 래퍼 클래스
-class AuthResult<T> {
-  final bool isSuccess;
-  final T? data;
-  final String? errorMessage;
-
-  AuthResult._({required this.isSuccess, this.data, this.errorMessage});
-
-  /// 성공 결과 생성
-  factory AuthResult.success(T data) {
-    return AuthResult._(isSuccess: true, data: data);
-  }
-
-  /// 실패 결과 생성
-  factory AuthResult.failure(String message) {
-    return AuthResult._(isSuccess: false, errorMessage: message);
-  }
-
-  @override
-  String toString() {
-    if (isSuccess) {
-      return 'AuthResult.success($data)';
-    } else {
-      return 'AuthResult.failure($errorMessage)';
+      return ApiResult.networkError('네트워크 오류가 발생했습니다');
     }
   }
 }
@@ -225,15 +207,15 @@ class AuthResult<T> {
 /// AuthService Extension - OmniOne 인증 처리
 extension AuthServiceExtension on AuthService {
   /// 본인인증 결과 기록
-  Future<AuthResult<IdentityVerificationResponse>> recordIdentityVerification({
+  Future<ApiResult<IdentityVerificationResponse>> recordIdentityVerification({
     required int userId,
     required String nextVerificationLevel,
     required bool isSuccess,
     required String verificationResult,
   }) async {
     try {
-      print(
-        '🔐 본인인증 결과 기록 시작 (사용자 ID: $userId, 다음 Auth level: $nextVerificationLevel)',
+      AppLogger.auth(
+        '본인인증 결과 기록 시작 (사용자 ID: $userId, 다음 Auth level: $nextVerificationLevel)',
       );
 
       final request = IdentityVerificationRequest(
@@ -252,27 +234,27 @@ extension AuthServiceExtension on AuthService {
         final verificationResponse = IdentityVerificationResponse.fromJson(
           response.data,
         );
-        print('✅ 본인인증 기록 성공: ${verificationResponse.message}');
-        return AuthResult.success(verificationResponse);
+        AppLogger.success('본인인증 기록 성공: ${verificationResponse.message}', 'AUTH');
+        return ApiResult.success(verificationResponse);
       } else {
-        return AuthResult.failure('본인인증 기록 실패: ${response.statusCode}');
+        return ApiResult.failure('본인인증 기록 실패: ${response.statusCode}', statusCode: response.statusCode);
       }
     } on DioException catch (e) {
       return _handleDioError(e, '본인인증 기록');
     } catch (e) {
-      print('❌ 본인인증 기록 오류: $e');
-      return AuthResult.failure('알 수 없는 오류가 발생했습니다');
+      AppLogger.error('본인인증 기록 오류', e, null, 'AUTH');
+      return ApiResult.failure('알 수 없는 오류가 발생했습니다');
     }
   }
 
   /// OmniOne CX 인증 결과 처리
-  Future<AuthResult<IdentityVerificationResponse>> processOmniOneResult({
+  Future<ApiResult<IdentityVerificationResponse>> processOmniOneResult({
     required int userId,
     required Map<String, dynamic> omniOneResult,
   }) async {
     try {
-      print('🔐 OmniOne CX 결과 처리 시작');
-      print('📋 인증 타입: ${omniOneResult['authType']}');
+      AppLogger.auth('OmniOne CX 결과 처리 시작');
+      AppLogger.debug('인증 타입: ${omniOneResult['authType']}', 'AUTH');
 
       // OmniOne 결과에서 기본 정보 추출
       final authType = omniOneResult['authType'] as String? ?? 'unknown';
@@ -280,7 +262,7 @@ extension AuthServiceExtension on AuthService {
       final rawData = omniOneResult['data'];
 
       if (!success) {
-        return AuthResult.failure('인증이 실패했습니다.');
+        return ApiResult.failure('인증이 실패했습니다.');
       }
       final String nextVerificationLevel;
       switch (authType) {
@@ -296,13 +278,13 @@ extension AuthServiceExtension on AuthService {
         try {
           dataMap = jsonDecode(rawData) as Map<String, dynamic>;
         } catch (e) {
-          print('❌ JSON 파싱 실패: $e');
-          return AuthResult.failure('인증 데이터 파싱에 실패했습니다.');
+          AppLogger.error('JSON 파싱 실패', e, null, 'AUTH');
+          return ApiResult.failure('인증 데이터 파싱에 실패했습니다.');
         }
       } else if (rawData is Map<String, dynamic>) {
         dataMap = rawData;
       } else {
-        return AuthResult.failure('잘못된 인증 데이터 형식입니다.');
+        return ApiResult.validationError('잘못된 인증 데이터 형식입니다.');
       }
 
       String verificationResult = dataMap['token'];
@@ -314,17 +296,17 @@ extension AuthServiceExtension on AuthService {
         verificationResult: verificationResult,
       );
     } catch (e) {
-      print('❌ OmniOne 결과 처리 오류: $e');
-      return AuthResult.failure('인증 결과 처리 중 오류가 발생했습니다: $e');
+      AppLogger.error('OmniOne 결과 처리 오류', e, null, 'AUTH');
+      return ApiResult.failure('인증 결과 처리 중 오류가 발생했습니다: $e');
     }
   }
 
   /// OmniOne 토큰 파싱 (서버 API 호출)
-  Future<AuthResult<Map<String, dynamic>>> _parseOmniOneTokenViaAPI(
+  Future<ApiResult<Map<String, dynamic>>> _parseOmniOneTokenViaAPI(
     String token,
   ) async {
     try {
-      print('🔍 서버를 통한 OmniOne 토큰 파싱 시작');
+      AppLogger.auth('서버를 통한 OmniOne 토큰 파싱 시작');
 
       final response = await _dioClient.post(
         '/oacx/api/v1.0/trans/token',
@@ -333,15 +315,15 @@ extension AuthServiceExtension on AuthService {
 
       if (response.statusCode == 200) {
         final data = response.data['data'] as Map<String, dynamic>;
-        print('✅ 서버 토큰 파싱 성공');
-        return AuthResult.success(data);
+        AppLogger.success('서버 토큰 파싱 성공', 'AUTH');
+        return ApiResult.success(data);
       } else {
-        print('❌ 서버 토큰 파싱 실패: ${response.statusCode}');
-        return AuthResult.failure('토큰 파싱 실패: ${response.statusCode}');
+        AppLogger.error('서버 토큰 파싱 실패: ${response.statusCode}', null, null, 'AUTH');
+        return ApiResult.failure('토큰 파싱 실패: ${response.statusCode}', statusCode: response.statusCode);
       }
     } catch (e) {
-      print('❌ 서버 토큰 파싱 오류: $e');
-      return AuthResult.failure('토큰 파싱 중 오류 발생');
+      AppLogger.error('서버 토큰 파싱 오류', e, null, 'AUTH');
+      return ApiResult.failure('토큰 파싱 중 오류 발생');
     }
   }
 
@@ -350,7 +332,7 @@ extension AuthServiceExtension on AuthService {
     try {
       final parts = token.split('.');
       if (parts.length != 3) {
-        print('❌ 잘못된 JWT 형식');
+        AppLogger.error('잘못된 JWT 형식', null, null, 'AUTH');
         return null;
       }
 
@@ -372,10 +354,10 @@ extension AuthServiceExtension on AuthService {
       final decodedString = utf8.decode(decodedBytes);
       final decodedJson = jsonDecode(decodedString) as Map<String, dynamic>;
 
-      print('✅ JWT 페이로드 디코딩 성공');
+      AppLogger.success('JWT 페이로드 디코딩 성공', 'AUTH');
       return decodedJson;
     } catch (e) {
-      print('❌ JWT 디코딩 오류: $e');
+      AppLogger.error('JWT 디코딩 오류', e, null, 'AUTH');
       return null;
     }
   }

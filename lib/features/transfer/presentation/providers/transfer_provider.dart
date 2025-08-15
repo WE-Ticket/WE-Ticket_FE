@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import '../../../shared/services/api_service.dart';
+import '../../../../shared/data/services/api_service.dart';
 import '../../data/transfer_models.dart';
 
 /// 양도 마켓 관련 상태 관리를 위한 Provider
@@ -90,11 +90,15 @@ class TransferProvider extends ChangeNotifier {
 
       print('🔄 양도 티켓 리스트 새로 로드');
 
-      final transferList = await _apiService.transfer.getTransferTicketList(
+      final result = await _apiService.transfer.getTransferTicketList(
         performanceId: performanceId,
       );
 
-      _transferTickets = transferList.results;
+      if (result.isSuccess) {
+        _transferTickets = result.data!.results;
+      } else {
+        throw Exception(result.errorMessage ?? '양도 티켓 리스트 로딩 실패');
+      }
       _lastDataLoadTime = DateTime.now();
 
       print('✅ 양도 티켓 리스트 로드 완료 (${_transferTickets!.length}개)');
@@ -114,10 +118,14 @@ class TransferProvider extends ChangeNotifier {
 
       print('🔍 공개 양도 티켓 상세 로드: $transferTicketId');
 
-      final detail = await _apiService.transfer.getPublicTransferDetail(
+      final result = await _apiService.transfer.getPublicTransferDetail(
         transferTicketId,
       );
-      _currentTransferDetail = detail;
+      if (result.isSuccess) {
+        _currentTransferDetail = result.data;
+      } else {
+        throw Exception(result.errorMessage ?? '양도 티켓 상세 로딩 실패');
+      }
 
       print('✅ 공개 양도 티켓 상세 로드 완료');
     } catch (e) {
@@ -146,15 +154,18 @@ class TransferProvider extends ChangeNotifier {
 
       print('📋 내 양도 등록 티켓 리스트 로드');
 
-      final tickets = await _apiService.transfer.getMyRegisteredTickets(
+      final result = await _apiService.transfer.getMyRegisteredTickets(
         userId: userId,
         startDate: startDate,
         endDate: endDate,
       );
 
-      _myRegisteredTickets = tickets;
-
-      print('✅ 내 양도 등록 티켓 리스트 로드 완료 (${tickets.length}개)');
+      if (result.isSuccess) {
+        _myRegisteredTickets = result.data;
+        print('✅ 내 양도 등록 티켓 리스트 로드 완료 (${result.data!.length}개)');
+      } else {
+        throw Exception(result.errorMessage ?? '내 양도 등록 티켓 로딩 실패');
+      }
     } catch (e) {
       print('❌ 내 양도 등록 티켓 리스트 로드 실패: $e');
       _setError('내 양도 등록 티켓 목록을 불러올 수 없습니다.');
@@ -181,15 +192,18 @@ class TransferProvider extends ChangeNotifier {
 
       print('🎟️ 내 양도 가능 티켓 리스트 로드');
 
-      final tickets = await _apiService.transfer.getMyTransferableTickets(
+      final result = await _apiService.transfer.getMyTransferableTickets(
         userId: userId,
         startDate: startDate,
         endDate: endDate,
       );
 
-      _myTransferableTickets = tickets;
-
-      print('✅ 내 양도 가능 티켓 리스트 로드 완료 (${tickets.length}개)');
+      if (result.isSuccess) {
+        _myTransferableTickets = result.data;
+        print('✅ 내 양도 가능 티켓 리스트 로드 완료 (${result.data!.length}개)');
+      } else {
+        throw Exception(result.errorMessage ?? '내 양도 가능 티켓 로딩 실패');
+      }
     } catch (e) {
       print('❌ 내 양도 가능 티켓 리스트 로드 실패: $e');
       _setError('내 양도 가능 티켓 목록을 불러올 수 없습니다.');
@@ -215,15 +229,18 @@ class TransferProvider extends ChangeNotifier {
 
       print('🔑 고유번호 조회');
 
-      final uniqueCode = await _apiService.transfer.getUniqueCode(
+      final result = await _apiService.transfer.getUniqueCode(
         transferTicketId,
       );
 
-      // 캐시에 저장
-      _uniqueCodes[transferTicketId] = uniqueCode;
-
-      print('✅ 고유번호 조회 완료');
-      return uniqueCode;
+      if (result.isSuccess) {
+        // 캐시에 저장
+        _uniqueCodes[transferTicketId] = result.data!;
+        print('✅ 고유번호 조회 완료');
+        return result.data;
+      } else {
+        throw Exception(result.errorMessage ?? '고유번호 조회 실패');
+      }
     } catch (e) {
       print('❌ 고유번호 조회 실패: $e');
       _setError('고유번호를 조회할 수 없습니다.');
@@ -241,15 +258,18 @@ class TransferProvider extends ChangeNotifier {
 
       print('🔄 고유번호 재발급');
 
-      final uniqueCode = await _apiService.transfer.regenerateUniqueCode(
+      final result = await _apiService.transfer.regenerateUniqueCode(
         transferTicketId,
       );
 
-      // 캐시 업데이트
-      _uniqueCodes[transferTicketId] = uniqueCode;
-
-      print('✅ 고유번호 재발급 완료');
-      return uniqueCode;
+      if (result.isSuccess) {
+        // 캐시 업데이트
+        _uniqueCodes[transferTicketId] = result.data!;
+        print('✅ 고유번호 재발급 완료');
+        return result.data;
+      } else {
+        throw Exception(result.errorMessage ?? '고유번호 재발급 실패');
+      }
     } catch (e) {
       print('❌ 고유번호 재발급 실패: $e');
       _setError('고유번호를 재발급할 수 없습니다.');

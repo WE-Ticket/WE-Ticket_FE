@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:we_ticket/features/auth/presentation/providers/auth_provider.dart';
 import 'package:we_ticket/features/mypage/presentation/screens/ticket_detail_screen.dart';
-import 'package:we_ticket/features/shared/providers/api_provider.dart';
+import 'package:we_ticket/shared/presentation/providers/api_provider.dart';
 import '../../../../core/constants/app_colors.dart';
 
 class MyTicketsScreen extends StatefulWidget {

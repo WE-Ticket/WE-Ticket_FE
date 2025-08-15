@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:we_ticket/features/shared/providers/api_provider.dart';
-import 'package:we_ticket/features/transfer/data/transfer_service.dart';
+
 import '../../../../core/constants/app_colors.dart';
-import '../providers/transfer_provider.dart';
+import '../../../../core/utils/app_logger.dart';
+import '../../../../core/utils/provider_utils.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../../shared/presentation/providers/api_provider.dart';
 import '../../data/transfer_models.dart';
+import '../../data/transfer_service.dart';
+import '../providers/transfer_provider.dart';
 
 class TransferEditDialogs {
   // 양도 수정 메인 팝업
@@ -203,7 +207,7 @@ class TransferEditDialogs {
                 decoration: BoxDecoration(
                   color: _getStatusColor(
                     ticket.transferStatus,
-                  ).withOpacity(0.1),
+                  ).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
@@ -367,9 +371,9 @@ class TransferEditDialogs {
                               .toggleTransferType(ticket.transferTicketId);
 
                           String? generatedCode;
-                          if (result != null &&
-                              result.containsKey('unique_code')) {
-                            generatedCode = result['unique_code'];
+                          if (result.isSuccess && result.data != null &&
+                              result.data!.containsKey('unique_code')) {
+                            generatedCode = result.data!['unique_code'];
                           }
 
                           setState(() {
@@ -623,9 +627,9 @@ class TransferEditDialogs {
         Container(
           padding: EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: AppColors.warning.withOpacity(0.1),
+            color: AppColors.warning.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.warning.withOpacity(0.3)),
+            border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
           ),
           child: Row(
             children: [
@@ -697,7 +701,7 @@ class TransferEditDialogs {
           width: 60,
           height: 60,
           decoration: BoxDecoration(
-            color: AppColors.success.withOpacity(0.1),
+            color: AppColors.success.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(30),
           ),
           child: Icon(Icons.check, color: AppColors.success, size: 30),
@@ -759,7 +763,13 @@ class TransferEditDialogs {
                 context,
                 listen: false,
               );
-              transferProvider.refreshData(userId: 1); // TODO: 실제 사용자 ID로 변경
+              final authProvider = context.authProvider;
+              final userId = authProvider.currentUserId;
+              if (userId != null) {
+                transferProvider.refreshData(userId: userId);
+              } else {
+                AppLogger.warning('사용자 ID를 찾을 수 없어 데이터를 새로고침할 수 없습니다', 'TRANSFER');
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
@@ -827,9 +837,9 @@ class TransferEditDialogs {
         Container(
           padding: EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: AppColors.warning.withOpacity(0.1),
+            color: AppColors.warning.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.warning.withOpacity(0.3)),
+            border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
           ),
           child: Row(
             children: [
@@ -898,7 +908,7 @@ class TransferEditDialogs {
           width: 60,
           height: 60,
           decoration: BoxDecoration(
-            color: AppColors.success.withOpacity(0.1),
+            color: AppColors.success.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(30),
           ),
           child: Icon(Icons.check, color: AppColors.success, size: 30),
@@ -918,9 +928,9 @@ class TransferEditDialogs {
         Container(
           padding: EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.secondary.withOpacity(0.1),
+            color: AppColors.secondary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.secondary.withOpacity(0.3)),
+            border: Border.all(color: AppColors.secondary.withValues(alpha: 0.3)),
           ),
           child: Column(
             children: [
@@ -993,7 +1003,13 @@ class TransferEditDialogs {
                 context,
                 listen: false,
               );
-              transferProvider.refreshData(userId: 1); // TODO: 실제 사용자 ID로 변경
+              final authProvider = context.authProvider;
+              final userId = authProvider.currentUserId;
+              if (userId != null) {
+                transferProvider.refreshData(userId: userId);
+              } else {
+                AppLogger.warning('사용자 ID를 찾을 수 없어 데이터를 새로고침할 수 없습니다', 'TRANSFER');
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
@@ -1015,9 +1031,9 @@ class TransferEditDialogs {
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.secondary.withOpacity(0.1),
+        color: AppColors.secondary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.secondary.withOpacity(0.3)),
+        border: Border.all(color: AppColors.secondary.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [

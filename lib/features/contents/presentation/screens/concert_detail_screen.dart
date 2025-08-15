@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:we_ticket/features/auth/presentation/providers/auth_guard.dart';
-import 'package:we_ticket/features/ticketing/presentation/screens/schedul_selection_screen.dart.dart';
-import 'package:we_ticket/features/shared/providers/api_provider.dart';
+import 'package:we_ticket/features/ticketing/presentation/screens/schedule_selection_screen.dart';
+import 'package:we_ticket/features/contents/presentation/providers/contents_provider.dart';
 import 'package:we_ticket/features/contents/data/performance_models.dart';
 import 'package:we_ticket/features/transfer/presentation/screens/transfer_market_screen.dart';
+import 'package:we_ticket/core/utils/app_logger.dart';
 import '../../../../core/constants/app_colors.dart';
 import 'package:intl/intl.dart';
 
 class ConcertDetailScreen extends StatefulWidget {
   final int performanceId;
 
-  const ConcertDetailScreen({Key? key, required this.performanceId})
-    : super(key: key);
+  const ConcertDetailScreen({super.key, required this.performanceId});
 
   @override
-  _ConcertDetailScreenState createState() => _ConcertDetailScreenState();
+  State<ConcertDetailScreen> createState() => _ConcertDetailScreenState();
 }
 
 class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
@@ -36,20 +36,29 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
     });
 
     try {
-      final apiProvider = context.read<ApiProvider>();
-      final detail = await apiProvider.apiService.performance
-          .getPerformanceDetail(widget.performanceId);
+      final contentsProvider = context.read<ContentsProvider>();
+      await contentsProvider.loadPerformanceDetail(widget.performanceId);
+      
+      // Get the result from provider state
+      final detail = contentsProvider.selectedPerformance;
+      final error = contentsProvider.errorMessage;
 
       setState(() {
-        _performanceDetail = detail;
-        _isLoadingDetail = false;
+        if (error != null) {
+          _errorMessage = error;
+          _isLoadingDetail = false;
+          AppLogger.error('공연 상세 정보 로드 실패', error, null, 'CONCERT_DETAIL');
+        } else if (detail != null) {
+          _performanceDetail = detail;
+          _isLoadingDetail = false;
+        }
       });
     } catch (e) {
       setState(() {
         _errorMessage = '상세 정보를 불러올 수 없습니다.';
         _isLoadingDetail = false;
       });
-      print('❌ 공연 상세 정보 로드 실패: $e');
+      AppLogger.error('공연 상세 정보 로드 예외', e.toString(), null, 'CONCERT_DETAIL');
     }
   }
 
@@ -135,7 +144,7 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
                         end: Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
-                          AppColors.black.withOpacity(0.7),
+                          AppColors.black.withValues(alpha: 0.7),
                         ],
                       ),
                     ),
@@ -205,7 +214,7 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
 
                         SizedBox(height: 20),
 
-                        if (!_performanceDetail!.isTicketOpen) ...[
+                        if (!_performanceDetail!.canBook) ...[
                           _buildTicketOpenInfoSection(),
                           SizedBox(height: 20),
                         ],
@@ -309,9 +318,8 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
                             context,
                             onAuthenticated: () {
                               // 인증 완료 후 예매 진행
-                              final Map<String, dynamic> _performanceInfo = {
-                                'performance_id':
-                                    _performanceDetail!.performanceId,
+                              final Map<String, dynamic> performanceInfo = {
+                                'performance_id': _performanceDetail!.performanceId,
                                 'title': _performanceDetail?.title ?? '제목 없음',
                                 'performer_name':
                                     _performanceDetail?.performerName ?? '미정',
@@ -323,7 +331,7 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
                                 context,
                                 MaterialPageRoute(
                                   builder: (_) => ScheduleSelectionScreen(
-                                    performanceInfo: _performanceInfo,
+                                    performanceInfo: performanceInfo,
                                   ),
                                 ),
                               );
@@ -383,9 +391,10 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
 
   String _getStatus() {
     if (_performanceDetail != null) {
-      if (_performanceDetail!.isSoldOut) return 'soldout';
-      if (!_performanceDetail!.isTicketOpen) return 'coming_soon';
-      if (_performanceDetail!.isAvailable) return 'available';
+      // For now, use minPrice == 0 as soldout indicator
+      if (_performanceDetail!.minPrice == 0) return 'soldout';
+      if (!_performanceDetail!.canBook) return 'coming_soon';
+      if (_performanceDetail!.canBook) return 'available';
       return 'closed';
     }
     return 'closed';
@@ -393,7 +402,7 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
 
   bool _getIsHot() {
     if (_performanceDetail != null) {
-      return _performanceDetail!.isHot;
+      return _performanceDetail!.tags.contains('HOT') || _performanceDetail!.tags.contains('인기');
     }
     return false;
   }
@@ -425,25 +434,18 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
     return '장소 미정';
   }
 
-  // 티켓 오픈 일시 정보
-  String _getTicketOpenDateTime() {
-    if (_performanceDetail != null) {
-      return _performanceDetail!.ticketOpenDatetime ?? '';
-    }
-    return '';
-  }
 
   bool _getIsTicketOpen() {
     if (_performanceDetail != null) {
-      return _performanceDetail!.isTicketOpen;
+      return _performanceDetail!.canBook;
     }
     return false;
   }
 
   // 공연 세션 정보
   List<String> _getSessions() {
-    if (_performanceDetail != null) {
-      return _performanceDetail!.sessionList ?? [];
+    if (_performanceDetail != null && _performanceDetail!.sessionList.isNotEmpty) {
+      return _performanceDetail!.sessionList;
     }
     return [];
   }
@@ -482,7 +484,7 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
         return Container(
           padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.1),
+            color: AppColors.primary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Text(
@@ -549,13 +551,13 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
           _buildDetailInfoRow(
             Icons.calendar_today,
             '공연일시',
-            '${_performanceDetail?.startDate} ~ ${_performanceDetail?.endDate} ',
+            '${_performanceDetail?.startDate} - ${_performanceDetail?.endDate}',
           ),
           Divider(color: AppColors.gray200, height: 24),
           _buildDetailInfoRow(
             Icons.location_on,
             '공연장소',
-            '${_getVenue()}\n( ${_performanceDetail?.venueLocation} )',
+            '${_getVenue()}${_performanceDetail?.venueLocation.isNotEmpty == true ? '\n(${_performanceDetail!.venueLocation})' : ''}',
           ),
           Divider(color: AppColors.gray200, height: 24),
           _buildDetailInfoRow(Icons.local_offer, '가격', _getPrice()),
@@ -563,7 +565,7 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
           _buildDetailInfoRow(
             Icons.child_care,
             '연령',
-            '${_performanceDetail?.ageRating ?? '미정'}',
+            _performanceDetail?.ageRating ?? '미정',
           ),
           Divider(color: AppColors.gray200, height: 24),
           _buildDetailInfoRow(Icons.category, '장르', _getGenre()),
@@ -574,16 +576,15 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
 
   // 티켓 오픈 일시 섹션
   Widget _buildTicketOpenInfoSection() {
-    final ticketOpenDateTime = _getTicketOpenDateTime();
     final isTicketOpen = _getIsTicketOpen();
 
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.warning.withOpacity(0.1),
+        color: AppColors.warning.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.warning.withOpacity(0.3), width: 1),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.3), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -605,7 +606,7 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
           if (!isTicketOpen) ...[
             SizedBox(height: 8),
             Text(
-              _formatTicketOpenDateTime(_performanceDetail!.ticketOpenDatetime),
+              '티켓 오픈 예정', // Placeholder since ticketOpenDatetime not in domain entity
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -641,7 +642,7 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
             Container(
               padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
+                color: AppColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
@@ -714,25 +715,6 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
     );
   }
 
-  String _formatTicketOpenDateTime(String? dateTimeString) {
-    if (dateTimeString == null || dateTimeString.isEmpty) {
-      return '미정';
-    }
-
-    try {
-      // String을 DateTime으로 파싱
-      final DateTime dateTime = DateTime.parse(
-        dateTimeString.replaceAll(' ', 'T'),
-      );
-
-      // 한국어 포맷으로 변환
-      return DateFormat('M월 d일 (E) HH:mm', 'ko_KR').format(dateTime);
-    } catch (e) {
-      // 파싱 실패 시 원본 문자열 반환
-      print('날짜 파싱 실패: $e');
-      return dateTimeString;
-    }
-  }
 
   Widget _buildSessionItem(String sessionDateTime, int sessionNumber) {
     final DateTime? dateTime = _parseDateTime(sessionDateTime);
@@ -808,7 +790,9 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
       if (parts.length >= 3) {
         return '${parts[1]}월 ${parts[2]}일';
       }
-    } catch (e) {}
+    } catch (e) {
+      // 파싱 실패시 원본 반환
+    }
     return dateTimeString.split(' ')[0];
   }
 
@@ -925,6 +909,7 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
               border: Border.all(color: AppColors.gray200),
             ),
             child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
               child: Image.network(
                 _performanceDetail!.detailImage,
                 fit: BoxFit.cover,
@@ -936,10 +921,6 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
                     child: Center(
                       child: CircularProgressIndicator(
                         color: AppColors.primary,
-                        value: loadingProgress.expectedTotalBytes != null
-                            ? loadingProgress.cumulativeBytesLoaded /
-                                  loadingProgress.expectedTotalBytes!
-                            : null,
                       ),
                     ),
                   );
@@ -951,17 +932,13 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          Icons.broken_image,
-                          size: 32,
-                          color: AppColors.gray400,
-                        ),
+                        Icon(Icons.image_not_supported, size: 48, color: AppColors.gray400),
                         SizedBox(height: 8),
                         Text(
                           '상세 이미지를 불러올 수 없습니다',
                           style: TextStyle(
+                            fontSize: 14,
                             color: AppColors.gray500,
-                            fontSize: 12,
                           ),
                         ),
                       ],

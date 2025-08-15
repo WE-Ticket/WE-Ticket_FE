@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:we_ticket/core/constants/app_colors.dart';
-import 'package:we_ticket/features/contents/data/performance_models.dart';
+import 'package:we_ticket/features/contents/domain/entities/performance.dart';
+import 'package:we_ticket/features/contents/domain/entities/performance_list.dart';
 import 'package:we_ticket/features/contents/presentation/screens/concert_detail_screen.dart';
 
 Widget buildPerformanceDashboardListCard(
   BuildContext context,
-  PerformanceAvailableItem performance,
+  dynamic performance, // Can be Performance or PerformanceAvailable
 ) {
   return GestureDetector(
     onTap: () {
-      _navigateToDetail(context, performance.performanceId);
+      _navigateToDetail(context, performance.id);
     },
     child: Container(
       margin: EdgeInsets.only(bottom: 12),
@@ -35,9 +36,7 @@ Widget buildPerformanceDashboardListCard(
             child: ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: Image.network(
-                performance.mainImage.isNotEmpty
-                    ? performance.mainImage
-                    : 'https://via.placeholder.com/60x60?text=No+Image',
+                _getImageUrl(performance),
                 fit: BoxFit.cover,
                 loadingBuilder: (context, child, loadingProgress) {
                   if (loadingProgress == null) return child;
@@ -107,7 +106,7 @@ Widget buildPerformanceDashboardListCard(
                 ),
                 SizedBox(height: 4),
                 Text(
-                  '${performance.startDate.isNotEmpty ? performance.startDate : '날짜 미정'} | ${performance.venueName.isNotEmpty ? performance.venueName : '장소 미정'}',
+                  _getDateVenueText(performance),
                   style: TextStyle(
                     fontSize: 12,
                     color: AppColors.textSecondary,
@@ -127,10 +126,10 @@ Widget buildPerformanceDashboardListCard(
 
 Widget buildPerformanceListCard(
   BuildContext context,
-  PerformanceListItem performance,
+  Performance performance,
 ) {
   return GestureDetector(
-    onTap: () => _navigateToDetail(context, performance.performanceId),
+    onTap: () => _navigateToDetail(context, performance.id),
     child: Container(
       margin: EdgeInsets.only(bottom: 12),
       padding: EdgeInsets.all(16),
@@ -196,7 +195,7 @@ Widget buildPerformanceListCard(
                 ),
                 SizedBox(height: 8),
                 Text(
-                  '${performance.startDate.isNotEmpty ? performance.startDate : '날짜 미정'} | ${performance.venueName.isNotEmpty ? performance.venueName : '장소 미정'}',
+                  '${performance.startDate.toString().split(' ')[0]} | ${performance.venueName}',
                   style: TextStyle(
                     fontSize: 12,
                     color: AppColors.textSecondary,
@@ -224,7 +223,7 @@ Widget buildPerformanceListCard(
 
 Widget buildPerformanceBigCard(
   BuildContext context,
-  PerformanceListItem performance,
+  Performance performance,
 ) {
   return GestureDetector(
     onTap: () {
@@ -232,7 +231,7 @@ Widget buildPerformanceBigCard(
         context,
         MaterialPageRoute(
           builder: (context) =>
-              ConcertDetailScreen(performanceId: performance.performanceId),
+              ConcertDetailScreen(performanceId: performance.id),
         ),
       );
     },
@@ -369,10 +368,10 @@ Widget buildPerformanceBigCard(
 
                 _buildInfoRow(
                   Icons.calendar_today,
-                  '${performance.startDate} ~ ${performance.endDate}',
+                  '${performance.startDate.toString().split(' ')[0]} ~ ${performance.endDate.toString().split(' ')[0]}',
                 ),
                 SizedBox(height: 6),
-                _buildInfoRow(Icons.location_on, '${performance.venueName}'),
+                _buildInfoRow(Icons.location_on, performance.venueName),
                 SizedBox(height: 6),
                 _buildInfoRow(Icons.local_offer, '${performance.minPrice}원 부터'),
               ],
@@ -386,10 +385,10 @@ Widget buildPerformanceBigCard(
 
 Widget buildPerformanceGridCard(
   BuildContext context,
-  PerformanceListItem performance,
+  Performance performance,
 ) {
   return GestureDetector(
-    onTap: () => _navigateToDetail(context, performance.performanceId),
+    onTap: () => _navigateToDetail(context, performance.id),
     child: Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -522,7 +521,7 @@ Widget buildPerformanceGridCard(
                       SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          '${performance.startDate} ~ ${performance.endDate}',
+                          '${performance.startDate.toString().split(' ')[0]} ~ ${performance.endDate.toString().split(' ')[0]}',
                           style: TextStyle(
                             fontSize: 10,
                             color: AppColors.textSecondary,
@@ -642,6 +641,29 @@ Widget _buildCompactStatusBadge(bool isSoldOut, bool isTicketOpen) {
       ),
     ),
   );
+}
+
+String _getImageUrl(dynamic performance) {
+  String? imageUrl;
+  if (performance is Performance) {
+    imageUrl = performance.mainImage;
+  } else if (performance is PerformanceAvailable) {
+    imageUrl = performance.imageUrl;
+  }
+  return (imageUrl?.isNotEmpty == true) 
+    ? imageUrl! 
+    : 'https://via.placeholder.com/60x60?text=No+Image';
+}
+
+String _getDateVenueText(dynamic performance) {
+  if (performance is Performance) {
+    return '${performance.startDate.toString().split(' ')[0]} | ${performance.venueName}';
+  } else if (performance is PerformanceAvailable) {
+    return performance.nextShowDate != null 
+      ? '${performance.nextShowDateFormatted} | 예매 가능'
+      : '일정 미정 | 예매 가능';
+  }
+  return '정보 없음';
 }
 
 void _navigateToDetail(BuildContext context, int performanceId) {
