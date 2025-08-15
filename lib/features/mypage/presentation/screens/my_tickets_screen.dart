@@ -26,23 +26,27 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
     _loadMyTickets();
   }
 
+  /// 클라이언트 사이드 필터링: 서버에서 전체 데이터를 받아온 후 클라이언트에서 필터링
   List<Map<String, dynamic>> get _filteredTickets {
+    List<Map<String, dynamic>> filtered;
+    
     switch (_selectedFilter) {
       case '입장 예정':
-        return _myTickets
-            .where((ticket) => ticket['status'] == 'pending')
-            .toList();
+        filtered = _myTickets.where((ticket) => ticket['status'] == 'pending').toList();
+        break;
       case '양도 등록 중':
-        return _myTickets
-            .where((ticket) => ticket['status'] == 'transferring')
-            .toList();
+        filtered = _myTickets.where((ticket) => ticket['status'] == 'transferring').toList();
+        break;
       case '사용 완료':
-        return _myTickets
-            .where((ticket) => ticket['status'] == 'completed')
-            .toList();
+        filtered = _myTickets.where((ticket) => ticket['status'] == 'completed').toList();
+        break;
       default: // 전체 보유
-        return _myTickets;
+        filtered = _myTickets;
+        break;
     }
+    
+    print('🔍 클라이언트 필터링 결과: $_selectedFilter -> 전체 ${_myTickets.length}개 중 ${filtered.length}개 필터됨');
+    return filtered;
   }
 
   /// 내 티켓 목록 API 호출
@@ -60,11 +64,12 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
       // FIXME ?? 0 이거 수정 필요
       final int userId = authProvider.currentUserId ?? 0;
 
-      print('내 티켓 목록 조회 요청: 사용자 ID $userId, 필터: $_selectedFilter');
+      print('내 티켓 목록 조회 요청: 사용자 ID $userId (전체 데이터 로드)');
 
+      // 전체 데이터를 가져오고 클라이언트에서 필터링
       final tickets = await apiProvider.apiService.getOwnedTickets(
         userId,
-        state: _getStateFromFilter(_selectedFilter),
+        // state 파라미터 제거 - 전체 데이터 요청
       );
 
       setState(() {
@@ -74,7 +79,15 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
         _isLoading = false;
       });
 
-      print('✅ 내 티켓 목록 ${_myTickets.length}개 조회 성공');
+      print('✅ 내 티켓 목록 ${_myTickets.length}개 조회 성공 (전체 데이터, 현재 필터: $_selectedFilter)');
+      
+      // 상태별 분포 출력 (디버깅용)
+      final statusCounts = <String, int>{};
+      for (final ticket in _myTickets) {
+        final status = ticket['status'] ?? 'unknown';
+        statusCounts[status] = (statusCounts[status] ?? 0) + 1;
+      }
+      print('📊 상태별 분포: $statusCounts');
     } catch (e) {
       print('❌ 내 티켓 목록 조회 오류: $e');
       setState(() {
@@ -84,20 +97,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
     }
   }
 
-  /// 필터 옵션을 API state 파라미터로 변환
-  String? _getStateFromFilter(String filter) {
-    switch (filter) {
-      case '입장 예정':
-        return 'pending';
-      case '양도 등록 중':
-        return 'transferring';
-      case '사용 완료':
-        return 'completed';
-      case '전체 보유':
-      default:
-        return null; // 전체 보유일 때는 state 파라미터를 보내지 않음
-    }
-  }
+  // _getStateFromFilter 함수 제거됨 - 더 이상 서버 필터링을 사용하지 않음
 
   /// API 응답 데이터를 화면에서 사용하는 형식으로 변환
   ///
@@ -197,12 +197,16 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
     return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 
-  /// 필터 변경 시 데이터 새로고침
+  /// 필터 변경 시 - 데이터 리로드 없이 UI만 업데이트
   void _onFilterChanged(String newFilter) {
+    if (_selectedFilter == newFilter) return; // 동일한 필터면 무시
+    
     setState(() {
       _selectedFilter = newFilter;
     });
-    _loadMyTickets();
+    
+    print('🔄 필터 변경: $_selectedFilter -> 클라이언트 필터링 실행');
+    // _loadMyTickets() 제거 - 더 이상 API 호출하지 않음
   }
 
   @override
@@ -334,15 +338,16 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
       );
     }
 
-    if (_myTickets.isEmpty) {
+    final filteredTickets = _filteredTickets;
+    if (filteredTickets.isEmpty) {
       return _buildEmptyFilter();
     }
-
+    
     return ListView.builder(
       padding: EdgeInsets.all(16),
-      itemCount: _myTickets.length,
+      itemCount: filteredTickets.length,
       itemBuilder: (context, index) {
-        final ticket = _myTickets[index];
+        final ticket = filteredTickets[index];
         return _buildTicketCard(ticket);
       },
     );
