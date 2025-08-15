@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:we_ticket/features/ticketing/data/models/patment_data.dart';
-import 'package:we_ticket/features/ticketing/presentation/screens/payment_webview_screen.dart';
+import 'package:we_ticket/shared/data/models/patment_data.dart';
+import 'package:we_ticket/shared/presentation/screens/payment_webview_screen.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../auth/presentation/providers/auth_guard.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';

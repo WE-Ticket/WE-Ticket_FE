@@ -2,7 +2,7 @@ import '../../../../core/network/dio_client.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/network/api_result.dart';
 import '../../../../core/utils/app_logger.dart';
-import '../models/ticket_models.dart';
+import '../../../../shared/data/models/ticket_models.dart';
 
 /// 티켓/예매 관련 API 서비스
 class TicketService {

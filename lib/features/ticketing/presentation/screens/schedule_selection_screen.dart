@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:we_ticket/features/ticketing/presentation/screens/seat_selection_screen.dart';
 import 'package:we_ticket/shared/presentation/providers/api_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
-import '../../data/models/ticket_models.dart';
+import '../../../../shared/data/models/ticket_models.dart';
 import '../../../../core/constants/app_colors.dart';
 
 class ScheduleSelectionScreen extends StatefulWidget {

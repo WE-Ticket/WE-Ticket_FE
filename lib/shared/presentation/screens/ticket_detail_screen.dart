@@ -6,7 +6,7 @@ import 'package:we_ticket/features/entry/screens/manual_entry_screen.dart'
     show ManualEntryScreen;
 import 'package:we_ticket/features/entry/screens/nfc_entry_screen.dart';
 import 'package:we_ticket/shared/presentation/providers/api_provider.dart';
-import '../../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_colors.dart';
 
 class TicketDetailScreen extends StatefulWidget {
   final String? ticketId;

@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../data/services/ticket_service.dart';
-import '../../data/models/ticket_models.dart';
+import '../../../../shared/data/models/ticket_models.dart';
 
 /// Ticketing 기능을 관리하는 Provider
 /// 티켓 예매, 좌석 선택, 결제 등의 상태를 관리합니다.

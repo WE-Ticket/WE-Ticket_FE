@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:we_ticket/features/auth/data/user_models.dart';
 import 'package:we_ticket/features/contents/presentation/screens/dashboard_screen.dart';
-import 'package:we_ticket/features/mypage/presentation/screens/my_auth_screen.dart';
+import 'package:we_ticket/features/auth/presentation/screens/my_auth_screen.dart';
 import 'package:we_ticket/features/mypage/presentation/screens/my_tickets_screen.dart';
 import 'package:we_ticket/features/mypage/presentation/screens/purchase_history_screen.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';

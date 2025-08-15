@@ -4,7 +4,7 @@ import 'package:we_ticket/core/constants/app_colors.dart';
 import 'package:we_ticket/features/auth/presentation/providers/auth_provider.dart';
 import 'package:we_ticket/features/auth/presentation/screens/login_screen.dart';
 import 'package:we_ticket/features/auth/data/user_models.dart';
-import 'package:we_ticket/features/mypage/presentation/screens/my_auth_screen.dart';
+import 'package:we_ticket/features/auth/presentation/screens/my_auth_screen.dart';
 
 class AuthGuard {
   /// 예매하기 버튼용 - 로그인 + 인증 레벨 확인

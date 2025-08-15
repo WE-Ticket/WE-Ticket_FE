@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:we_ticket/features/ticketing/data/models/patment_data.dart';
+import 'package:we_ticket/shared/data/models/patment_data.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-import 'package:we_ticket/features/ticketing/presentation/screens/nft_issuance_screen.dart';
-import '../../../../core/constants/app_colors.dart';
+import 'package:we_ticket/shared/presentation/screens/nft_issuance_screen.dart';
+import '../../../core/constants/app_colors.dart';
 
 class PaymentWebViewScreen extends StatefulWidget {
   final PaymentData paymentData;

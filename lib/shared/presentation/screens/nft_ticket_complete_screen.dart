@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:we_ticket/features/mypage/presentation/screens/my_tickets_screen.dart';
-import '../../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_colors.dart';
 
 class NFTTicketCompleteScreen extends StatefulWidget {
   final Map<String, dynamic> nftData;

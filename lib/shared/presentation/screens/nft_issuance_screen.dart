@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:we_ticket/features/ticketing/data/models/patment_data.dart';
-import 'package:we_ticket/features/ticketing/data/models/ticket_models.dart';
+import 'package:we_ticket/shared/data/models/patment_data.dart';
+import 'package:we_ticket/shared/data/models/ticket_models.dart';
 import 'package:we_ticket/features/ticketing/data/services/ticket_service.dart';
-import 'package:we_ticket/features/ticketing/presentation/screens/nft_ticket_complete_screen.dart';
+import 'package:we_ticket/shared/presentation/screens/nft_ticket_complete_screen.dart';
 import 'package:we_ticket/shared/presentation/providers/api_provider.dart';
-import '../../../../core/constants/app_colors.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../core/constants/app_colors.dart';
+import '../../../features/auth/presentation/providers/auth_provider.dart';
 
 class NFTIssuanceScreen extends StatefulWidget {
   final PaymentData paymentData;
