@@ -3,7 +3,9 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
 import 'package:we_ticket/core/utils/app_logger.dart';
+import 'package:we_ticket/core/network/dio_client.dart';
 import 'package:we_ticket/features/auth/presentation/providers/auth_provider.dart';
+import 'package:we_ticket/features/auth/presentation/screens/login_screen.dart';
 import 'package:we_ticket/features/auth/auth_dependencies.dart';
 import 'package:we_ticket/features/contents/presentation/screens/dashboard_screen.dart';
 import 'package:we_ticket/features/contents/presentation/providers/contents_provider.dart';
@@ -11,6 +13,7 @@ import 'package:we_ticket/features/contents/data/performance_service.dart';
 import 'package:we_ticket/features/transfer/presentation/providers/transfer_provider.dart';
 import 'package:we_ticket/injection/injection_container.dart';
 import 'package:we_ticket/shared/presentation/providers/api_provider.dart';
+import 'package:we_ticket/shared/presentation/widgets/app_snackbar.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,6 +31,9 @@ void main() async {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
+
+  // 글로벌 네비게이터 키
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
   @override
   Widget build(BuildContext context) {
@@ -82,6 +88,7 @@ class MyApp extends StatelessWidget {
       ],
       child: MaterialApp(
         title: 'WE-Ticket',
+        navigatorKey: navigatorKey, // 글로벌 네비게이터 키 설정
         localizationsDelegates: [
           GlobalMaterialLocalizations.delegate,
           GlobalWidgetsLocalizations.delegate,
@@ -117,28 +124,83 @@ class _MainAppState extends State<MainApp> {
   /// ✅ 앱 초기화 로직
   Future<void> _initializeApp() async {
     try {
-      print('🚀 앱 초기화 시작');
+      AppLogger.info('🚀 앱 초기화 시작', 'MAIN');
 
-      // 1. AuthProvider의 로그인 상태 확인
-      final authProvider = context.read<AuthProvider>();
-      await authProvider.checkAuthStatus();
+      // 1. 글로벌 인증 만료 콜백 설정
+      DioClient.setAuthExpiredCallback(_handleAuthExpired);
 
-      // 2. 로그인 상태인 경우 초기 데이터 로드
-      if (authProvider.isLoggedIn) {
-        final apiProvider = context.read<ApiProvider>();
-        await apiProvider.loadDashboardData();
-        print('✅ 로그인 사용자 초기 데이터 로드 완료');
+      // 2. AuthProvider의 로그인 상태 확인
+      if (mounted) {
+        final authProvider = context.read<AuthProvider>();
+        await authProvider.checkAuthStatus();
+
+        // 3. 로그인 상태인 경우 초기 데이터 로드
+        if (authProvider.isLoggedIn && mounted) {
+          final apiProvider = context.read<ApiProvider>();
+          await apiProvider.loadDashboardData();
+          AppLogger.success('✅ 로그인 사용자 초기 데이터 로드 완료', 'MAIN');
+        }
       }
 
-      print('✅ 앱 초기화 완료');
+      AppLogger.success('✅ 앱 초기화 완료', 'MAIN');
     } catch (e) {
-      print('❌ 앱 초기화 실패: $e');
+      AppLogger.error('❌ 앱 초기화 실패', e, null, 'MAIN');
       // 초기화 실패해도 앱은 정상 실행
+    }
+  }
+
+  /// 글로벌 인증 만료 처리
+  void _handleAuthExpired(bool isSessionExpired, bool isConcurrentLogin, String? errorMessage) {
+    AppLogger.warning('인증 만료 감지: 세션만료=$isSessionExpired, 동시접속=$isConcurrentLogin', 'AUTH');
+    
+    // 현재 컨텍스트 확인
+    final currentContext = MyApp.navigatorKey.currentContext;
+    if (currentContext != null && mounted) {
+      // 적절한 토스트 메시지 표시
+      String message;
+      if (isConcurrentLogin) {
+        message = '다른 곳에서 로그인이 감지되었습니다';
+      } else {
+        message = '로그인 세션이 만료되었습니다';
+      }
+      
+      AppSnackBar.showWarning(currentContext, message);
+      
+      // AuthProvider를 통한 자동 로그아웃
+      final authProvider = Provider.of<AuthProvider>(currentContext, listen: false);
+      authProvider.handleAuthExpired(isSessionExpired, isConcurrentLogin, errorMessage);
+      
+      // 강제 UI 새로고침을 위한 추가 처리
+      Future.delayed(Duration(milliseconds: 50), () {
+        if (MyApp.navigatorKey.currentContext != null) {
+          // 모든 스낵바 제거
+          ScaffoldMessenger.of(MyApp.navigatorKey.currentContext!).clearSnackBars();
+          
+          // 강제로 전체 앱 리빌드 (극단적이지만 확실한 방법)
+          final newAuthProvider = Provider.of<AuthProvider>(MyApp.navigatorKey.currentContext!, listen: false);
+          if (!newAuthProvider.isLoggedIn) {
+            AppLogger.success('✅ 자동 로그아웃 및 UI 새로고침 완료', 'AUTH');
+          }
+        }
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return DashboardScreen();
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        // 로그인 상태에 따라 화면 분기
+        if (authProvider.isLoggedIn) {
+          return DashboardScreen();
+        } else {
+          return LoginScreen(
+            onLoginSuccess: () {
+              // 로그인 성공 시 대시보드로 자동 이동 (Consumer가 자동으로 처리)
+            },
+          );
+        }
+      },
+    );
   }
 }

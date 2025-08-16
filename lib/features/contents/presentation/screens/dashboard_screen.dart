@@ -7,6 +7,8 @@ import 'package:we_ticket/features/mypage/presentation/screens/my_page_screen.da
 import 'package:we_ticket/features/mypage/presentation/screens/my_tickets_screen.dart';
 import 'package:we_ticket/features/transfer/presentation/screens/transfer_market_screen.dart';
 import 'package:we_ticket/features/auth/presentation/providers/auth_guard.dart';
+import 'package:we_ticket/features/auth/presentation/providers/auth_provider.dart';
+import 'package:we_ticket/features/auth/presentation/screens/login_screen.dart';
 import 'package:we_ticket/features/contents/presentation/providers/contents_provider.dart';
 import 'package:we_ticket/features/contents/data/mappers/performance_mapper.dart';
 import 'package:we_ticket/features/contents/domain/entities/performance_list.dart';

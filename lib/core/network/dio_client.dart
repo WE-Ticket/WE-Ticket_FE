@@ -9,6 +9,13 @@ class DioClient {
   String? _accessToken;
   String? _refreshToken;
   bool _isRefreshing = false; // 토큰 갱신 중복 방지
+  
+  // 글로벌 인증 만료 콜백
+  static Function(bool isSessionExpired, bool isConcurrentLogin, String? errorMessage)? _authExpiredCallback;
+  
+  // 동시접속 감지를 위한 변수들
+  DateTime? _lastTokenRefreshTime;
+  DateTime? _lastSuccessfulRequest;
 
   DioClient() {
     _dio = Dio(
@@ -43,14 +50,72 @@ class DioClient {
           return handler.next(options);
         },
         onError: (error, handler) async {
-          // ⚠️ 임시: Refresh API가 없으므로 401 오류 시 바로 토큰 삭제
-          if (error.response?.statusCode == 401) {
-            AppLogger.warning('토큰 만료 감지 - Refresh API 없음으로 토큰 삭제', 'AUTH');
+          if (error.response?.statusCode == 401 && !_isRefreshing) {
+            AppLogger.warning('🚨 401 에러 감지 - 토큰 상태 확인 후 refresh 시도', 'AUTH');
+            
+            // 현재 토큰 상태 로깅
+            await debugTokenStatus();
 
-            // 토큰 완전 삭제
-            await clearTokens();
+            // 토큰 갱신 시도
+            final refreshSuccess = await _refreshAccessToken();
+            
+            if (refreshSuccess) {
+              // 토큰 갱신 성공 - 원래 요청 재시도
+              AppLogger.success('토큰 갱신 성공 - 요청 재시도', 'AUTH');
+              
+              // 새로운 토큰으로 헤더 업데이트
+              error.requestOptions.headers['Authorization'] = 'Bearer $_accessToken';
+              
+              // 요청 재시도
+              final response = await _dio.fetch(error.requestOptions);
+              return handler.resolve(response);
+            } else {
+              // 토큰 갱신 실패 - 에러 분석 후 로그아웃 처리
+              AppLogger.error('토큰 갱신 실패 - 로그아웃 처리', null, null, 'AUTH');
+              
+              // 토큰 완전 삭제
+              await clearTokens();
 
-            AppLogger.error('인증 만료 - 재로그인 필요', null, null, 'AUTH');
+              // 에러 응답에서 상세 정보 추출
+              final responseData = error.response?.data;
+              String? errorMessage;
+              bool isSessionExpired = false;
+              bool isConcurrentLogin = false;
+              
+              if (responseData != null && responseData is Map<String, dynamic>) {
+                errorMessage = responseData['message'] ?? responseData['error'] ?? responseData['detail'];
+                
+                // 동시접속 감지 로직 개선
+                final messageStr = errorMessage?.toString().toLowerCase() ?? '';
+                
+                // 1. 명시적 동시접속 메시지 확인
+                if (messageStr.contains('concurrent') || 
+                    messageStr.contains('동시') || 
+                    messageStr.contains('다른') ||
+                    messageStr.contains('duplicate') ||
+                    messageStr.contains('multiple') ||
+                    messageStr.contains('another') ||
+                    messageStr.contains('elsewhere')) {
+                  isConcurrentLogin = true;
+                }
+                // 2. 최근에 토큰 갱신을 했는데도 실패하는 경우 (동시접속 가능성)
+                else if (_lastTokenRefreshTime != null && 
+                         DateTime.now().difference(_lastTokenRefreshTime!).inMinutes < 5) {
+                  AppLogger.warning('최근 토큰 갱신 후 즉시 실패 - 동시접속 의심', 'AUTH');
+                  isConcurrentLogin = true;
+                }
+                // 3. 기본: 세션 만료
+                else {
+                  isSessionExpired = true;
+                }
+              } else {
+                // 토큰이 아예 없는 상태라면 동시접속보다는 세션 만료
+                isSessionExpired = true;
+              }
+
+              // 글로벌 인증 만료 이벤트 발생 (토스트 메시지 + 자동 로그아웃)
+              _triggerAuthExpiredEvent(isSessionExpired, isConcurrentLogin, errorMessage);
+            }
           }
 
           return handler.next(error);
@@ -103,19 +168,29 @@ class DioClient {
     AppLogger.auth('모든 토큰 삭제 완료');
   }
 
-  /// ⚠️ 임시 비활성화: access_token 갱신 (백엔드 API 대기 중)
+  /// ✅ access_token 갱신
   Future<bool> _refreshAccessToken() async {
-    try {
-      AppLogger.warning('Refresh API 미구현 - 토큰 갱신 불가', 'AUTH');
+    if (_isRefreshing) {
+      AppLogger.warning('토큰 갱신 이미 진행 중', 'AUTH');
+      return false;
+    }
 
+    _isRefreshing = true;
+    
+    try {
       AppLogger.auth('토큰 갱신 시작');
 
       // SharedPreferences에서 최신 refresh 토큰 로드
       final prefs = await SharedPreferences.getInstance();
       final storedRefreshToken = prefs.getString('refresh_token');
+      final storedAccessToken = prefs.getString('access_token');
+
+      AppLogger.debug('토큰 상태 확인:', 'AUTH');
+      AppLogger.debug('  Access 토큰: ${storedAccessToken?.substring(0, 20) ?? 'null'}...', 'AUTH');
+      AppLogger.debug('  Refresh 토큰: ${storedRefreshToken?.substring(0, 20) ?? 'null'}...', 'AUTH');
 
       if (storedRefreshToken == null || storedRefreshToken.isEmpty) {
-        AppLogger.error('Refresh 토큰 없음', null, null, 'AUTH');
+        AppLogger.error('Refresh 토큰 없음 - 로그인 필요', null, null, 'AUTH');
         return false;
       }
 
@@ -141,17 +216,20 @@ class DioClient {
           await setRefreshToken(newRefreshToken);
         }
 
+        // 토큰 갱신 시간 기록
+        _lastTokenRefreshTime = DateTime.now();
+        
         AppLogger.success('토큰 갱신 성공', 'AUTH');
         return true;
       } else {
         AppLogger.error('토큰 갱신 응답 오류: ${response.statusCode}', null, null, 'AUTH');
         return false;
       }
-
-      return false;
     } catch (e) {
       AppLogger.error('토큰 갱신 예외', e, null, 'AUTH');
       return false;
+    } finally {
+      _isRefreshing = false;
     }
   }
 
@@ -280,6 +358,18 @@ class DioClient {
     } catch (e) {
       AppLogger.error('Unexpected error in POST request', e, null, 'API');
       return ApiResult.failure('알 수 없는 오류가 발생했습니다.');
+    }
+  }
+
+  /// 글로벌 인증 만료 콜백 설정
+  static void setAuthExpiredCallback(Function(bool isSessionExpired, bool isConcurrentLogin, String? errorMessage) callback) {
+    _authExpiredCallback = callback;
+  }
+
+  /// 인증 만료 이벤트 발생
+  void _triggerAuthExpiredEvent(bool isSessionExpired, bool isConcurrentLogin, String? errorMessage) {
+    if (_authExpiredCallback != null) {
+      _authExpiredCallback!(isSessionExpired, isConcurrentLogin, errorMessage);
     }
   }
 

@@ -277,9 +277,9 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// ✅ 로그아웃 - 완전한 정리
-  Future<void> logout() async {
+  Future<void> logout({bool isAutoLogout = false}) async {
     try {
-      print('🚪 로그아웃 시작');
+      print('🚪 로그아웃 시작 ${isAutoLogout ? '(자동)' : '(수동)'}');
 
       // 1. DioClient 토큰 완전 삭제
       await _dioClient.clearTokens();
@@ -290,8 +290,21 @@ class AuthProvider extends ChangeNotifier {
       print('✅ 로그아웃 완료');
     } catch (e) {
       print('❌ 로그아웃 오류: $e');
-      _setError('로그아웃 중 오류가 발생했습니다');
+      if (!isAutoLogout) {
+        _setError('로그아웃 중 오류가 발생했습니다');
+      }
     }
+  }
+
+  /// 자동 로그아웃 (토큰 만료 시)
+  Future<void> handleAuthExpired(bool isSessionExpired, bool isConcurrentLogin, String? errorMessage) async {
+    print('🔐 인증 만료 처리: 세션만료=$isSessionExpired, 동시접속=$isConcurrentLogin');
+    
+    // 자동 로그아웃 실행
+    await logout(isAutoLogout: true);
+    
+    // 강제로 UI 업데이트 알림
+    notifyListeners();
   }
 
   // Private methods
@@ -310,7 +323,12 @@ class AuthProvider extends ChangeNotifier {
       await prefs.clear();
 
       print('🗑️ 모든 사용자 데이터 삭제 완료');
+      
+      // 강제로 여러 번 알림 (확실한 UI 업데이트를 위해)
       notifyListeners();
+      
+      // 추가 알림 (혹시 첫 번째가 놓쳤을 경우를 대비)
+      Future.microtask(() => notifyListeners());
     } catch (e) {
       print('❌ 사용자 데이터 삭제 오류: $e');
       rethrow;

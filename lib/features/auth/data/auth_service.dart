@@ -56,6 +56,8 @@ class AuthService {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('access_token', accessToken);
         await prefs.setString('refresh_token', refreshToken);
+        
+        AppLogger.auth('토큰 저장 완료 - Access: ${accessToken.substring(0, 20)}..., Refresh: ${refreshToken.substring(0, 20)}...');
 
         AppLogger.success('로그인 성공: 사용자 ID ${loginResponse.userId}', 'AUTH');
         return ApiResult.success(loginResponse);
