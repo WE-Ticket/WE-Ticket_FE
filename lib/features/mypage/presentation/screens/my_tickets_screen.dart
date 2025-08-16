@@ -13,8 +13,9 @@ class MyTicketsScreen extends StatefulWidget {
   _MyTicketsScreenState createState() => _MyTicketsScreenState();
 }
 
-class _MyTicketsScreenState extends State<MyTicketsScreen> {
-  String _selectedFilter = '전체 보유';
+class _MyTicketsScreenState extends State<MyTicketsScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   List<Map<String, dynamic>> _myTickets = [];
   bool _isLoading = false;
   String? _errorMessage;
@@ -24,14 +25,31 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: _filterOptions.length, vsync: this);
+    _tabController.addListener(_onTabChanged);
     _loadMyTickets();
   }
 
+  @override
+  void dispose() {
+    _tabController.removeListener(_onTabChanged);
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _onTabChanged() {
+    if (_tabController.indexIsChanging) {
+      // 탭이 변경될 때 필터링된 데이터만 업데이트
+      setState(() {});
+    }
+  }
+
   /// 클라이언트 사이드 필터링: 서버에서 전체 데이터를 받아온 후 클라이언트에서 필터링
-  List<Map<String, dynamic>> get _filteredTickets {
+  List<Map<String, dynamic>> _getFilteredTickets(int tabIndex) {
+    final selectedFilter = _filterOptions[tabIndex];
     List<Map<String, dynamic>> filtered;
     
-    switch (_selectedFilter) {
+    switch (selectedFilter) {
       case '입장 예정':
         filtered = _myTickets.where((ticket) => ticket['status'] == 'pending').toList();
         break;
@@ -46,7 +64,6 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
         break;
     }
     
-    print('🔍 클라이언트 필터링 결과: $_selectedFilter -> 전체 ${_myTickets.length}개 중 ${filtered.length}개 필터됨');
     return filtered;
   }
 
@@ -80,7 +97,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
         _isLoading = false;
       });
 
-      print('✅ 내 티켓 목록 ${_myTickets.length}개 조회 성공 (전체 데이터, 현재 필터: $_selectedFilter)');
+      print('✅ 내 티켓 목록 ${_myTickets.length}개 조회 성공 (전체 데이터)');
       
       // 상태별 분포 출력 (디버깅용)
       final statusCounts = <String, int>{};
@@ -198,17 +215,6 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
     return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 
-  /// 필터 변경 시 - 데이터 리로드 없이 UI만 업데이트
-  void _onFilterChanged(String newFilter) {
-    if (_selectedFilter == newFilter) return; // 동일한 필터면 무시
-    
-    setState(() {
-      _selectedFilter = newFilter;
-    });
-    
-    print('🔄 필터 변경: $_selectedFilter -> 클라이언트 필터링 실행');
-    // _loadMyTickets() 제거 - 더 이상 API 호출하지 않음
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -238,60 +244,45 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
       ),
       body: Column(
         children: [
-          _buildFilterTabs(),
-
-          // 티켓 카드 리스트
-          Expanded(child: _buildTicketList()),
+          _buildTabBar(),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: _filterOptions.asMap().entries.map((entry) {
+                final tabIndex = entry.key;
+                return _buildTicketList(tabIndex);
+              }).toList(),
+            ),
+          ),
           SizedBox(height: 40),
         ],
       ),
     );
   }
 
-  Widget _buildFilterTabs() {
+  Widget _buildTabBar() {
     return Container(
       height: 50,
       color: AppColors.surface,
-      child: Row(
-        children: _filterOptions.map((filter) {
-          bool isSelected = _selectedFilter == filter;
-          return Expanded(
-            child: GestureDetector(
-              onTap: () => _onFilterChanged(filter),
-              child: Container(
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: isSelected
-                          ? AppColors.primary
-                          : Colors.transparent,
-                      width: 2,
-                    ),
-                  ),
-                ),
-                child: Center(
-                  child: Text(
-                    filter,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: isSelected
-                          ? AppColors.primary
-                          : AppColors.textSecondary,
-                      fontWeight: isSelected
-                          ? FontWeight.w600
-                          : FontWeight.normal,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          );
-        }).toList(),
+      child: TabBar(
+        controller: _tabController,
+        tabs: _filterOptions.map((filter) => Tab(
+          child: Text(
+            filter,
+            style: TextStyle(fontSize: 13),
+          ),
+        )).toList(),
+        labelColor: AppColors.primary,
+        unselectedLabelColor: AppColors.textSecondary,
+        indicatorColor: AppColors.primary,
+        labelStyle: TextStyle(fontWeight: FontWeight.w600),
+        unselectedLabelStyle: TextStyle(fontWeight: FontWeight.normal),
+        isScrollable: false,
       ),
     );
   }
 
-  Widget _buildTicketList() {
+  Widget _buildTicketList(int tabIndex) {
     if (_isLoading) {
       return Center(
         child: Column(
@@ -339,9 +330,9 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
       );
     }
 
-    final filteredTickets = _filteredTickets;
+    final filteredTickets = _getFilteredTickets(tabIndex);
     if (filteredTickets.isEmpty) {
-      return _buildEmptyFilter();
+      return _buildEmptyFilter(tabIndex);
     }
     
     return ListView.builder(
@@ -668,7 +659,8 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
     return 'D-$d';
   }
 
-  Widget _buildEmptyFilter() {
+  Widget _buildEmptyFilter(int tabIndex) {
+    final selectedFilter = _filterOptions[tabIndex];
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -682,7 +674,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
           SizedBox(height: 16),
 
           Text(
-            '$_selectedFilter 티켓이 없습니다',
+            '$selectedFilter 티켓이 없습니다',
             style: TextStyle(
               fontSize: 16,
               color: AppColors.textSecondary,

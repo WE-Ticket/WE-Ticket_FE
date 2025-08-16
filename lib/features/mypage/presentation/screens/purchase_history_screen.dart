@@ -13,8 +13,9 @@ class PurchaseHistoryScreen extends StatefulWidget {
   _PurchaseHistoryScreenState createState() => _PurchaseHistoryScreenState();
 }
 
-class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
-  String _selectedFilter = '전체 거래';
+class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   List<PaymentHistory> _paymentHistories = [];
   bool _isLoading = false;
   String? _errorMessage;
@@ -29,11 +30,32 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: _filterOptions.length, vsync: this);
+    _tabController.addListener(_onTabChanged);
     _loadPaymentHistory();
+  }
+
+  @override
+  void dispose() {
+    _tabController.removeListener(_onTabChanged);
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _onTabChanged() {
+    if (_tabController.indexIsChanging) {
+      // 탭이 변경될 때 데이터 리로드
+      _loadPaymentHistoryForTab(_tabController.index);
+    }
   }
 
   /// 결제 이력 로드
   Future<void> _loadPaymentHistory() async {
+    await _loadPaymentHistoryForTab(_tabController.index);
+  }
+
+  /// 특정 탭에 대한 결제 이력 로드
+  Future<void> _loadPaymentHistoryForTab(int tabIndex) async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -49,9 +71,10 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
         throw Exception('사용자 정보를 찾을 수 없습니다.');
       }
 
+      final selectedFilter = _filterOptions[tabIndex];
       // API에서 결제 이력 가져오기
       final histories = await apiProvider.apiService.myTicket
-          .getFilteredPaymentHistory(userId, _selectedFilter);
+          .getFilteredPaymentHistory(userId, selectedFilter);
 
       setState(() {
         _paymentHistories = histories;
@@ -68,16 +91,6 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
     }
   }
 
-  /// 필터 변경 시 데이터 다시 로드
-  Future<void> _onFilterChanged(String filter) async {
-    if (_selectedFilter == filter) return;
-
-    setState(() {
-      _selectedFilter = filter;
-    });
-
-    await _loadPaymentHistory();
-  }
 
   /// 새로고침
   Future<void> _refreshData() async {
@@ -112,11 +125,15 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
       ),
       body: Column(
         children: [
-          _buildFilterTabs(),
-
-          // 구매 이력 리스트
-          Expanded(child: _buildContent()),
-
+          _buildTabBar(),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: _filterOptions.asMap().entries.map((entry) {
+                return _buildContent();
+              }).toList(),
+            ),
+          ),
           SizedBox(height: 40),
         ],
       ),
@@ -184,45 +201,24 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
     );
   }
 
-  Widget _buildFilterTabs() {
+  Widget _buildTabBar() {
     return Container(
       height: 50,
       color: AppColors.surface,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: _filterOptions.map((filter) {
-            bool isSelected = _selectedFilter == filter;
-            return GestureDetector(
-              onTap: () => _onFilterChanged(filter),
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: isSelected
-                          ? AppColors.primary
-                          : Colors.transparent,
-                      width: 2,
-                    ),
-                  ),
-                ),
-                child: Text(
-                  filter,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: isSelected
-                        ? AppColors.primary
-                        : AppColors.textSecondary,
-                    fontWeight: isSelected
-                        ? FontWeight.w600
-                        : FontWeight.normal,
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
+      child: TabBar(
+        controller: _tabController,
+        tabs: _filterOptions.map((filter) => Tab(
+          child: Text(
+            filter,
+            style: TextStyle(fontSize: 14),
+          ),
+        )).toList(),
+        labelColor: AppColors.primary,
+        unselectedLabelColor: AppColors.textSecondary,
+        indicatorColor: AppColors.primary,
+        labelStyle: TextStyle(fontWeight: FontWeight.w600),
+        unselectedLabelStyle: TextStyle(fontWeight: FontWeight.normal),
+        isScrollable: false,
       ),
     );
   }
@@ -722,7 +718,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
           SizedBox(height: 16),
 
           Text(
-            '$_selectedFilter 내역이 없습니다',
+            '${_filterOptions[_tabController.index]} 내역이 없습니다',
             style: TextStyle(
               fontSize: 16,
               color: AppColors.textSecondary,
