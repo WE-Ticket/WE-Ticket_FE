@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'package:we_ticket/core/utils/app_logger.dart';
 import 'package:we_ticket/features/auth/presentation/providers/auth_provider.dart';
+import 'package:we_ticket/features/auth/auth_dependencies.dart';
 import 'package:we_ticket/features/contents/presentation/screens/dashboard_screen.dart';
 import 'package:we_ticket/features/contents/presentation/providers/contents_provider.dart';
 import 'package:we_ticket/features/contents/data/performance_service.dart';
@@ -75,6 +76,9 @@ class MyApp extends StatelessWidget {
               previousTransferProvider ??
               TransferProvider(apiProvider.apiService),
         ),
+
+        // ✅ 5. 새로운 Clean Architecture Providers
+        ...AuthDependencies.getProxyProviders(),
       ],
       child: MaterialApp(
         title: 'WE-Ticket',

@@ -85,3 +85,21 @@ class UnknownFailure extends Failure {
     super.errorCode,
   });
 }
+
+/// Technical/Platform failures
+class TechnicalFailure extends Failure {
+  const TechnicalFailure({
+    required super.message,
+    super.statusCode,
+    super.errorCode,
+  });
+}
+
+/// Authentication failures
+class AuthenticationFailure extends Failure {
+  const AuthenticationFailure({
+    required super.message,
+    super.statusCode,
+    super.errorCode,
+  });
+}

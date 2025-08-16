@@ -33,6 +33,9 @@ class SignupData extends Equatable {
     required this.agreements,
   });
 
+  bool get agreeTerms => agreements.any((a) => a.termType == TermType.serviceTerms && a.agreed);
+  bool get agreePrivacy => agreements.any((a) => a.termType == TermType.privacyPolicy && a.agreed);
+
   @override
   List<Object?> get props => [fullName, loginId, phoneNumber, password, agreements];
 

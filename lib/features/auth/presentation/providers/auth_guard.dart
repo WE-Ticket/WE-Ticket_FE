@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:we_ticket/core/constants/app_colors.dart';
+import 'package:we_ticket/features/auth/auth_exports.dart';
 import 'package:we_ticket/features/auth/presentation/providers/auth_provider.dart';
 import 'package:we_ticket/features/auth/presentation/screens/login_screen.dart';
 import 'package:we_ticket/features/auth/data/user_models.dart';
-import 'package:we_ticket/features/auth/presentation/screens/my_auth_screen.dart';
 
 class AuthGuard {
   /// 예매하기 버튼용 - 로그인 + 인증 레벨 확인
@@ -228,7 +228,7 @@ class AuthGuard {
               Navigator.pop(context);
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => MyAuthScreen()),
+                MaterialPageRoute(builder: (context) => AuthManagementScreen()),
               ).then((_) {
                 // 인증 후 돌아왔을 때 다시 확인
                 final updatedProvider = context.read<AuthProvider>();

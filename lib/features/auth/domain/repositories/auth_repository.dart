@@ -36,4 +36,7 @@ abstract class AuthRepository {
 
   /// Clear all authentication data
   Future<Either<Failure, void>> clearAuthData();
+
+  /// Load user authentication level
+  Future<Either<Failure, Map<String, dynamic>>> loadUserAuthLevel(int userId);
 }

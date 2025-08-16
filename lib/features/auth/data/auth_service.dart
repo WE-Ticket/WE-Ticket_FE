@@ -60,7 +60,10 @@ class AuthService {
         AppLogger.success('로그인 성공: 사용자 ID ${loginResponse.userId}', 'AUTH');
         return ApiResult.success(loginResponse);
       } else {
-        return ApiResult.failure('로그인 요청 실패: ${response.statusCode}', statusCode: response.statusCode);
+        return ApiResult.failure(
+          '로그인 요청 실패: ${response.statusCode}',
+          statusCode: response.statusCode,
+        );
       }
     } on DioException catch (e) {
       return _handleDioError(e, '로그인');
@@ -140,7 +143,10 @@ class AuthService {
         AppLogger.success('회원가입 성공', 'AUTH');
         return ApiResult.success(signupResponse);
       } else {
-        return ApiResult.failure('회원가입 요청 실패: ${response.statusCode}', statusCode: response.statusCode);
+        return ApiResult.failure(
+          '회원가입 요청 실패: ${response.statusCode}',
+          statusCode: response.statusCode,
+        );
       }
     } on DioException catch (e) {
       return _handleDioError(e, '회원가입');
@@ -168,7 +174,10 @@ class AuthService {
 
         return ApiResult.success(responseData);
       } else {
-        return ApiResult.failure('인증 조회 실패: ${response.statusCode}', statusCode: response.statusCode);
+        return ApiResult.failure(
+          '인증 조회 실패: ${response.statusCode}',
+          statusCode: response.statusCode,
+        );
       }
     } on DioException catch (e) {
       return _handleDioError(e, '인증 조회');
@@ -179,14 +188,20 @@ class AuthService {
   }
 
   ApiResult<T> _handleDioError<T>(DioException e, String action) {
-    AppLogger.error('$action DioException: ${e.response?.statusCode}', e, null, 'AUTH');
+    AppLogger.error(
+      '$action DioException: ${e.response?.statusCode}',
+      e,
+      null,
+      'AUTH',
+    );
 
     if (e.response?.statusCode == 400) {
       if (action == '로그인') {
         // Parse specific error message from response if available
         final errorData = e.response?.data;
         if (errorData != null && errorData is Map<String, dynamic>) {
-          final errorMessage = errorData['error'] ?? errorData['message'] ?? errorData['detail'];
+          final errorMessage =
+              errorData['error'] ?? errorData['message'] ?? errorData['detail'];
           if (errorMessage != null) {
             return ApiResult.validationError(errorMessage.toString());
           }
@@ -234,10 +249,16 @@ extension AuthServiceExtension on AuthService {
         final verificationResponse = IdentityVerificationResponse.fromJson(
           response.data,
         );
-        AppLogger.success('본인인증 기록 성공: ${verificationResponse.message}', 'AUTH');
+        AppLogger.success(
+          '본인인증 기록 성공: ${verificationResponse.message}',
+          'AUTH',
+        );
         return ApiResult.success(verificationResponse);
       } else {
-        return ApiResult.failure('본인인증 기록 실패: ${response.statusCode}', statusCode: response.statusCode);
+        return ApiResult.failure(
+          '본인인증 기록 실패: ${response.statusCode}',
+          statusCode: response.statusCode,
+        );
       }
     } on DioException catch (e) {
       return _handleDioError(e, '본인인증 기록');
@@ -299,96 +320,5 @@ extension AuthServiceExtension on AuthService {
       AppLogger.error('OmniOne 결과 처리 오류', e, null, 'AUTH');
       return ApiResult.failure('인증 결과 처리 중 오류가 발생했습니다: $e');
     }
-  }
-
-  /// OmniOne 토큰 파싱 (서버 API 호출)
-  Future<ApiResult<Map<String, dynamic>>> _parseOmniOneTokenViaAPI(
-    String token,
-  ) async {
-    try {
-      AppLogger.auth('서버를 통한 OmniOne 토큰 파싱 시작');
-
-      final response = await _dioClient.post(
-        '/oacx/api/v1.0/trans/token',
-        data: {'token': token},
-      );
-
-      if (response.statusCode == 200) {
-        final data = response.data['data'] as Map<String, dynamic>;
-        AppLogger.success('서버 토큰 파싱 성공', 'AUTH');
-        return ApiResult.success(data);
-      } else {
-        AppLogger.error('서버 토큰 파싱 실패: ${response.statusCode}', null, null, 'AUTH');
-        return ApiResult.failure('토큰 파싱 실패: ${response.statusCode}', statusCode: response.statusCode);
-      }
-    } catch (e) {
-      AppLogger.error('서버 토큰 파싱 오류', e, null, 'AUTH');
-      return ApiResult.failure('토큰 파싱 중 오류 발생');
-    }
-  }
-
-  /// JWT 토큰의 페이로드 디코딩
-  Map<String, dynamic>? _decodeJWTPayload(String token) {
-    try {
-      final parts = token.split('.');
-      if (parts.length != 3) {
-        AppLogger.error('잘못된 JWT 형식', null, null, 'AUTH');
-        return null;
-      }
-
-      // Base64 디코딩
-      String payload = parts[1];
-
-      // Base64 패딩 추가
-      switch (payload.length % 4) {
-        case 2:
-          payload += '==';
-          break;
-        case 3:
-          payload += '=';
-          break;
-      }
-
-      // Base64 디코딩 및 JSON 파싱
-      final decodedBytes = base64Decode(payload);
-      final decodedString = utf8.decode(decodedBytes);
-      final decodedJson = jsonDecode(decodedString) as Map<String, dynamic>;
-
-      AppLogger.success('JWT 페이로드 디코딩 성공', 'AUTH');
-      return decodedJson;
-    } catch (e) {
-      AppLogger.error('JWT 디코딩 오류', e, null, 'AUTH');
-      return null;
-    }
-  }
-
-  /// 전화번호 포맷 정리
-  String _formatPhoneNumber(String phone) {
-    if (phone.isEmpty) return '';
-    // 숫자만 추출
-    final digitsOnly = phone.replaceAll(RegExp(r'[^0-9]'), '');
-    return digitsOnly;
-  }
-
-  /// 생년월일 포맷 정리
-  String _formatBirthday(String birthday) {
-    if (birthday.isEmpty) return '';
-    // 숫자만 추출
-    final digitsOnly = birthday.replaceAll(RegExp(r'[^0-9]'), '');
-    return digitsOnly;
-  }
-
-  /// 성별 추정 (생년월일 마지막 자리 또는 기본값)
-  String _determineSex(String birthday) {
-    if (birthday.isEmpty) return '';
-
-    // 생년월일이 8자리인 경우 (YYYYMMDD)
-    if (birthday.length == 8) {
-      // 한국 주민등록번호 규칙 적용 불가 (뒷자리가 없음)
-      // 기본값 반환
-      return '';
-    }
-
-    return ''; // 기본값
   }
 }
