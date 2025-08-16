@@ -11,9 +11,10 @@ import '../providers/did_provider.dart';
 import '../widgets/auth_status_card.dart';
 import '../widgets/auth_upgrade_card.dart';
 import '../widgets/did_creation_dialog.dart';
+import '../widgets/auth_method_selection_dialog.dart';
+import '../widgets/additional_auth_explanation_dialog.dart';
 import 'omnione_cx_auth_screen.dart';
 
-/// 클린 아키텍처로 리팩토링된 인증 관리 화면
 class AuthManagementScreen extends StatefulWidget {
   const AuthManagementScreen({super.key});
 
@@ -31,7 +32,7 @@ class _AuthManagementScreenState extends State<AuthManagementScreen> {
   Future<void> _loadInitialData() async {
     final authProvider = context.read<AuthProvider>();
     final authLevelProvider = context.read<AuthLevelProvider>();
-    
+
     final userId = authProvider.currentUserId;
     if (userId != null) {
       await authLevelProvider.loadUserAuthLevel(userId);
@@ -112,7 +113,10 @@ class _AuthManagementScreenState extends State<AuthManagementScreen> {
               const SizedBox(height: 24),
               AuthUpgradeCard(
                 upgradeOption: authLevelProvider.upgradeOption,
-                onUpgradeTap: () => _navigateToAuth(context, authLevelProvider.currentLevel),
+                onUpgradeTap: () => _handleUpgradeRequest(
+                  context,
+                  authLevelProvider.currentLevel,
+                ),
               ),
               const SizedBox(height: 24),
               _buildAuthLevelGuide(authLevelProvider.currentLevel),
@@ -133,11 +137,7 @@ class _AuthManagementScreenState extends State<AuthManagementScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
-            Icons.error_outline,
-            size: 64,
-            color: AppColors.error,
-          ),
+          const Icon(Icons.error_outline, size: 64, color: AppColors.error),
           const SizedBox(height: 16),
           Text(
             '오류가 발생했습니다',
@@ -169,14 +169,59 @@ class _AuthManagementScreenState extends State<AuthManagementScreen> {
   Future<void> _refreshAuthLevel() async {
     final authProvider = context.read<AuthProvider>();
     final authLevelProvider = context.read<AuthLevelProvider>();
-    
+
     final userId = authProvider.currentUserId;
     if (userId != null) {
       await authLevelProvider.loadUserAuthLevel(userId);
     }
   }
 
-  Future<void> _navigateToAuth(BuildContext context, AuthLevel currentLevel) async {
+  Future<void> _handleUpgradeRequest(
+    BuildContext context,
+    AuthLevel currentLevel,
+  ) async {
+    switch (currentLevel) {
+      case AuthLevel.none:
+        await _handleNoneToGeneralUpgrade(context);
+        break;
+      case AuthLevel.general:
+        await _handleGeneralToMobileIdUpgrade(context);
+        break;
+      case AuthLevel.mobileId:
+        _showSuccess('이미 최고 등급입니다.');
+        break;
+    }
+  }
+
+  /// none → general 업그레이드 (인증 방법 선택)
+  Future<void> _handleNoneToGeneralUpgrade(BuildContext context) async {
+    final selectedMethod = await showDialog<String>(
+      context: context,
+      builder: (context) => const AuthMethodSelectionDialog(),
+    );
+
+    if (selectedMethod != null && mounted) {
+      await _navigateToAuth(context, AuthLevel.general, selectedMethod);
+    }
+  }
+
+  /// general → mobile_id 업그레이드 (추가 인증 설명)
+  Future<void> _handleGeneralToMobileIdUpgrade(BuildContext context) async {
+    final userAgreed = await showDialog<bool>(
+      context: context,
+      builder: (context) => const AdditionalAuthExplanationDialog(),
+    );
+
+    if (userAgreed == true && mounted) {
+      await _navigateToAuth(context, AuthLevel.mobileId, 'mobile_id');
+    }
+  }
+
+  Future<void> _navigateToAuth(
+    BuildContext context,
+    AuthLevel targetLevel,
+    String authMethod,
+  ) async {
     final authProvider = context.read<AuthProvider>();
     final userId = authProvider.currentUserId;
 
@@ -192,8 +237,9 @@ class _AuthManagementScreenState extends State<AuthManagementScreen> {
       MaterialPageRoute(
         builder: (context) => OmniOneCXAuthScreen(
           userId: userId,
-          currentAuthLevel: currentLevel.order,
+          currentAuthLevel: targetLevel.order,
           authService: apiProvider.authService,
+          authMethod: authMethod,
         ),
       ),
     );
@@ -227,7 +273,10 @@ class _AuthManagementScreenState extends State<AuthManagementScreen> {
     }
   }
 
-  Future<void> _startDidCreationFlow(DidProvider didProvider, int userId) async {
+  Future<void> _startDidCreationFlow(
+    DidProvider didProvider,
+    int userId,
+  ) async {
     // DID 생성 다이얼로그 표시
     showDialog(
       context: context,
@@ -241,7 +290,7 @@ class _AuthManagementScreenState extends State<AuthManagementScreen> {
 
     // DID 생성 및 등록 실행
     final success = await didProvider.createAndRegisterDid(userId: userId);
-    
+
     // 다이얼로그 닫기
     if (mounted) {
       Navigator.of(context).pop();
@@ -274,7 +323,7 @@ class _AuthManagementScreenState extends State<AuthManagementScreen> {
           _buildLevelItem(
             AuthLevel.general,
             '일반 인증 회원',
-            '본인 인증으로 기본 티켓 구매와 3초 간편 입장',
+            '간편인증 또는 모바일신분증으로 공연 예매 및 간편 입장 서비스 이용이 가능합니다.',
             AppColors.info,
             currentLevel,
           ),
@@ -282,7 +331,7 @@ class _AuthManagementScreenState extends State<AuthManagementScreen> {
           _buildLevelItem(
             AuthLevel.mobileId,
             '안전 인증 회원',
-            '모바일신분증으로 강화된 보안',
+            '모바일신분증 추가 인증으로 양도 거래 서비스까지 안전하게 이용 가능합니다.',
             AppColors.primary,
             currentLevel,
           ),
@@ -404,10 +453,10 @@ class _AuthManagementScreenState extends State<AuthManagementScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          _buildBenefit(Icons.shopping_cart, '안전한 티켓 거래', '일반 인증+'),
-          _buildBenefit(Icons.nfc, '3초 간편 입장', '모바일 신분증+'),
-          _buildBenefit(Icons.swap_horiz, '자유로운 양도 거래', '완전 인증'),
-          _buildBenefit(Icons.shield, '법적 분쟁 보호', '완전 인증'),
+          _buildBenefit(Icons.shopping_cart, '안전한 티켓 예매', '일반 인증+'),
+          _buildBenefit(Icons.nfc, '3초 간편 입장', '일반 인증+'),
+          _buildBenefit(Icons.swap_horiz, '자유로운 양도 거래', '안전 인증+'),
+          _buildBenefit(Icons.shield, '법적 분쟁 보호', '안전 인증+'),
         ],
       ),
     );
@@ -423,7 +472,10 @@ class _AuthManagementScreenState extends State<AuthManagementScreen> {
           Expanded(
             child: Text(
               title,
-              style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppColors.textPrimary,
+              ),
             ),
           ),
           Container(
@@ -490,19 +542,13 @@ class _AuthManagementScreenState extends State<AuthManagementScreen> {
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.error,
-      ),
+      SnackBar(content: Text(message), backgroundColor: AppColors.error),
     );
   }
 
   void _showSuccess(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.success,
-      ),
+      SnackBar(content: Text(message), backgroundColor: AppColors.success),
     );
   }
 }

@@ -2,8 +2,7 @@
 enum AuthLevel {
   none,
   general,
-  mobileId,
-  mobileIdTotally;
+  mobileId;
 
   String get value {
     switch (this) {
@@ -13,8 +12,6 @@ enum AuthLevel {
         return 'general';
       case AuthLevel.mobileId:
         return 'mobile_id';
-      case AuthLevel.mobileIdTotally:
-        return 'mobile_id_totally';
     }
   }
 
@@ -23,11 +20,9 @@ enum AuthLevel {
       case AuthLevel.none:
         return '미인증';
       case AuthLevel.general:
-        return '일반 인증 회원';
+        return '일반 인증';
       case AuthLevel.mobileId:
-        return '모바일 신분증 인증 회원';
-      case AuthLevel.mobileIdTotally:
-        return '완전 인증 회원';
+        return '안전 인증';
     }
   }
 
@@ -36,11 +31,9 @@ enum AuthLevel {
       case AuthLevel.none:
         return '서비스 이용을 위해 본인 인증이 필요합니다';
       case AuthLevel.general:
-        return '휴대폰 또는 간편인증으로 기본 서비스 이용 가능';
+        return '간편인증 또는 모바일신분증으로 기본 서비스 이용 가능';
       case AuthLevel.mobileId:
-        return '모바일신분증 인증으로 강화된 보안 서비스 이용';
-      case AuthLevel.mobileIdTotally:
-        return '모든 서비스 이용 가능한 최고 등급';
+        return '모바일신분증 추가 인증으로 강화된 보안 및 양도 거래';
     }
   }
 
@@ -52,8 +45,6 @@ enum AuthLevel {
         return 1;
       case AuthLevel.mobileId:
         return 2;
-      case AuthLevel.mobileIdTotally:
-        return 3;
     }
   }
 
@@ -65,8 +56,6 @@ enum AuthLevel {
         return AuthLevel.general;
       case 'mobile_id':
         return AuthLevel.mobileId;
-      case 'mobile_id_totally':
-        return AuthLevel.mobileIdTotally;
       default:
         return AuthLevel.none;
     }
@@ -83,8 +72,6 @@ enum AuthLevel {
       case AuthLevel.general:
         return AuthLevel.mobileId;
       case AuthLevel.mobileId:
-        return AuthLevel.mobileIdTotally;
-      case AuthLevel.mobileIdTotally:
         return null;
     }
   }
@@ -118,20 +105,12 @@ class AuthUpgradeOption {
       case AuthLevel.general:
         return const AuthUpgradeOption(
           targetLevel: AuthLevel.mobileId,
-          title: '모바일 신분증 인증 회원 되기',
-          description: '모바일신분증으로 인증하고 3초 간편입장을 경험하세요',
-          benefits: ['강화된 보안', '3초 간편입장'],
+          title: '안전 인증 회원 되기',
+          description: '모바일신분증 추가 인증으로 양도 거래까지 안전하게',
+          benefits: ['양도 거래', '강화된 보안'],
           isAvailable: true,
         );
       case AuthLevel.mobileId:
-        return const AuthUpgradeOption(
-          targetLevel: AuthLevel.mobileIdTotally,
-          title: '완전 인증 회원 되기',
-          description: '추가 인증으로 양도 거래를 통한 더 즐거운 공연을 누리세요',
-          benefits: ['양도 거래', '법적 분쟁 보호'],
-          isAvailable: true,
-        );
-      case AuthLevel.mobileIdTotally:
         return null;
     }
   }
@@ -157,13 +136,13 @@ class UserPrivilege {
       ),
       UserPrivilege(
         name: '3초 간편입장',
-        isAvailable: userLevel.isAtLeast(AuthLevel.mobileId),
-        requiredLevel: AuthLevel.mobileId,
+        isAvailable: userLevel.isAtLeast(AuthLevel.general),
+        requiredLevel: AuthLevel.general,
       ),
       UserPrivilege(
         name: '양도 거래',
-        isAvailable: userLevel.isAtLeast(AuthLevel.mobileIdTotally),
-        requiredLevel: AuthLevel.mobileIdTotally,
+        isAvailable: userLevel.isAtLeast(AuthLevel.mobileId),
+        requiredLevel: AuthLevel.mobileId,
       ),
     ];
   }

@@ -19,15 +19,42 @@ class DidCreationResult {
   });
 
   factory DidCreationResult.fromPlatformResponse(Map<String, dynamic> response) {
-    return DidCreationResult(
-      did: response['did'] ?? '',
-      keyId: response['keyId'] ?? '',
-      publicKey: response['publicKey'] ?? '',
-      keyAttestation: KeyAttestation.fromJson(response['keyAttestation'] ?? {}),
-      didDocument: response['didDocument'] ?? {},
-      success: response['success'] ?? false,
-      error: response['error'],
-    );
+    try {
+      return DidCreationResult(
+        did: _safeStringConversion(response['did']),
+        keyId: _safeStringConversion(response['keyId']),
+        publicKey: _safeStringConversion(response['publicKey']),
+        keyAttestation: KeyAttestation.fromJson(_safeMapConversion(response['keyAttestation'])),
+        didDocument: _safeMapConversion(response['didDocument']),
+        success: response['success'] ?? false,
+        error: _safeStringConversion(response['error']),
+      );
+    } catch (e) {
+      // 디버깅을 위한 상세 로그
+      print('❌ DidCreationResult 파싱 오류: $e');
+      print('📋 Response keys: ${response.keys.toList()}');
+      print('📋 Response types: ${response.map((k, v) => MapEntry(k, v.runtimeType))}');
+      
+      return DidCreationResult.failure('DID 응답 파싱 오류: $e');
+    }
+  }
+
+  /// 안전한 String 변환 헬퍼 함수
+  static String _safeStringConversion(dynamic input) {
+    if (input == null) return '';
+    return input.toString();
+  }
+
+  /// 안전한 Map 변환 헬퍼 함수
+  static Map<String, dynamic> _safeMapConversion(dynamic input) {
+    if (input == null) return <String, dynamic>{};
+    if (input is Map<String, dynamic>) return input;
+    if (input is Map) {
+      return Map<String, dynamic>.from(
+        input.map((key, value) => MapEntry(key.toString(), value)),
+      );
+    }
+    return <String, dynamic>{};
   }
 
   factory DidCreationResult.failure(String error) {
@@ -70,11 +97,17 @@ class KeyAttestation {
 
   factory KeyAttestation.fromJson(Map<String, dynamic> json) {
     return KeyAttestation(
-      keyId: json['keyId'] ?? '',
-      algorithm: json['algorithm'] ?? '',
-      storage: json['storage'] ?? '',
-      createdAt: json['createdAt'] ?? '',
+      keyId: _safeStringConversion(json['keyId']),
+      algorithm: _safeStringConversion(json['algorithm']),
+      storage: _safeStringConversion(json['storage']),
+      createdAt: _safeStringConversion(json['createdAt']),
     );
+  }
+
+  /// 안전한 String 변환 헬퍼 함수
+  static String _safeStringConversion(dynamic input) {
+    if (input == null) return '';
+    return input.toString();
   }
 
   Map<String, dynamic> toJson() {

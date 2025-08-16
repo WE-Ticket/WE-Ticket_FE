@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 
+import '../../../../core/utils/app_logger.dart';
 import '../../domain/entities/did_entities.dart';
 import '../../domain/use_cases/manage_did_use_case.dart';
 
@@ -45,7 +46,9 @@ class DidProvider extends ChangeNotifier {
         },
       );
     } catch (e) {
-      _setError('DID 생성 중 예상치 못한 오류가 발생했습니다');
+      AppLogger.error('DID 생성 중 예상치 못한 오류', e, null, 'DID');
+      AppLogger.info('Error details: $e', 'DID');
+      _setError('DID 생성 중 예상치 못한 오류: $e');
       return false;
     }
   }

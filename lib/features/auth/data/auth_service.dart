@@ -271,27 +271,35 @@ extension AuthServiceExtension on AuthService {
   /// OmniOne CX 인증 결과 처리
   Future<ApiResult<IdentityVerificationResponse>> processOmniOneResult({
     required int userId,
+    required int currentAuthLevel,
     required Map<String, dynamic> omniOneResult,
   }) async {
     try {
       AppLogger.auth('OmniOne CX 결과 처리 시작');
-      AppLogger.debug('인증 타입: ${omniOneResult['authType']}', 'AUTH');
+      AppLogger.debug('현재 레벨: $currentAuthLevel', 'AUTH');
 
       // OmniOne 결과에서 기본 정보 추출
-      final authType = omniOneResult['authType'] as String? ?? 'unknown';
       final success = omniOneResult['success'] as bool? ?? false;
       final rawData = omniOneResult['data'];
 
       if (!success) {
         return ApiResult.failure('인증이 실패했습니다.');
       }
+      // 현재 레벨을 기준으로 다음 레벨 결정
       final String nextVerificationLevel;
-      switch (authType) {
-        case 'simple':
+      switch (currentAuthLevel) {
+        case 0: // none -> general
           nextVerificationLevel = "general";
+          break;
+        case 1: // general -> mobile_id  
+          nextVerificationLevel = 'mobile_id';
+          break;
         default:
+          // 이미 최고 레벨이거나 예상치 못한 레벨
           nextVerificationLevel = 'mobile_id';
       }
+      
+      AppLogger.info('레벨 전환: $currentAuthLevel -> $nextVerificationLevel', 'AUTH');
 
       // rawData가 String인 경우 JSON 파싱
       Map<String, dynamic> dataMap;

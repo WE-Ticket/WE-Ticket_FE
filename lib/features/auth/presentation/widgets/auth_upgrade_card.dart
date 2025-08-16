@@ -174,8 +174,6 @@ class AuthUpgradeCard extends StatelessWidget {
         return AppColors.info;
       case AuthLevel.mobileId:
         return AppColors.primary;
-      case AuthLevel.mobileIdTotally:
-        return AppColors.success;
     }
   }
 
@@ -187,8 +185,6 @@ class AuthUpgradeCard extends StatelessWidget {
         return Icons.verified_user;
       case AuthLevel.mobileId:
         return Icons.credit_card;
-      case AuthLevel.mobileIdTotally:
-        return Icons.diamond;
     }
   }
 }

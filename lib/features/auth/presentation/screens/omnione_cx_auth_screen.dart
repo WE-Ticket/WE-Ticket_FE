@@ -10,12 +10,14 @@ class OmniOneCXAuthScreen extends StatefulWidget {
   final int currentAuthLevel;
   final int userId;
   final AuthService authService;
+  final String authMethod; // 'simple' 또는 'mobile_id'
 
   const OmniOneCXAuthScreen({
     Key? key,
     required this.currentAuthLevel,
     required this.userId,
     required this.authService,
+    required this.authMethod,
   }) : super(key: key);
 
   @override
@@ -313,11 +315,8 @@ class _OmniOneCXAuthScreenState extends State<OmniOneCXAuthScreen> {
   }
 
   String _determineAuthType() {
-    if (widget.currentAuthLevel == 0) {
-      return 'simple';
-    } else {
-      return 'mobile_id';
-    }
+    // 전달받은 authMethod 파라미터를 사용
+    return widget.authMethod;
   }
 
   String _getAuthConfig(String authType) {
@@ -402,6 +401,7 @@ class _OmniOneCXAuthScreenState extends State<OmniOneCXAuthScreen> {
       // AuthService를 통해 인증 결과 서버에 기록
       final authResult = await widget.authService.processOmniOneResult(
         userId: widget.userId,
+        currentAuthLevel: widget.currentAuthLevel,
         omniOneResult: result,
       );
 

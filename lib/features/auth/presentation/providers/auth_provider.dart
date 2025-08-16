@@ -30,8 +30,7 @@ class AuthProvider extends ChangeNotifier {
   static const Map<String, String> _authLevelNames = {
     'none': '미인증',
     'general': '일반 인증',
-    'mobile_id': '모바일 신분증 인증',
-    'mobile_id_totally': '안전 인증',
+    'mobile_id': '안전 인증',
   };
 
   /// ✅ 앱 시작시 로그인 상태 확인 - 개선된 로직
@@ -191,6 +190,7 @@ class AuthProvider extends ChangeNotifier {
       // 1. 서버에 인증 결과 기록
       final recordResult = await authService.processOmniOneResult(
         userId: _user!.userId,
+        currentAuthLevel: currentAuthLevelStep,
         omniOneResult: omniOneResult,
       );
 

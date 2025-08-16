@@ -99,8 +99,8 @@ class AuthLevelProvider extends ChangeNotifier {
 
   /// 권한별 이용 가능 여부 확인
   bool canBookTickets() => canUsePrivilege(AuthLevel.general);
-  bool canQuickEntry() => canUsePrivilege(AuthLevel.mobileId);
-  bool canTransferTickets() => canUsePrivilege(AuthLevel.mobileIdTotally);
+  bool canQuickEntry() => canUsePrivilege(AuthLevel.general);
+  bool canTransferTickets() => canUsePrivilege(AuthLevel.mobileId);
 
   /// 의존 데이터 업데이트
   void _updateDependentData() {

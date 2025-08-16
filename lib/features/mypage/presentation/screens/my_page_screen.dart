@@ -89,7 +89,6 @@ class MyPageScreen extends StatelessWidget {
       'none': AppColors.gray500,
       'general': AppColors.info,
       'mobile_id': AppColors.primary,
-      'mobile_id_totally': AppColors.success,
     };
     return Container(
       width: double.infinity,

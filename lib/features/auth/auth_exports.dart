@@ -28,6 +28,8 @@ export 'presentation/providers/did_provider.dart';
 export 'presentation/widgets/auth_status_card.dart';
 export 'presentation/widgets/auth_upgrade_card.dart';
 export 'presentation/widgets/did_creation_dialog.dart';
+export 'presentation/widgets/auth_method_selection_dialog.dart';
+export 'presentation/widgets/additional_auth_explanation_dialog.dart';
 
 // Presentation Screens
 export 'presentation/screens/auth_management_screen.dart';
