@@ -13,6 +13,7 @@ import '../widgets/auth_upgrade_card.dart';
 import '../widgets/did_creation_dialog.dart';
 import '../widgets/auth_method_selection_dialog.dart';
 import '../widgets/additional_auth_explanation_dialog.dart';
+import '../../../../shared/presentation/widgets/app_snackbar.dart';
 import 'omnione_cx_auth_screen.dart';
 
 class AuthManagementScreen extends StatefulWidget {
@@ -541,14 +542,10 @@ class _AuthManagementScreenState extends State<AuthManagementScreen> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: AppColors.error),
-    );
+    AppSnackBar.showError(context, message);
   }
 
   void _showSuccess(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: AppColors.success),
-    );
+    AppSnackBar.showSuccess(context, message);
   }
 }

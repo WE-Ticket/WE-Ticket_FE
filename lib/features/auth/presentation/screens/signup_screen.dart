@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:we_ticket/features/auth/data/auth_service.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../shared/presentation/widgets/app_snackbar.dart';
 
 class SignupScreen extends StatefulWidget {
   @override
@@ -479,13 +480,7 @@ WE-Ticket은 개인정보 보호법에 따라 이용자의 개인정보 보호 �
     }
 
     if (!_agreeTerms || !_agreePrivacy) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('필수 약관에 모두 동의해주세요'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      AppSnackBar.showError(context, '필수 약관에 모두 동의해주세요');
       return;
     }
 
@@ -506,35 +501,16 @@ WE-Ticket은 개인정보 보호법에 따라 이용자의 개인정보 보호 �
 
       if (result.isSuccess) {
         // 회원가입 성공
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('회원가입이 완료되었습니다! 로그인해주세요.'),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 3),
-          ),
-        );
+        AppSnackBar.showSuccess(context, '회원가입이 완료되었습니다! 로그인해주세요.');
 
         Navigator.pop(context);
       } else {
         // 회원가입 실패
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result.errorMessage ?? '회원가입에 실패했습니다'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        AppSnackBar.showError(context, result.errorMessage ?? '회원가입에 실패했습니다');
       }
     } catch (e) {
       // 예외 처리
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('회원가입 중 오류가 발생했습니다'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      AppSnackBar.showError(context, '회원가입 중 오류가 발생했습니다');
     } finally {
       if (mounted) {
         setState(() {

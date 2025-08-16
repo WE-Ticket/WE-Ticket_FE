@@ -5,6 +5,7 @@ import 'package:we_ticket/shared/presentation/providers/api_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../../shared/data/models/ticket_models.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../shared/presentation/widgets/app_snackbar.dart';
 
 class ScheduleSelectionScreen extends StatefulWidget {
   final Map<String, dynamic> performanceInfo;
@@ -593,9 +594,7 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
               onPressed: () {
                 Navigator.pop(context);
                 // TODO: 본인 인증 화면으로 이동
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text('본인 인증 화면으로 이동합니다')));
+                AppSnackBar.showInfo(context, '본인 인증 화면으로 이동합니다');
               },
               child: Text('인증하기'),
             ),

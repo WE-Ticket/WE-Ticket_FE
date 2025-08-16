@@ -4,6 +4,7 @@ import 'package:we_ticket/features/auth/presentation/providers/auth_provider.dar
 import 'package:we_ticket/shared/presentation/screens/ticket_detail_screen.dart';
 import 'package:we_ticket/shared/presentation/providers/api_provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../shared/presentation/widgets/app_snackbar.dart';
 
 class MyTicketsScreen extends StatefulWidget {
   const MyTicketsScreen({Key? key}) : super(key: key);
@@ -729,22 +730,71 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('티켓 양도'),
-        content: Text('${ticket['title'] ?? '티켓'}을 양도하시겠습니까?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('취소'),
+        backgroundColor: AppColors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Text(
+          '티켓 양도',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // TODO: 양도 등록 화면으로 이동
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text('양도 등록 화면으로 이동합니다')));
-            },
-            child: Text('양도하기'),
+        ),
+        content: Text(
+          '${ticket['title'] ?? '티켓'}을 양도하시겠습니까?',
+          style: TextStyle(
+            fontSize: 14,
+            color: AppColors.textSecondary,
+            height: 1.5,
+          ),
+        ),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.textSecondary,
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: Text(
+                    '취소',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    // TODO: 양도 등록 화면으로 이동
+                    AppSnackBar.showInfo(context, '양도 등록 화면으로 이동합니다');
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.white,
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    '양도하기',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -753,9 +803,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
 
   void _handleTransferManage(Map<String, dynamic> ticket) {
     // TODO: 양도 관리 화면으로 이동
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('${ticket['title'] ?? '티켓'} 양도 관리')));
+    AppSnackBar.showInfo(context, '${ticket['title'] ?? '티켓'} 양도 관리');
   }
 
   void _showUsedTicketInfo(Map<String, dynamic> ticket) {

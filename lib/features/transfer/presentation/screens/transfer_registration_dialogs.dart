@@ -19,7 +19,8 @@ class TransferRegistrationDialogs {
       barrierDismissible: false,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          backgroundColor: AppColors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Container(
             width: MediaQuery.of(context).size.width * 0.9,
             padding: EdgeInsets.all(24),
@@ -214,17 +215,19 @@ class TransferRegistrationDialogs {
         Row(
           children: [
             Expanded(
-              child: OutlinedButton(
+              child: TextButton(
                 onPressed: () => Navigator.pop(context),
-                style: OutlinedButton.styleFrom(
+                style: TextButton.styleFrom(
                   foregroundColor: AppColors.textSecondary,
-                  side: BorderSide(color: AppColors.border),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
                   padding: EdgeInsets.symmetric(vertical: 12),
                 ),
-                child: Text('취소'),
+                child: Text(
+                  '취소',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ),
             SizedBox(width: 12),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:we_ticket/features/transfer/presentation/screens/my_transfer_manage_screen.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../shared/presentation/widgets/app_snackbar.dart';
 import '../../../auth/presentation/providers/auth_guard.dart';
 import '../providers/transfer_provider.dart';
 import '../../data/transfer_models.dart';
@@ -957,9 +958,7 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
         _showPerformanceDropdown = false;
       });
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('공연 검색 중 오류가 발생했습니다')));
+      AppSnackBar.showError(context, '공연 검색 중 오류가 발생했습니다');
     }
   }
 

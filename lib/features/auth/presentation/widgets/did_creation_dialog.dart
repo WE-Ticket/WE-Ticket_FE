@@ -15,7 +15,7 @@ class DidCreationDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: AppColors.surface,
+      backgroundColor: AppColors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       content: Container(
         padding: const EdgeInsets.all(24),
@@ -145,10 +145,10 @@ class DidCreationDialog extends StatelessWidget {
           ),
           child: const Text('다시 시도', style: TextStyle(fontSize: 14)),
         ),
-      TextButton(
+      ElevatedButton(
         onPressed: () => Navigator.of(context).pop(true),
-        style: TextButton.styleFrom(
-          backgroundColor: progress.isCompleted ? AppColors.primary : AppColors.gray400,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
           foregroundColor: AppColors.white,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           shape: RoundedRectangleBorder(

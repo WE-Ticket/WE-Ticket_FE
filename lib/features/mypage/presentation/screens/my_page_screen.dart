@@ -7,6 +7,8 @@ import 'package:we_ticket/features/mypage/presentation/screens/my_tickets_screen
 import 'package:we_ticket/features/mypage/presentation/screens/purchase_history_screen.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../shared/presentation/widgets/app_snackbar.dart';
+import '../../../../shared/presentation/widgets/app_dialog.dart';
 
 class MyPageScreen extends StatelessWidget {
   const MyPageScreen({Key? key}) : super(key: key);
@@ -15,13 +17,7 @@ class MyPageScreen extends StatelessWidget {
     final authProvider = context.read<AuthProvider>();
     await authProvider.logout();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('로그아웃이 완료되었습니다.'),
-        backgroundColor: AppColors.success,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    AppSnackBar.showSuccess(context, '로그아웃이 완료되었습니다.');
   }
 
   @override
@@ -263,9 +259,7 @@ class MyPageScreen extends StatelessWidget {
                 color: AppColors.secondary,
                 onTap: () {
                   // TODO: 설정 및 계정 관리 화면으로 이동
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('설정 및 계정 관리 기능은 추후 구현 예정')),
-                  );
+                  AppSnackBar.showInfo(context, '설정 및 계정 관리 기능은 추후 구현 예정');
                 },
               ),
             ),
@@ -392,9 +386,7 @@ class MyPageScreen extends StatelessWidget {
           GestureDetector(
             onTap: () {
               // TODO: 1:1 문의 화면으로 이동
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text('문의 기능은 추후 구현 예정')));
+              AppSnackBar.showInfo(context, '문의 기능은 추후 구현 예정');
             },
             child: Container(
               margin: EdgeInsets.only(left: 10),
@@ -445,30 +437,22 @@ class MyPageScreen extends StatelessWidget {
   }
 
   void _showLogoutDialog(BuildContext context) {
-    showDialog(
+    AppDialog.showChoice(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('로그아웃'),
-        content: Text('정말로 로그아웃 하시겠습니까?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('취소', style: TextStyle(color: AppColors.textSecondary)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _logout(context);
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (context) => DashboardScreen()),
-                (Route<dynamic> route) => false,
-              );
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            child: Text('로그아웃', style: TextStyle(color: AppColors.white)),
-          ),
-        ],
-      ),
-    );
+      title: '로그아웃',
+      message: '정말로 로그아웃 하시겠습니까?',
+      icon: Icons.logout,
+      iconColor: AppColors.error,
+      confirmText: '로그아웃',
+      cancelText: '취소',
+    ).then((confirmed) {
+      if (confirmed == true) {
+        _logout(context);
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => DashboardScreen()),
+          (Route<dynamic> route) => false,
+        );
+      }
+    });
   }
 }

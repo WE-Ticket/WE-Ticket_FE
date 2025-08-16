@@ -4,6 +4,7 @@ import 'package:we_ticket/features/auth/data/auth_service.dart';
 import '../providers/auth_provider.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../shared/presentation/widgets/app_snackbar.dart';
 import 'signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -216,9 +217,7 @@ class _LoginScreenState extends State<LoginScreen> {
       alignment: Alignment.centerRight,
       child: TextButton(
         onPressed: () {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('아이디/비밀번호 찾기 기능은 추후 구현 예정')));
+          AppSnackBar.showInfo(context, '아이디/비밀번호 찾기 기능은 추후 구현 예정');
         },
         child: Text(
           '아이디/비밀번호 찾기',
@@ -418,13 +417,7 @@ class _LoginScreenState extends State<LoginScreen> {
         await authProvider.updateFromApiLogin(user);
 
         // 성공 메시지
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('로그인 성공!'),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        AppSnackBar.showSuccess(context, '로그인 성공!');
 
         // 콜백 실행
         if (widget.onLoginSuccess != null) {
@@ -434,23 +427,11 @@ class _LoginScreenState extends State<LoginScreen> {
         Navigator.pop(context);
       } else {
         // 로그인 실패
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result.errorMessage ?? '로그인에 실패했습니다'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        AppSnackBar.showError(context, result.errorMessage ?? '로그인에 실패했습니다');
       }
     } catch (e) {
       // 예외 처리
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('로그인 중 오류가 발생했습니다'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      AppSnackBar.showError(context, '로그인 중 오류가 발생했습니다');
     } finally {
       if (mounted) {
         setState(() {
@@ -461,11 +442,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _handleSocialLogin(String provider) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$provider 로그인은 추후 구현 예정'),
-        duration: Duration(seconds: 2),
-      ),
-    );
+    AppSnackBar.showInfo(context, '$provider 로그인은 추후 구현 예정');
   }
 }
