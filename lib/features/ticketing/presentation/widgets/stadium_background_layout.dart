@@ -142,82 +142,83 @@ class StadiumBackgroundLayout extends StatelessWidget {
   }
 
   String? _getZoneFromPosition(double x, double y) {
-    // 실제 이미지 기반으로 더욱 정확한 좌표 매핑
+    // 순서를 바꿔서 더 구체적인 영역부터 체크 (VIP 구역 우선)
     
-    // 상단 구역 (15, 14, 13, 12, 1, 2, 3, 4)
-    if (y >= 0.12 && y <= 0.28) {
-      if (x >= 0.05 && x <= 0.13) return '15';
-      if (x >= 0.13 && x <= 0.21) return '14';
-      if (x >= 0.21 && x <= 0.29) return '13';
-      if (x >= 0.29 && x <= 0.37) return '12';
-      // 무대 영역 건너뛰기 (x: 0.37 ~ 0.63)
-      if (x >= 0.63 && x <= 0.71) return '1';
-      if (x >= 0.71 && x <= 0.79) return '2';
-      if (x >= 0.79 && x <= 0.87) return '3';
-      if (x >= 0.87 && x <= 0.95) return '4';
-    }
-
-    // 좌측 구역 (43, 42, 41, 40)
-    if (x >= 0.05 && x <= 0.18) {
-      if (y >= 0.28 && y <= 0.38) return '43';
-      if (y >= 0.38 && y <= 0.48) return '42';
-      if (y >= 0.48 && y <= 0.58) return '41';
-      if (y >= 0.58 && y <= 0.68) return '40';
-    }
-
-    // 우측 구역 (24, 25, 26, 27, 28)
-    if (x >= 0.82 && x <= 0.95) {
-      if (y >= 0.28 && y <= 0.38) return '24';
-      if (y >= 0.38 && y <= 0.48) return '25';
-      if (y >= 0.48 && y <= 0.58) return '26';
-      if (y >= 0.58 && y <= 0.68) return '27';
-      if (y >= 0.68 && y <= 0.78) return '28';
-    }
-
+    // VIP 구역들 먼저 체크 (더 구체적인 영역)
     // VIP 구역 F1 (좌상)
-    if (y >= 0.28 && y <= 0.48 && x >= 0.22 && x <= 0.38) {
+    if (y >= 0.30 && y <= 0.46 && x >= 0.23 && x <= 0.37) {
       return 'F1';
     }
 
     // VIP 구역 F2 (우상)
-    if (y >= 0.28 && y <= 0.48 && x >= 0.62 && x <= 0.78) {
+    if (y >= 0.30 && y <= 0.46 && x >= 0.63 && x <= 0.77) {
       return 'F2';
     }
 
     // VIP 구역 F3 (좌하)
-    if (y >= 0.48 && y <= 0.68 && x >= 0.22 && x <= 0.38) {
+    if (y >= 0.50 && y <= 0.66 && x >= 0.23 && x <= 0.37) {
       return 'F3';
     }
 
     // VIP 구역 F4 (우하)
-    if (y >= 0.48 && y <= 0.68 && x >= 0.62 && x <= 0.78) {
+    if (y >= 0.50 && y <= 0.66 && x >= 0.63 && x <= 0.77) {
       return 'F4';
     }
 
-    // 중간 하단 구역 (11, 10, 9, 8, 7, 6, 5)
-    if (y >= 0.58 && y <= 0.73) {
-      if (x >= 0.18 && x <= 0.26) return '11';
-      if (x >= 0.26 && x <= 0.34) return '10';
-      if (x >= 0.34 && x <= 0.42) return '9';
-      if (x >= 0.42 && x <= 0.50) return '8';
-      if (x >= 0.50 && x <= 0.58) return '7';
-      if (x >= 0.58 && x <= 0.66) return '6';
-      if (x >= 0.66 && x <= 0.74) return '5';
+    // 상단 구역 (15, 14, 13, 12, 1, 2, 3, 4)
+    if (y >= 0.15 && y <= 0.30) {
+      if (x >= 0.06 && x <= 0.14) return '15';
+      if (x >= 0.14 && x <= 0.22) return '14';
+      if (x >= 0.22 && x <= 0.30) return '13';
+      if (x >= 0.30 && x <= 0.38) return '12';
+      // 무대 영역 건너뛰기 (x: 0.38 ~ 0.62)
+      if (x >= 0.62 && x <= 0.70) return '1';
+      if (x >= 0.70 && x <= 0.78) return '2';
+      if (x >= 0.78 && x <= 0.86) return '3';
+      if (x >= 0.86 && x <= 0.94) return '4';
+    }
+
+    // 좌측 구역 (43, 42, 41, 40)
+    if (x >= 0.06 && x <= 0.19) {
+      if (y >= 0.30 && y <= 0.38) return '43';
+      if (y >= 0.38 && y <= 0.46) return '42';
+      if (y >= 0.46 && y <= 0.54) return '41';
+      if (y >= 0.54 && y <= 0.62) return '40';
+    }
+
+    // 우측 구역 (24, 25, 26, 27, 28)
+    if (x >= 0.81 && x <= 0.94) {
+      if (y >= 0.30 && y <= 0.38) return '24';
+      if (y >= 0.38 && y <= 0.46) return '25';
+      if (y >= 0.46 && y <= 0.54) return '26';
+      if (y >= 0.54 && y <= 0.62) return '27';
+      if (y >= 0.62 && y <= 0.70) return '28';
+    }
+
+    // 중간 하단 구역 (11, 10, 9, 8, 7, 6, 5) - VIP 구역과 겹치지 않게 위치 조정
+    if (y >= 0.66 && y <= 0.76) {
+      if (x >= 0.19 && x <= 0.27) return '11';
+      if (x >= 0.27 && x <= 0.35) return '10';
+      if (x >= 0.35 && x <= 0.43) return '9';
+      if (x >= 0.43 && x <= 0.51) return '8';
+      if (x >= 0.51 && x <= 0.59) return '7';
+      if (x >= 0.59 && x <= 0.67) return '6';
+      if (x >= 0.67 && x <= 0.75) return '5';
     }
 
     // 최하단 구역 (39, 38, 37, 36, 35, 34, 33, 32, 31, 30, 29)
-    if (y >= 0.73 && y <= 0.95) {
-      if (x >= 0.05 && x <= 0.13) return '39';
-      if (x >= 0.13 && x <= 0.21) return '38';
-      if (x >= 0.21 && x <= 0.29) return '37';
-      if (x >= 0.29 && x <= 0.37) return '36';
-      if (x >= 0.37 && x <= 0.45) return '35';
-      if (x >= 0.45 && x <= 0.53) return '34';
-      if (x >= 0.53 && x <= 0.61) return '33';
-      if (x >= 0.61 && x <= 0.69) return '32';
-      if (x >= 0.69 && x <= 0.77) return '31';
-      if (x >= 0.77 && x <= 0.85) return '30';
-      if (x >= 0.85 && x <= 0.95) return '29';
+    if (y >= 0.76 && y <= 0.92) {
+      if (x >= 0.06 && x <= 0.14) return '39';
+      if (x >= 0.14 && x <= 0.22) return '38';
+      if (x >= 0.22 && x <= 0.30) return '37';
+      if (x >= 0.30 && x <= 0.38) return '36';
+      if (x >= 0.38 && x <= 0.46) return '35';
+      if (x >= 0.46 && x <= 0.54) return '34';
+      if (x >= 0.54 && x <= 0.62) return '33';
+      if (x >= 0.62 && x <= 0.70) return '32';
+      if (x >= 0.70 && x <= 0.78) return '31';
+      if (x >= 0.78 && x <= 0.86) return '30';
+      if (x >= 0.86 && x <= 0.94) return '29';
     }
 
     return null;
@@ -414,48 +415,112 @@ class SelectionOverlayPainter extends CustomPainter {
   }
 
   Rect? _getZoneRect(String zone, Size size) {
-    // 선택된 구역의 영역을 반환
+    // 터치 영역과 정확히 일치하는 오버레이 사각형 반환 (크기 축소)
     switch (zone) {
-      // VIP 구역들
+      // VIP 구역들 - 터치 영역과 정확히 매칭
       case 'F1':
         return Rect.fromLTWH(
-          size.width * 0.25, size.height * 0.25,
-          size.width * 0.15, size.height * 0.2,
+          size.width * 0.23, size.height * 0.30,
+          size.width * 0.14, size.height * 0.16,
         );
       case 'F2':
         return Rect.fromLTWH(
-          size.width * 0.6, size.height * 0.25,
-          size.width * 0.15, size.height * 0.2,
+          size.width * 0.63, size.height * 0.30,
+          size.width * 0.14, size.height * 0.16,
         );
       case 'F3':
         return Rect.fromLTWH(
-          size.width * 0.25, size.height * 0.45,
-          size.width * 0.15, size.height * 0.2,
+          size.width * 0.23, size.height * 0.50,
+          size.width * 0.14, size.height * 0.16,
         );
       case 'F4':
         return Rect.fromLTWH(
-          size.width * 0.6, size.height * 0.45,
-          size.width * 0.15, size.height * 0.2,
+          size.width * 0.63, size.height * 0.50,
+          size.width * 0.14, size.height * 0.16,
         );
 
-      // 일반석 구역들 (대표적인 몇 개만)
+      // 상단 구역들
+      case '15':
+        return Rect.fromLTWH(size.width * 0.06, size.height * 0.15, size.width * 0.08, size.height * 0.15);
+      case '14':
+        return Rect.fromLTWH(size.width * 0.14, size.height * 0.15, size.width * 0.08, size.height * 0.15);
+      case '13':
+        return Rect.fromLTWH(size.width * 0.22, size.height * 0.15, size.width * 0.08, size.height * 0.15);
+      case '12':
+        return Rect.fromLTWH(size.width * 0.30, size.height * 0.15, size.width * 0.08, size.height * 0.15);
       case '1':
-        return Rect.fromLTWH(
-          size.width * 0.55, size.height * 0.15,
-          size.width * 0.1, size.height * 0.2,
-        );
+        return Rect.fromLTWH(size.width * 0.62, size.height * 0.15, size.width * 0.08, size.height * 0.15);
+      case '2':
+        return Rect.fromLTWH(size.width * 0.70, size.height * 0.15, size.width * 0.08, size.height * 0.15);
+      case '3':
+        return Rect.fromLTWH(size.width * 0.78, size.height * 0.15, size.width * 0.08, size.height * 0.15);
       case '4':
-        return Rect.fromLTWH(
-          size.width * 0.85, size.height * 0.15,
-          size.width * 0.1, size.height * 0.2,
-        );
+        return Rect.fromLTWH(size.width * 0.86, size.height * 0.15, size.width * 0.08, size.height * 0.15);
+
+      // 좌측 구역들
+      case '43':
+        return Rect.fromLTWH(size.width * 0.06, size.height * 0.30, size.width * 0.13, size.height * 0.08);
+      case '42':
+        return Rect.fromLTWH(size.width * 0.06, size.height * 0.38, size.width * 0.13, size.height * 0.08);
+      case '41':
+        return Rect.fromLTWH(size.width * 0.06, size.height * 0.46, size.width * 0.13, size.height * 0.08);
+      case '40':
+        return Rect.fromLTWH(size.width * 0.06, size.height * 0.54, size.width * 0.13, size.height * 0.08);
+
+      // 우측 구역들
+      case '24':
+        return Rect.fromLTWH(size.width * 0.81, size.height * 0.30, size.width * 0.13, size.height * 0.08);
+      case '25':
+        return Rect.fromLTWH(size.width * 0.81, size.height * 0.38, size.width * 0.13, size.height * 0.08);
+      case '26':
+        return Rect.fromLTWH(size.width * 0.81, size.height * 0.46, size.width * 0.13, size.height * 0.08);
+      case '27':
+        return Rect.fromLTWH(size.width * 0.81, size.height * 0.54, size.width * 0.13, size.height * 0.08);
+      case '28':
+        return Rect.fromLTWH(size.width * 0.81, size.height * 0.62, size.width * 0.13, size.height * 0.08);
+
+      // 중간 하단 구역들
+      case '11':
+        return Rect.fromLTWH(size.width * 0.19, size.height * 0.66, size.width * 0.08, size.height * 0.10);
+      case '10':
+        return Rect.fromLTWH(size.width * 0.27, size.height * 0.66, size.width * 0.08, size.height * 0.10);
+      case '9':
+        return Rect.fromLTWH(size.width * 0.35, size.height * 0.66, size.width * 0.08, size.height * 0.10);
+      case '8':
+        return Rect.fromLTWH(size.width * 0.43, size.height * 0.66, size.width * 0.08, size.height * 0.10);
+      case '7':
+        return Rect.fromLTWH(size.width * 0.51, size.height * 0.66, size.width * 0.08, size.height * 0.10);
+      case '6':
+        return Rect.fromLTWH(size.width * 0.59, size.height * 0.66, size.width * 0.08, size.height * 0.10);
+      case '5':
+        return Rect.fromLTWH(size.width * 0.67, size.height * 0.66, size.width * 0.08, size.height * 0.10);
+
+      // 최하단 구역들
+      case '39':
+        return Rect.fromLTWH(size.width * 0.06, size.height * 0.76, size.width * 0.08, size.height * 0.16);
+      case '38':
+        return Rect.fromLTWH(size.width * 0.14, size.height * 0.76, size.width * 0.08, size.height * 0.16);
+      case '37':
+        return Rect.fromLTWH(size.width * 0.22, size.height * 0.76, size.width * 0.08, size.height * 0.16);
+      case '36':
+        return Rect.fromLTWH(size.width * 0.30, size.height * 0.76, size.width * 0.08, size.height * 0.16);
+      case '35':
+        return Rect.fromLTWH(size.width * 0.38, size.height * 0.76, size.width * 0.08, size.height * 0.16);
+      case '34':
+        return Rect.fromLTWH(size.width * 0.46, size.height * 0.76, size.width * 0.08, size.height * 0.16);
+      case '33':
+        return Rect.fromLTWH(size.width * 0.54, size.height * 0.76, size.width * 0.08, size.height * 0.16);
+      case '32':
+        return Rect.fromLTWH(size.width * 0.62, size.height * 0.76, size.width * 0.08, size.height * 0.16);
+      case '31':
+        return Rect.fromLTWH(size.width * 0.70, size.height * 0.76, size.width * 0.08, size.height * 0.16);
+      case '30':
+        return Rect.fromLTWH(size.width * 0.78, size.height * 0.76, size.width * 0.08, size.height * 0.16);
+      case '29':
+        return Rect.fromLTWH(size.width * 0.86, size.height * 0.76, size.width * 0.08, size.height * 0.16);
 
       default:
-        // 다른 구역들은 기본 하이라이트
-        return Rect.fromLTWH(
-          size.width * 0.4, size.height * 0.4,
-          size.width * 0.2, size.height * 0.2,
-        );
+        return null; // 정의되지 않은 구역은 오버레이 없음
     }
   }
 
