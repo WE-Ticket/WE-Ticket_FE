@@ -6,7 +6,7 @@ import 'package:we_ticket/shared/presentation/providers/api_provider.dart';
 import '../../../../shared/data/models/ticket_models.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/json_parser.dart';
-import '../widgets/stadium_background_layout.dart';
+import '../widgets/stadium_polygon_layout.dart';
 
 class SeatSelectionScreen extends StatefulWidget {
   final Map<String, dynamic> data;
@@ -37,7 +37,10 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
 
   // 경기장 구역 정보 (VIP + 일반석)
   final List<String> _vipZones = ['F1', 'F2', 'F3', 'F4'];
-  final List<String> _generalZones = List.generate(43, (index) => '${index + 1}');
+  final List<String> _generalZones = List.generate(
+    43,
+    (index) => '${index + 1}',
+  );
 
   @override
   void initState() {
@@ -227,7 +230,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
     if (zone.startsWith('F')) {
       return {'maxRow': 'D', 'maxCol': 8}; // VIP 스탠딩
     }
-    
+
     // 일반석 구역 (1-43)
     final zoneNum = int.tryParse(zone);
     if (zoneNum != null) {
@@ -239,7 +242,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
         return {'maxRow': 'E', 'maxCol': 8}; // 먼 구역
       }
     }
-    
+
     return {'maxRow': 'E', 'maxCol': 10}; // 기본값
   }
 
@@ -311,7 +314,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
       _selectedSeatNumber = null;
       _currentSeatLayout = null;
     });
-    
+
     // 서버에서 받아온 구역(1,2,3,4)만 좌석 레이아웃 로드
     final zoneInfo = _getZoneInfo(zone);
     if (zoneInfo != null && zoneInfo.isAvailable) {
@@ -473,7 +476,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
     if (zone.startsWith('F')) {
       return Color(0xFFD32F2F);
     }
-    
+
     // 일반석 구역 (노란색)
     return Color(0xFFFFC107);
   }
@@ -496,17 +499,17 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
           style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
         ),
         SizedBox(height: 16),
-        
-        // 실제 이미지 배경 기반 경기장 레이아웃
-        StadiumBackgroundLayout(
+
+        // 다각형 기반 정확한 경기장 레이아웃
+        StadiumPolygonLayout(
           sessionSeatInfo: _sessionSeatInfo,
           selectedZone: _selectedZone,
           onZoneSelected: _onZoneSelected,
+          debugMode: true, // true로 설정하면 구역 경계선 표시
         ),
       ],
     );
   }
-
 
   Widget _buildSeatSelection() {
     if (_currentSeatLayout == null) return SizedBox.shrink();
@@ -915,9 +918,13 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
   }
 
   Widget _buildNextButton() {
-    final selectedZoneInfo = _selectedZone != null ? _getZoneInfo(_selectedZone!) : null;
-    final isActiveZone = selectedZoneInfo != null && selectedZoneInfo.isAvailable;
-    final canProceed = _selectedSeatId != null && _currentSeatLayout != null && isActiveZone;
+    final selectedZoneInfo = _selectedZone != null
+        ? _getZoneInfo(_selectedZone!)
+        : null;
+    final isActiveZone =
+        selectedZoneInfo != null && selectedZoneInfo.isAvailable;
+    final canProceed =
+        _selectedSeatId != null && _currentSeatLayout != null && isActiveZone;
 
     return Container(
       padding: EdgeInsets.all(16),
@@ -965,18 +972,19 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
     if (_selectedZone == null) {
       return '구역을 선택해주세요';
     }
-    
+
     final selectedZoneInfo = _getZoneInfo(_selectedZone!);
-    final isActiveZone = selectedZoneInfo != null && selectedZoneInfo.isAvailable;
-    
+    final isActiveZone =
+        selectedZoneInfo != null && selectedZoneInfo.isAvailable;
+
     if (!isActiveZone) {
       return '해당 구역은 곧 이용 가능합니다';
     }
-    
+
     if (_selectedSeatNumber == null) {
       return '좌석을 선택해주세요';
     }
-    
+
     return '결제하기';
   }
 
