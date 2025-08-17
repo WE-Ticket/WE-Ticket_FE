@@ -6,6 +6,7 @@ import 'package:we_ticket/shared/presentation/providers/api_provider.dart';
 import '../../../../shared/data/models/ticket_models.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/json_parser.dart';
+import '../widgets/stadium_image_layout.dart';
 
 class SeatSelectionScreen extends StatefulWidget {
   final Map<String, dynamic> data;
@@ -34,8 +35,9 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
   late int _performanceId;
   late int _sessionId;
 
-  // 고정된 구역 정보 (1,2,3,4)
-  final List<String> _fixedZones = ['1', '2', '3', '4'];
+  // 경기장 구역 정보 (VIP + 일반석)
+  final List<String> _vipZones = ['F1', 'F2', 'F3', 'F4'];
+  final List<String> _generalZones = List.generate(43, (index) => '${index + 1}');
 
   @override
   void initState() {
@@ -221,18 +223,24 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
 
   /// 구역별 기본 설정값 (max_row, max_col)
   Map<String, dynamic> _getZoneConfiguration(String zone) {
-    switch (zone) {
-      case '1':
-        return {'maxRow': 'F', 'maxCol': 10}; // API와 동일하게 수정
-      case '2':
-        return {'maxRow': 'E', 'maxCol': 10}; // R석
-      case '3':
-        return {'maxRow': 'D', 'maxCol': 12}; // S석
-      case '4':
-        return {'maxRow': 'C', 'maxCol': 15}; // A석
-      default:
-        return {'maxRow': 'C', 'maxCol': 10}; // 기본값
+    // VIP 구역 (F1, F2, F3, F4)
+    if (zone.startsWith('F')) {
+      return {'maxRow': 'D', 'maxCol': 8}; // VIP 스탠딩
     }
+    
+    // 일반석 구역 (1-43)
+    final zoneNum = int.tryParse(zone);
+    if (zoneNum != null) {
+      if (zoneNum <= 11) {
+        return {'maxRow': 'H', 'maxCol': 12}; // 가까운 구역
+      } else if (zoneNum <= 25) {
+        return {'maxRow': 'F', 'maxCol': 10}; // 중간 구역
+      } else {
+        return {'maxRow': 'E', 'maxCol': 8}; // 먼 구역
+      }
+    }
+    
+    return {'maxRow': 'E', 'maxCol': 10}; // 기본값
   }
 
   /// A부터 maxRow까지 행 이름 생성
@@ -455,13 +463,13 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
   }
 
   Color _getZoneColor(String zone) {
-    final colors = {
-      '1': Color(0xFFE6D16B), // 골드 - VIP
-      '2': Color(0xFF8BB5DB), // 블루 - R석
-      '3': Color(0xFFB8E6B8), // 그린 - S석
-      '4': Color(0xFFFFB6C1), // 핑크 - A석
-    };
-    return colors[zone] ?? AppColors.primary;
+    // VIP 구역 (빨간색)
+    if (zone.startsWith('F')) {
+      return Color(0xFFD32F2F);
+    }
+    
+    // 일반석 구역 (노란색)
+    return Color(0xFFFFC107);
   }
 
   Widget _buildZoneLayout() {
@@ -482,151 +490,17 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
           style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
         ),
         SizedBox(height: 16),
-        _buildStageIndicator(),
-        SizedBox(height: 16),
-
-        // 고정된 2x2 구역 레이아웃
-        Column(
-          children: [
-            Row(
-              children: [
-                Expanded(child: _buildZoneCard('1')),
-                SizedBox(width: 16),
-                Expanded(child: _buildZoneCard('2')),
-              ],
-            ),
-            SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(child: _buildZoneCard('3')),
-                SizedBox(width: 16),
-                Expanded(child: _buildZoneCard('4')),
-              ],
-            ),
-          ],
+        
+        // 새로운 이미지 기반 경기장 레이아웃
+        StadiumImageLayout(
+          sessionSeatInfo: _sessionSeatInfo,
+          selectedZone: _selectedZone,
+          onZoneSelected: _onZoneSelected,
         ),
       ],
     );
   }
 
-  Widget _buildStageIndicator() {
-    return Column(
-      children: [
-        Container(
-          width: double.infinity,
-          padding: EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: AppColors.gray400,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            'STAGE',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppColors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 2,
-            ),
-          ),
-        ),
-        SizedBox(height: 8),
-        Text(
-          '무대',
-          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildZoneCard(String zone) {
-    final isSelected = _selectedZone == zone;
-    final zoneColor = _getZoneColor(zone);
-    final zoneInfo = _getZoneInfo(zone);
-
-    // API 데이터가 없는 구역은 비활성화
-    final isAvailable = zoneInfo != null && zoneInfo.isAvailable;
-    final hasZoneData = zoneInfo != null;
-
-    return GestureDetector(
-      onTap: isAvailable ? () => _onZoneSelected(zone) : null,
-      child: Container(
-        decoration: BoxDecoration(
-          color: hasZoneData
-              ? (isAvailable
-                    ? (isSelected
-                          ? zoneColor.withOpacity(0.3)
-                          : zoneColor.withOpacity(0.1))
-                    : AppColors.gray100)
-              : AppColors.gray50, // 데이터 없는 구역
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: hasZoneData
-                ? (isAvailable
-                      ? (isSelected
-                            ? AppColors.primary
-                            : zoneColor.withOpacity(0.5))
-                      : AppColors.gray300)
-                : AppColors.gray200,
-            width: isSelected ? 2 : 1,
-          ),
-          boxShadow: isAvailable
-              ? [
-                  BoxShadow(
-                    color: AppColors.shadowLight,
-                    spreadRadius: 1,
-                    blurRadius: 4,
-                    offset: Offset(0, 2),
-                  ),
-                ]
-              : [],
-        ),
-        child: Container(
-          height: 100,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                '${zone}구역',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: hasZoneData
-                      ? (isAvailable
-                            ? AppColors.textPrimary
-                            : AppColors.textSecondary)
-                      : AppColors.gray400,
-                ),
-              ),
-              SizedBox(height: 4),
-              if (zoneInfo != null) ...[
-                Text(
-                  zoneInfo.seatGrade,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isAvailable
-                        ? AppColors.textSecondary
-                        : AppColors.gray400,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                SizedBox(height: 8),
-              ] else ...[
-                Text(
-                  '구역 없음',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.gray400,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildSeatSelection() {
     if (_currentSeatLayout == null) return SizedBox.shrink();
