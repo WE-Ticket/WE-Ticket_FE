@@ -35,58 +35,71 @@ class StadiumZonePolygons {
   static const double imageHeight = 692.0;
   
   static final List<ZonePolygon> zones = [
-    // VIP 구역들 (image-map.net에서 추출한 정확한 다각형 좌표)
+    // 무대 구역 (업데이트된 정확한 좌표)
+    ZonePolygon('Stage', [
+      Offset(277, 42),
+      Offset(590, 43),
+      Offset(591, 144),
+      Offset(492, 145),
+      Offset(465, 170),
+      Offset(451, 170),
+      Offset(451, 246),
+      Offset(524, 248),
+      Offset(525, 314),
+      Offset(344, 311),
+      Offset(344, 247),
+      Offset(414, 246),
+      Offset(415, 170),
+      Offset(401, 171),
+      Offset(371, 146),
+      Offset(275, 145),
+    ]),
+    
+    // VIP 구역들 (업데이트된 정확한 좌표)
     ZonePolygon('F1', [
       Offset(275, 184),
-      Offset(256, 231),
-      Offset(256, 261),
-      Offset(283, 282),
-      Offset(319, 281),
-      Offset(324, 229),
-      Offset(390, 225),
-      Offset(389, 205),
-      Offset(367, 183),
+      Offset(369, 184),
+      Offset(392, 202),
+      Offset(392, 227),
+      Offset(324, 228),
+      Offset(323, 284),
+      Offset(284, 282),
+      Offset(257, 269),
+      Offset(255, 236),
     ]),
     
     ZonePolygon('F2', [
-      Offset(471, 224),
-      Offset(546, 227),
-      Offset(541, 287),
-      Offset(583, 283),
-      Offset(608, 263),
-      Offset(607, 241),
-      Offset(586, 182),
-      Offset(500, 181),
-      Offset(473, 197),
-      Offset(473, 199),
+      Offset(474, 203),
+      Offset(497, 184),
+      Offset(591, 186),
+      Offset(611, 235),
+      Offset(611, 264),
+      Offset(585, 284),
+      Offset(542, 284),
+      Offset(543, 228),
+      Offset(474, 228),
     ]),
     
     ZonePolygon('F3', [
-      Offset(267, 299),
-      Offset(262, 314),
-      Offset(287, 358),
-      Offset(318, 389),
-      Offset(322, 370),
-      Offset(350, 368),
-      Offset(386, 387),
-      Offset(420, 386),
-      Offset(420, 336),
-      Offset(324, 332),
-      Offset(322, 298),
+      Offset(266, 297),
+      Offset(264, 313),
+      Offset(284, 355),
+      Offset(321, 388),
+      Offset(422, 387),
+      Offset(421, 334),
+      Offset(324, 334),
+      Offset(324, 296),
     ]),
     
     ZonePolygon('F4', [
-      Offset(443, 331),
-      Offset(442, 385),
-      Offset(479, 390),
-      Offset(516, 369),
-      Offset(541, 366),
-      Offset(542, 393),
-      Offset(581, 356),
-      Offset(597, 318),
-      Offset(593, 294),
-      Offset(540, 298),
-      Offset(540, 327),
+      Offset(444, 334),
+      Offset(445, 387),
+      Offset(545, 388),
+      Offset(580, 357),
+      Offset(601, 314),
+      Offset(599, 296),
+      Offset(545, 297),
+      Offset(543, 333),
     ]),
     
     // 일반석 구역들 (image-map.net에서 추출한 정확한 다각형 좌표)
@@ -175,48 +188,48 @@ class StadiumZonePolygons {
       Offset(130, 327),
     ]),
     
-    // 우측 일반석 구역들
+    // 우측 일반석 구역들 - 업데이트된 좌표
     ZonePolygon('24', [
-      Offset(722, 142),
-      Offset(739, 193),
-      Offset(828, 168),
-      Offset(810, 104),
+      Offset(721, 145),
+      Offset(814, 107),
+      Offset(835, 176),
+      Offset(738, 194),
     ]),
     
     ZonePolygon('25', [
-      Offset(741, 204),
-      Offset(743, 246),
-      Offset(838, 248),
-      Offset(834, 185),
+      Offset(738, 205),
+      Offset(833, 184),
+      Offset(842, 252),
+      Offset(743, 253),
     ]),
     
     ZonePolygon('26', [
-      Offset(828, 324),
-      Offset(838, 263),
-      Offset(747, 260),
-      Offset(740, 312),
+      Offset(742, 260),
+      Offset(842, 261),
+      Offset(834, 331),
+      Offset(738, 316),
     ]),
     
     ZonePolygon('27', [
-      Offset(810, 405),
-      Offset(831, 339),
-      Offset(740, 323),
-      Offset(722, 371),
+      Offset(834, 344),
+      Offset(736, 322),
+      Offset(720, 372),
+      Offset(813, 411),
     ]),
     
     ZonePolygon('28', [
-      Offset(773, 476),
-      Offset(803, 415),
-      Offset(714, 380),
-      Offset(695, 422),
+      Offset(775, 483),
+      Offset(807, 416),
+      Offset(715, 381),
+      Offset(692, 427),
     ]),
     
-    // 중간 하단 구역들 (5-11)
+    // 중간 하단 구역들 (5-11) - 업데이트된 좌표
     ZonePolygon('11', [
-      Offset(283, 395),
-      Offset(222, 445),
-      Offset(268, 486),
-      Offset(315, 421),
+      Offset(220, 448),
+      Offset(267, 489),
+      Offset(313, 419),
+      Offset(283, 392),
     ]),
     
     ZonePolygon('10', [
@@ -261,12 +274,12 @@ class StadiumZonePolygons {
       Offset(556, 418),
     ]),
     
-    // 최하단 원형 구역들 (29-39)
+    // 최하단 원형 구역들 (29-39) - 업데이트된 좌표
     ZonePolygon('39', [
-      Offset(65, 421),
-      Offset(94, 483),
-      Offset(172, 425),
-      Offset(151, 385),
+      Offset(59, 422),
+      Offset(151, 383),
+      Offset(176, 428),
+      Offset(94, 481),
     ]),
     
     ZonePolygon('38', [
@@ -333,10 +346,25 @@ class StadiumZonePolygons {
     ]),
     
     ZonePolygon('29', [
-      Offset(723, 535),
-      Offset(766, 490),
-      Offset(689, 436),
-      Offset(653, 476),
+      Offset(721, 545),
+      Offset(769, 488),
+      Offset(687, 435),
+      Offset(653, 475),
+    ]),
+    
+    // 추가 업데이트된 구역들
+    ZonePolygon('33', [
+      Offset(438, 666),
+      Offset(510, 655),
+      Offset(489, 561),
+      Offset(437, 564),
+    ]),
+    
+    ZonePolygon('34', [
+      Offset(360, 658),
+      Offset(431, 665),
+      Offset(429, 563),
+      Offset(378, 560),
     ]),
   ];
   

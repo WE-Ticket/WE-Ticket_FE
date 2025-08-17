@@ -6,7 +6,7 @@ import 'package:we_ticket/shared/presentation/providers/api_provider.dart';
 import '../../../../shared/data/models/ticket_models.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/json_parser.dart';
-import '../widgets/stadium_polygon_layout.dart';
+import '../widgets/stadium_pure_polygon_layout.dart';
 
 class SeatSelectionScreen extends StatefulWidget {
   final Map<String, dynamic> data;
@@ -500,12 +500,12 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
         ),
         SizedBox(height: 16),
 
-        // 다각형 기반 정확한 경기장 레이아웃
-        StadiumPolygonLayout(
+        // 순수 다각형 기반 경기장 레이아웃 (이미지 없음)
+        StadiumPurePolygonLayout(
           sessionSeatInfo: _sessionSeatInfo,
           selectedZone: _selectedZone,
           onZoneSelected: _onZoneSelected,
-          debugMode: true, // true로 설정하면 구역 경계선 표시
+          debugMode: false, // true로 설정하면 구역 경계선 표시
         ),
       ],
     );
