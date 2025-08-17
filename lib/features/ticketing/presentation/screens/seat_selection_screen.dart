@@ -6,7 +6,7 @@ import 'package:we_ticket/shared/presentation/providers/api_provider.dart';
 import '../../../../shared/data/models/ticket_models.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/json_parser.dart';
-import '../widgets/stadium_image_layout.dart';
+import '../widgets/stadium_background_layout.dart';
 
 class SeatSelectionScreen extends StatefulWidget {
   final Map<String, dynamic> data;
@@ -311,7 +311,13 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
       _selectedSeatNumber = null;
       _currentSeatLayout = null;
     });
-    _loadSeatLayout(zone);
+    
+    // 서버에서 받아온 구역(1,2,3,4)만 좌석 레이아웃 로드
+    final zoneInfo = _getZoneInfo(zone);
+    if (zoneInfo != null && zoneInfo.isAvailable) {
+      _loadSeatLayout(zone);
+    }
+    // 다른 구역은 선택만 되고 좌석 레이아웃은 로드하지 않음
   }
 
   @override
@@ -491,8 +497,8 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
         ),
         SizedBox(height: 16),
         
-        // 새로운 이미지 기반 경기장 레이아웃
-        StadiumImageLayout(
+        // 실제 이미지 배경 기반 경기장 레이아웃
+        StadiumBackgroundLayout(
           sessionSeatInfo: _sessionSeatInfo,
           selectedZone: _selectedZone,
           onZoneSelected: _onZoneSelected,
@@ -909,7 +915,9 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
   }
 
   Widget _buildNextButton() {
-    final canProceed = _selectedSeatId != null && _currentSeatLayout != null;
+    final selectedZoneInfo = _selectedZone != null ? _getZoneInfo(_selectedZone!) : null;
+    final isActiveZone = selectedZoneInfo != null && selectedZoneInfo.isAvailable;
+    final canProceed = _selectedSeatId != null && _currentSeatLayout != null && isActiveZone;
 
     return Container(
       padding: EdgeInsets.all(16),
@@ -942,7 +950,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
                 ),
               ),
               child: Text(
-                _selectedSeatNumber == null ? '좌석을 선택해주세요' : '결제하기',
+                _getButtonText(),
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
             ),
@@ -951,6 +959,25 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
         ],
       ),
     );
+  }
+
+  String _getButtonText() {
+    if (_selectedZone == null) {
+      return '구역을 선택해주세요';
+    }
+    
+    final selectedZoneInfo = _getZoneInfo(_selectedZone!);
+    final isActiveZone = selectedZoneInfo != null && selectedZoneInfo.isAvailable;
+    
+    if (!isActiveZone) {
+      return '해당 구역은 곧 이용 가능합니다';
+    }
+    
+    if (_selectedSeatNumber == null) {
+      return '좌석을 선택해주세요';
+    }
+    
+    return '결제하기';
   }
 
   Widget _buildSelectedSeatSummary() {
@@ -1019,16 +1046,20 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
     if (_selectedSeatId == null ||
         _selectedZone == null ||
         _currentSeatLayout == null ||
-        _sessionSeatInfo == null)
+        _sessionSeatInfo == null) {
       return;
+    }
+
+    final selectedZoneInfo = _getZoneInfo(_selectedZone!);
+    // 서버에서 받아온 활성 구역(1,2,3,4)만 결제 가능
+    if (selectedZoneInfo == null || !selectedZoneInfo.isAvailable) {
+      return;
+    }
 
     // seat_id로 선택된 좌석 찾기
     final selectedSeat = _currentSeatLayout!.allSeats.firstWhere(
       (seat) => seat.seatId == _selectedSeatId,
     );
-
-    final selectedZoneInfo = _getZoneInfo(_selectedZone!);
-    if (selectedZoneInfo == null) return;
 
     // 새로운 PaymentData 모델 사용
     final paymentData = TicketingPaymentData(
