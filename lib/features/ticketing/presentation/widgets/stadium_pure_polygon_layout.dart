@@ -126,7 +126,7 @@ class StadiumPurePolygonLayout extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: SizedBox(
           width: double.infinity,
-          height: 400, // 세로 비율 단축
+          height: 320, // 857×692 비율에 맞춘 높이
           child: GestureDetector(
             onTapDown: (details) => _handlePolygonTap(details, context),
             child: CustomPaint(
@@ -150,7 +150,7 @@ class StadiumPurePolygonLayout extends StatelessWidget {
 
     // Canvas 영역의 크기
     final canvasWidth = renderBox.size.width;
-    final canvasHeight = 400.0;
+    final canvasHeight = 320.0; // 857×692 비율에 맞춘 높이
 
     // 좌표 변환: Canvas 좌표를 이미지 좌표로 변환
     final scaleX = canvasWidth / StadiumZonePolygons.imageWidth;

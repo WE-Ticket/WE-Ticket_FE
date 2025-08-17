@@ -7,6 +7,7 @@ import '../../../../shared/data/models/ticket_models.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/json_parser.dart';
 import '../widgets/stadium_pure_polygon_layout.dart';
+import '../widgets/stadium_polygon_layout.dart';
 
 class SeatSelectionScreen extends StatefulWidget {
   final Map<String, dynamic> data;
@@ -500,8 +501,8 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
         ),
         SizedBox(height: 16),
 
-        // 순수 다각형 기반 경기장 레이아웃 (이미지 없음)
-        StadiumPurePolygonLayout(
+        // 이미지 배경 기반 다각형 레이아웃 (비교용)
+        StadiumPolygonLayout(
           sessionSeatInfo: _sessionSeatInfo,
           selectedZone: _selectedZone,
           onZoneSelected: _onZoneSelected,

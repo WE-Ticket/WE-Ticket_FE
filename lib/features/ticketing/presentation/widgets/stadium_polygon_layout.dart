@@ -84,10 +84,7 @@ class StadiumPolygonLayout extends StatelessWidget {
           SizedBox(height: 8),
           Text(
             '원하는 구역을 터치해주세요 (다각형 기반 정확한 인식)',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppColors.textSecondary,
-            ),
+            style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
           ),
         ],
       ),
@@ -112,11 +109,11 @@ class StadiumPolygonLayout extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: Stack(
           children: [
-            // 배경 이미지
+            // 배경 이미지 (857×692 비율에 맞춤)
             Image.asset(
               'lib/features/ticketing/presentation/widgets/좌석배치도.png',
               width: double.infinity,
-              height: 400,
+              height: 240, // 857×692 비율에 맞춘 높이
               fit: BoxFit.contain,
             ),
             // 다각형 터치 오버레이
@@ -125,7 +122,7 @@ class StadiumPolygonLayout extends StatelessWidget {
                 onTapDown: (details) => _handlePolygonTap(details, context),
                 child: SizedBox(
                   width: double.infinity,
-                  height: 400,
+                  height: 240, // 이미지와 동일한 높이
                   child: CustomPaint(
                     painter: PolygonOverlayPainter(
                       selectedZone: selectedZone,
@@ -147,28 +144,30 @@ class StadiumPolygonLayout extends StatelessWidget {
     if (renderBox == null) return;
 
     final localPosition = details.localPosition;
-    
+
     // CustomPaint 영역의 크기 (패딩 제외한 실제 크기)
-    final paintWidth = renderBox.size.width - 32; // 좌우 패딩 16*2 제외  
-    final paintHeight = 400.0; // 고정 높이
-    
+    final paintWidth = renderBox.size.width - 32; // 좌우 패딩 16*2 제외
+    final paintHeight = 240; // 857×692 비율에 맞춘 높이
+
     // CustomPaint와 동일한 스케일링 계산
     final scaleX = paintWidth / StadiumZonePolygons.imageWidth;
     final scaleY = paintHeight / StadiumZonePolygons.imageHeight;
-    
+
     // 터치 좌표를 이미지 좌표로 변환 (패딩 16 제외)
     final imageX = (localPosition.dx - 16) / scaleX;
     final imageY = localPosition.dy / scaleY;
-    
+
     // 이미지 영역 밖이면 무시
-    if (imageX < 0 || imageX > StadiumZonePolygons.imageWidth || 
-        imageY < 0 || imageY > StadiumZonePolygons.imageHeight) {
+    if (imageX < 0 ||
+        imageX > StadiumZonePolygons.imageWidth ||
+        imageY < 0 ||
+        imageY > StadiumZonePolygons.imageHeight) {
       return;
     }
-    
+
     final tapPoint = Offset(imageX, imageY);
     final zone = StadiumZonePolygons.findZoneAt(tapPoint);
-    
+
     if (zone != null) {
       final zoneInfo = _getZoneInfo(zone);
       // 서버에서 받아온 구역(1,2,3,4)만 실제 선택 가능, 나머지는 정보만 표시
@@ -237,10 +236,7 @@ class StadiumPolygonLayout extends StatelessWidget {
         SizedBox(width: 8),
         Text(
           label,
-          style: TextStyle(
-            fontSize: 12,
-            color: AppColors.textSecondary,
-          ),
+          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
         ),
       ],
     );
@@ -268,10 +264,7 @@ class StadiumPolygonLayout extends StatelessWidget {
           SizedBox(height: 4),
           Text(
             '• 빨간 선: 구역 경계\n• 빨간 텍스트: 구역 번호\n• 터치하여 정확도 확인',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.red.shade700,
-            ),
+            style: TextStyle(fontSize: 12, color: Colors.red.shade700),
           ),
         ],
       ),
@@ -288,21 +281,21 @@ class StadiumPolygonLayout extends StatelessWidget {
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isActive 
-          ? AppColors.primary.withValues(alpha: 0.1)
-          : AppColors.gray100,
+        color: isActive
+            ? AppColors.primary.withValues(alpha: 0.1)
+            : AppColors.gray100,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isActive 
-            ? AppColors.primary.withValues(alpha: 0.3)
-            : AppColors.gray300,
+          color: isActive
+              ? AppColors.primary.withValues(alpha: 0.3)
+              : AppColors.gray300,
         ),
       ),
       child: Row(
         children: [
           Icon(
-            Icons.event_seat, 
-            color: isActive ? AppColors.primary : AppColors.gray500, 
+            Icons.event_seat,
+            color: isActive ? AppColors.primary : AppColors.gray500,
             size: 20,
           ),
           SizedBox(width: 8),
@@ -338,21 +331,14 @@ class StadiumPolygonLayout extends StatelessWidget {
                   ),
                   Text(
                     '곧 이용 가능할 예정입니다',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.gray400,
-                    ),
+                    style: TextStyle(fontSize: 11, color: AppColors.gray400),
                   ),
                 ],
               ],
             ),
           ),
           if (!isActive) ...[
-            Icon(
-              Icons.info_outline,
-              color: AppColors.gray400,
-              size: 16,
-            ),
+            Icon(Icons.info_outline, color: AppColors.gray400, size: 16),
           ],
         ],
       ),
@@ -383,7 +369,7 @@ class PolygonOverlayPainter extends CustomPainter {
     // 터치 핸들러와 동일한 스케일링 계산
     final scaleX = size.width / StadiumZonePolygons.imageWidth;
     final scaleY = size.height / StadiumZonePolygons.imageHeight;
-    
+
     if (debugMode) {
       // 디버그 모드: 모든 구역의 경계선 표시
       canvas.save();
@@ -391,31 +377,32 @@ class PolygonOverlayPainter extends CustomPainter {
       StadiumZonePolygons.drawDebugBoundaries(canvas, size);
       canvas.restore();
     }
-    
+
     // 선택된 구역 하이라이트
     if (selectedZone != null) {
       final zonePolygon = StadiumZonePolygons.getZonePolygon(selectedZone!);
       if (zonePolygon != null) {
         final path = Path();
-        final scaledPoints = zonePolygon.points.map((point) => 
-          Offset(point.dx * scaleX, point.dy * scaleY)).toList();
-        
+        final scaledPoints = zonePolygon.points
+            .map((point) => Offset(point.dx * scaleX, point.dy * scaleY))
+            .toList();
+
         if (scaledPoints.isNotEmpty) {
           path.moveTo(scaledPoints.first.dx, scaledPoints.first.dy);
           for (int i = 1; i < scaledPoints.length; i++) {
             path.lineTo(scaledPoints[i].dx, scaledPoints[i].dy);
           }
           path.close();
-          
+
           final fillPaint = Paint()
             ..color = AppColors.primary.withValues(alpha: 0.3)
             ..style = PaintingStyle.fill;
-          
+
           final borderPaint = Paint()
             ..color = AppColors.primary
             ..style = PaintingStyle.stroke
             ..strokeWidth = 2;
-          
+
           canvas.drawPath(path, fillPaint);
           canvas.drawPath(path, borderPaint);
         }
