@@ -226,12 +226,12 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen>
         body: jsonEncode(requestData),
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final paymentTarget = jsonDecode(response.body);
         AppLogger.info('Payment target loaded successfully', 'PAYMENT');
         AppLogger.info('paymet-target response : ${response.body}');
 
-        // paymentId에서 특수문자 제거 (PortOne 요구사항)
+        // paymentId에서 특수문자 제거
         // final cleanPaymentNumber = paymentTarget['payment_number'].toString().replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
         // paymentTarget['payment_number'] = cleanPaymentNumber;
 
@@ -366,7 +366,7 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen>
         'PAYMENT',
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final result = jsonDecode(response.body);
         final isPaid = result['status'] == 'PAID';
         AppLogger.info(
@@ -429,6 +429,11 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen>
               totalAmount: data.price,
               currency: 'KRW',
               payMethod: 'CARD',
+               customData: {
+                            name: data.name,
+                            price: data.price,
+                            currency: 'KRW'
+                        },
               redirectUrl: 'weticket://payment/complete',
               appScheme: 'weticket://payment/complete'
             }).then(function(r) {
