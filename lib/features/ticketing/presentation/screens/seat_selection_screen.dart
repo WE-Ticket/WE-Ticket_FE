@@ -6,6 +6,7 @@ import 'package:we_ticket/shared/presentation/providers/api_provider.dart';
 import '../../../../shared/data/models/ticket_models.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/json_parser.dart';
+import '../widgets/stadium_pure_polygon_layout.dart';
 
 class SeatSelectionScreen extends StatefulWidget {
   final Map<String, dynamic> data;
@@ -34,14 +35,27 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
   late int _performanceId;
   late int _sessionId;
 
-  // 고정된 구역 정보 (1,2,3,4)
-  final List<String> _fixedZones = ['1', '2', '3', '4'];
+  // 스크롤 컨트롤러
+  final ScrollController _scrollController = ScrollController();
+
+  // 경기장 구역 정보 (VIP + 일반석, 2층 제거)
+  final List<String> _vipZones = ['F1', 'F2', 'F3', 'F4'];
+  final List<String> _generalZones = List.generate(
+    15,
+    (index) => '${index + 1}',
+  );
 
   @override
   void initState() {
     super.initState();
     _extractIds();
     _loadSessionSeatInfo();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   /// 전달받은 데이터에서 필요한 ID들 추출
@@ -221,18 +235,24 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
 
   /// 구역별 기본 설정값 (max_row, max_col)
   Map<String, dynamic> _getZoneConfiguration(String zone) {
-    switch (zone) {
-      case '1':
-        return {'maxRow': 'F', 'maxCol': 10}; // API와 동일하게 수정
-      case '2':
-        return {'maxRow': 'E', 'maxCol': 10}; // R석
-      case '3':
-        return {'maxRow': 'D', 'maxCol': 12}; // S석
-      case '4':
-        return {'maxRow': 'C', 'maxCol': 15}; // A석
-      default:
-        return {'maxRow': 'C', 'maxCol': 10}; // 기본값
+    // VIP 구역 (F1, F2, F3, F4)
+    if (zone.startsWith('F')) {
+      return {'maxRow': 'D', 'maxCol': 8}; // VIP 스탠딩
     }
+
+    // 일반석 구역 (1-43)
+    final zoneNum = int.tryParse(zone);
+    if (zoneNum != null) {
+      if (zoneNum <= 11) {
+        return {'maxRow': 'H', 'maxCol': 12}; // 가까운 구역
+      } else if (zoneNum <= 25) {
+        return {'maxRow': 'F', 'maxCol': 10}; // 중간 구역
+      } else {
+        return {'maxRow': 'E', 'maxCol': 8}; // 먼 구역
+      }
+    }
+
+    return {'maxRow': 'E', 'maxCol': 10}; // 기본값
   }
 
   /// A부터 maxRow까지 행 이름 생성
@@ -303,7 +323,22 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
       _selectedSeatNumber = null;
       _currentSeatLayout = null;
     });
-    _loadSeatLayout(zone);
+
+    // 서버에서 받아온 구역(1,2,3,4)만 좌석 레이아웃 로드
+    final zoneInfo = _getZoneInfo(zone);
+    if (zoneInfo != null && zoneInfo.isAvailable) {
+      _loadSeatLayout(zone);
+
+      // 좌석 선택 영역으로 자동 스크롤
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+        );
+      });
+    }
+    // 다른 구역은 선택만 되고 좌석 레이아웃은 로드하지 않음
   }
 
   @override
@@ -352,6 +387,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
     }
 
     return SingleChildScrollView(
+      controller: _scrollController,
       padding: EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -379,6 +415,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
 
     return Container(
       padding: EdgeInsets.all(16),
+      width: double.infinity,
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
@@ -403,17 +440,18 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
             ),
           ),
           SizedBox(height: 12),
-          Wrap(
-            spacing: 16,
-            runSpacing: 8,
-            children: _sessionSeatInfo!.seatPricingInfo.map((pricing) {
-              return _buildPriceItem(
-                pricing.zoneDisplayName,
-                _getZoneColor(pricing.seatZone),
-                pricing.priceDisplay,
-              );
-            }).toList(),
-          ),
+          Text('추후 안내'),
+          // Wrap(
+          //   spacing: 16,
+          //   runSpacing: 8,
+          //   children: _sessionSeatInfo!.seatPricingInfo.map((pricing) {
+          //     return _buildPriceItem(
+          //       pricing.zoneDisplayName,
+          //       _getZoneColor(pricing.seatZone),
+          //       pricing.priceDisplay,
+          //     );
+          //   }).toList(),
+          // ),
         ],
       ),
     );
@@ -455,175 +493,57 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
   }
 
   Color _getZoneColor(String zone) {
-    final colors = {
-      '1': Color(0xFFE6D16B), // 골드 - VIP
-      '2': Color(0xFF8BB5DB), // 블루 - R석
-      '3': Color(0xFFB8E6B8), // 그린 - S석
-      '4': Color(0xFFFFB6C1), // 핑크 - A석
-    };
-    return colors[zone] ?? AppColors.primary;
+    // VIP 구역 (빨간색)
+    if (zone.startsWith('F')) {
+      return Color(0xFFD32F2F);
+    }
+
+    // 일반석 구역 (노란색)
+    return Color(0xFFFFC107);
   }
 
   Widget _buildZoneLayout() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '구역 선택',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
+    return Container(
+      padding: EdgeInsets.all(16),
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadowLight,
+            spreadRadius: 1,
+            blurRadius: 4,
+            offset: Offset(0, 2),
           ),
-        ),
-        SizedBox(height: 4),
-        Text(
-          '원하는 구역을 선택해주세요',
-          style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-        ),
-        SizedBox(height: 16),
-        _buildStageIndicator(),
-        SizedBox(height: 16),
-
-        // 고정된 2x2 구역 레이아웃
-        Column(
-          children: [
-            Row(
-              children: [
-                Expanded(child: _buildZoneCard('1')),
-                SizedBox(width: 16),
-                Expanded(child: _buildZoneCard('2')),
-              ],
-            ),
-            SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(child: _buildZoneCard('3')),
-                SizedBox(width: 16),
-                Expanded(child: _buildZoneCard('4')),
-              ],
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStageIndicator() {
-    return Column(
-      children: [
-        Container(
-          width: double.infinity,
-          padding: EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: AppColors.gray400,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            'STAGE',
-            textAlign: TextAlign.center,
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '구역 선택',
             style: TextStyle(
-              color: AppColors.white,
-              fontSize: 16,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
-              letterSpacing: 2,
+              color: AppColors.textPrimary,
             ),
           ),
-        ),
-        SizedBox(height: 8),
-        Text(
-          '무대',
-          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildZoneCard(String zone) {
-    final isSelected = _selectedZone == zone;
-    final zoneColor = _getZoneColor(zone);
-    final zoneInfo = _getZoneInfo(zone);
-
-    // API 데이터가 없는 구역은 비활성화
-    final isAvailable = zoneInfo != null && zoneInfo.isAvailable;
-    final hasZoneData = zoneInfo != null;
-
-    return GestureDetector(
-      onTap: isAvailable ? () => _onZoneSelected(zone) : null,
-      child: Container(
-        decoration: BoxDecoration(
-          color: hasZoneData
-              ? (isAvailable
-                    ? (isSelected
-                          ? zoneColor.withOpacity(0.3)
-                          : zoneColor.withOpacity(0.1))
-                    : AppColors.gray100)
-              : AppColors.gray50, // 데이터 없는 구역
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: hasZoneData
-                ? (isAvailable
-                      ? (isSelected
-                            ? AppColors.primary
-                            : zoneColor.withOpacity(0.5))
-                      : AppColors.gray300)
-                : AppColors.gray200,
-            width: isSelected ? 2 : 1,
+          SizedBox(height: 4),
+          Text(
+            '원하는 구역을 선택해주세요',
+            style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
           ),
-          boxShadow: isAvailable
-              ? [
-                  BoxShadow(
-                    color: AppColors.shadowLight,
-                    spreadRadius: 1,
-                    blurRadius: 4,
-                    offset: Offset(0, 2),
-                  ),
-                ]
-              : [],
-        ),
-        child: Container(
-          height: 100,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                '${zone}구역',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: hasZoneData
-                      ? (isAvailable
-                            ? AppColors.textPrimary
-                            : AppColors.textSecondary)
-                      : AppColors.gray400,
-                ),
-              ),
-              SizedBox(height: 4),
-              if (zoneInfo != null) ...[
-                Text(
-                  zoneInfo.seatGrade,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isAvailable
-                        ? AppColors.textSecondary
-                        : AppColors.gray400,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                SizedBox(height: 8),
-              ] else ...[
-                Text(
-                  '구역 없음',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.gray400,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ],
+          SizedBox(height: 16),
+
+          // 순수 다각형 레이아웃 (최종 버전)
+          StadiumPurePolygonLayout(
+            sessionSeatInfo: _sessionSeatInfo,
+            selectedZone: _selectedZone,
+            onZoneSelected: _onZoneSelected,
+            debugMode: false, // true로 설정하면 구역 경계선 표시
           ),
-        ),
+        ],
       ),
     );
   }
@@ -765,7 +685,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
     }
 
     return Padding(
-      padding: EdgeInsets.all(1),
+      padding: EdgeInsets.all(2),
       child: GestureDetector(
         onTap: isAvailable
             ? () {
@@ -779,12 +699,11 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
           height: 32,
           decoration: BoxDecoration(
             color: backgroundColor,
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(1),
             border: isSelected
                 ? Border.all(color: AppColors.primary, width: 2)
                 : null,
           ),
-          // 텍스트 제거 - 좌석 버튼만 표시
         ),
       ),
     );
@@ -947,11 +866,6 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
             '구역을 선택하시면 세부 좌석을 선택할 수 있습니다.',
             style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
           ),
-          SizedBox(height: 8),
-          Text(
-            '• 구역 1,2,3,4는 고정 배치입니다.\n• 각 구역의 좌석 배치는 API 데이터를 기반으로 자동 생성됩니다.',
-            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-          ),
         ],
       ),
     );
@@ -1035,7 +949,13 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
   }
 
   Widget _buildNextButton() {
-    final canProceed = _selectedSeatId != null && _currentSeatLayout != null;
+    final selectedZoneInfo = _selectedZone != null
+        ? _getZoneInfo(_selectedZone!)
+        : null;
+    final isActiveZone =
+        selectedZoneInfo != null && selectedZoneInfo.isAvailable;
+    final canProceed =
+        _selectedSeatId != null && _currentSeatLayout != null && isActiveZone;
 
     return Container(
       padding: EdgeInsets.all(16),
@@ -1068,7 +988,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
                 ),
               ),
               child: Text(
-                _selectedSeatNumber == null ? '좌석을 선택해주세요' : '결제하기',
+                _getButtonText(),
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
             ),
@@ -1077,6 +997,26 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
         ],
       ),
     );
+  }
+
+  String _getButtonText() {
+    if (_selectedZone == null) {
+      return '구역을 선택해주세요';
+    }
+
+    final selectedZoneInfo = _getZoneInfo(_selectedZone!);
+    final isActiveZone =
+        selectedZoneInfo != null && selectedZoneInfo.isAvailable;
+
+    if (!isActiveZone) {
+      return '해당 구역은 곧 이용 가능합니다';
+    }
+
+    if (_selectedSeatNumber == null) {
+      return '좌석을 선택해주세요';
+    }
+
+    return '결제하기';
   }
 
   Widget _buildSelectedSeatSummary() {
@@ -1145,16 +1085,20 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
     if (_selectedSeatId == null ||
         _selectedZone == null ||
         _currentSeatLayout == null ||
-        _sessionSeatInfo == null)
+        _sessionSeatInfo == null) {
       return;
+    }
+
+    final selectedZoneInfo = _getZoneInfo(_selectedZone!);
+    // 서버에서 받아온 활성 구역(1,2,3,4)만 결제 가능
+    if (selectedZoneInfo == null || !selectedZoneInfo.isAvailable) {
+      return;
+    }
 
     // seat_id로 선택된 좌석 찾기
     final selectedSeat = _currentSeatLayout!.allSeats.firstWhere(
       (seat) => seat.seatId == _selectedSeatId,
     );
-
-    final selectedZoneInfo = _getZoneInfo(_selectedZone!);
-    if (selectedZoneInfo == null) return;
 
     // 새로운 PaymentData 모델 사용
     final paymentData = TicketingPaymentData(
