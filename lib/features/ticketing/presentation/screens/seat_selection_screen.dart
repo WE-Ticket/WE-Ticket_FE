@@ -7,7 +7,6 @@ import '../../../../shared/data/models/ticket_models.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/json_parser.dart';
 import '../widgets/stadium_pure_polygon_layout.dart';
-import '../widgets/stadium_polygon_layout.dart';
 
 class SeatSelectionScreen extends StatefulWidget {
   final Map<String, dynamic> data;
@@ -36,10 +35,13 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
   late int _performanceId;
   late int _sessionId;
 
-  // 경기장 구역 정보 (VIP + 일반석)
+  // 스크롤 컨트롤러
+  final ScrollController _scrollController = ScrollController();
+
+  // 경기장 구역 정보 (VIP + 일반석, 2층 제거)
   final List<String> _vipZones = ['F1', 'F2', 'F3', 'F4'];
   final List<String> _generalZones = List.generate(
-    43,
+    15,
     (index) => '${index + 1}',
   );
 
@@ -48,6 +50,12 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
     super.initState();
     _extractIds();
     _loadSessionSeatInfo();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   /// 전달받은 데이터에서 필요한 ID들 추출
@@ -320,6 +328,15 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
     final zoneInfo = _getZoneInfo(zone);
     if (zoneInfo != null && zoneInfo.isAvailable) {
       _loadSeatLayout(zone);
+
+      // 좌석 선택 영역으로 자동 스크롤
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+        );
+      });
     }
     // 다른 구역은 선택만 되고 좌석 레이아웃은 로드하지 않음
   }
@@ -370,6 +387,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
     }
 
     return SingleChildScrollView(
+      controller: _scrollController,
       padding: EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -397,6 +415,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
 
     return Container(
       padding: EdgeInsets.all(16),
+      width: double.infinity,
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
@@ -421,17 +440,18 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
             ),
           ),
           SizedBox(height: 12),
-          Wrap(
-            spacing: 16,
-            runSpacing: 8,
-            children: _sessionSeatInfo!.seatPricingInfo.map((pricing) {
-              return _buildPriceItem(
-                pricing.zoneDisplayName,
-                _getZoneColor(pricing.seatZone),
-                pricing.priceDisplay,
-              );
-            }).toList(),
-          ),
+          Text('추후 안내'),
+          // Wrap(
+          //   spacing: 16,
+          //   runSpacing: 8,
+          //   children: _sessionSeatInfo!.seatPricingInfo.map((pricing) {
+          //     return _buildPriceItem(
+          //       pricing.zoneDisplayName,
+          //       _getZoneColor(pricing.seatZone),
+          //       pricing.priceDisplay,
+          //     );
+          //   }).toList(),
+          // ),
         ],
       ),
     );
@@ -483,32 +503,48 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
   }
 
   Widget _buildZoneLayout() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '구역 선택',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
+    return Container(
+      padding: EdgeInsets.all(16),
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadowLight,
+            spreadRadius: 1,
+            blurRadius: 4,
+            offset: Offset(0, 2),
           ),
-        ),
-        SizedBox(height: 4),
-        Text(
-          '원하는 구역을 선택해주세요',
-          style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-        ),
-        SizedBox(height: 16),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '구역 선택',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          SizedBox(height: 4),
+          Text(
+            '원하는 구역을 선택해주세요',
+            style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+          ),
+          SizedBox(height: 16),
 
-        // 이미지 배경 기반 다각형 레이아웃 (비교용)
-        StadiumPolygonLayout(
-          sessionSeatInfo: _sessionSeatInfo,
-          selectedZone: _selectedZone,
-          onZoneSelected: _onZoneSelected,
-          debugMode: false, // true로 설정하면 구역 경계선 표시
-        ),
-      ],
+          // 순수 다각형 레이아웃 (최종 버전)
+          StadiumPurePolygonLayout(
+            sessionSeatInfo: _sessionSeatInfo,
+            selectedZone: _selectedZone,
+            onZoneSelected: _onZoneSelected,
+            debugMode: false, // true로 설정하면 구역 경계선 표시
+          ),
+        ],
+      ),
     );
   }
 
@@ -649,7 +685,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
     }
 
     return Padding(
-      padding: EdgeInsets.all(1),
+      padding: EdgeInsets.all(2),
       child: GestureDetector(
         onTap: isAvailable
             ? () {
@@ -663,12 +699,11 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
           height: 32,
           decoration: BoxDecoration(
             color: backgroundColor,
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(1),
             border: isSelected
                 ? Border.all(color: AppColors.primary, width: 2)
                 : null,
           ),
-          // 텍스트 제거 - 좌석 버튼만 표시
         ),
       ),
     );
@@ -830,11 +865,6 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
           Text(
             '구역을 선택하시면 세부 좌석을 선택할 수 있습니다.',
             style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-          ),
-          SizedBox(height: 8),
-          Text(
-            '• 구역 1,2,3,4는 고정 배치입니다.\n• 각 구역의 좌석 배치는 API 데이터를 기반으로 자동 생성됩니다.',
-            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
           ),
         ],
       ),

@@ -21,7 +21,7 @@ class StadiumPurePolygonLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _buildSectionTitle(),
+        // _buildSectionTitle(),
         SizedBox(height: 16),
         _buildPurePolygonStadium(context),
         SizedBox(height: 16),
@@ -35,122 +35,69 @@ class StadiumPurePolygonLayout extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionTitle() {
+  Widget _buildPurePolygonStadium(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadowLight,
-            spreadRadius: 1,
-            blurRadius: 4,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                '좌석배치도 ',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  'PURE POLYGON',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.green,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              if (debugMode) ...[
-                SizedBox(width: 8),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    'DEBUG',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Colors.red,
-                      fontWeight: FontWeight.bold,
+      // decoration: BoxDecoration(
+      //   color: AppColors.surface,
+      //   borderRadius: BorderRadius.circular(16),
+      //   boxShadow: [
+      //     BoxShadow(
+      //       color: AppColors.shadowLight,
+      //       spreadRadius: 2,
+      //       blurRadius: 8,
+      //       offset: Offset(0, 4),
+      //     ),
+      //   ],
+      // ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // 화면 너비에서 좌우 여백을 최소화 (10px씩만 남김)
+            final availableWidth = constraints.maxWidth - 20;
+
+            // 857:692 비율 유지하면서 높이 계산
+            final aspectRatio =
+                StadiumZonePolygons.imageWidth /
+                StadiumZonePolygons.imageHeight;
+            final stadiumHeight = availableWidth / aspectRatio;
+
+            return Container(
+              width: constraints.maxWidth,
+              height: stadiumHeight,
+              child: Center(
+                child: SizedBox(
+                  width: availableWidth,
+                  height: stadiumHeight,
+                  child: GestureDetector(
+                    onTapDown: (details) => _handlePolygonTapWithSize(
+                      details,
+                      availableWidth,
+                      stadiumHeight,
+                    ),
+                    child: CustomPaint(
+                      painter: PurePolygonStadiumPainter(
+                        selectedZone: selectedZone,
+                        sessionSeatInfo: sessionSeatInfo,
+                        debugMode: debugMode,
+                      ),
                     ),
                   ),
                 ),
-              ],
-            ],
-          ),
-          SizedBox(height: 8),
-          Text(
-            '이미지 없이 순수 다각형으로 구현된 좌석 선택',
-            style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPurePolygonStadium(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadowLight,
-            spreadRadius: 2,
-            blurRadius: 8,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: SizedBox(
-          width: double.infinity,
-          height: 320, // 857×692 비율에 맞춘 높이
-          child: GestureDetector(
-            onTapDown: (details) => _handlePolygonTap(details, context),
-            child: CustomPaint(
-              painter: PurePolygonStadiumPainter(
-                selectedZone: selectedZone,
-                sessionSeatInfo: sessionSeatInfo,
-                debugMode: debugMode,
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
   }
 
-  void _handlePolygonTap(TapDownDetails details, BuildContext context) {
-    final renderBox = context.findRenderObject() as RenderBox?;
-    if (renderBox == null) return;
-
+  void _handlePolygonTapWithSize(
+    TapDownDetails details,
+    double canvasWidth,
+    double canvasHeight,
+  ) {
     final localPosition = details.localPosition;
-
-    // Canvas 영역의 크기
-    final canvasWidth = renderBox.size.width;
-    final canvasHeight = 320.0; // 857×692 비율에 맞춘 높이
 
     // 좌표 변환: Canvas 좌표를 이미지 좌표로 변환
     final scaleX = canvasWidth / StadiumZonePolygons.imageWidth;
@@ -158,6 +105,14 @@ class StadiumPurePolygonLayout extends StatelessWidget {
 
     final imageX = localPosition.dx / scaleX;
     final imageY = localPosition.dy / scaleY;
+
+    // 이미지 영역 밖이면 무시
+    if (imageX < 0 ||
+        imageX > StadiumZonePolygons.imageWidth ||
+        imageY < 0 ||
+        imageY > StadiumZonePolygons.imageHeight) {
+      return;
+    }
 
     final tapPoint = Offset(imageX, imageY);
     final zone = StadiumZonePolygons.findZoneAt(tapPoint);
@@ -178,18 +133,19 @@ class StadiumPurePolygonLayout extends StatelessWidget {
   Widget _buildSectionLegend() {
     return Container(
       padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadowLight,
-            spreadRadius: 1,
-            blurRadius: 4,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
+      width: double.infinity,
+      // decoration: BoxDecoration(
+      //   color: AppColors.surface,
+      //   borderRadius: BorderRadius.circular(12),
+      //   boxShadow: [
+      //     BoxShadow(
+      //       color: AppColors.shadowLight,
+      //       spreadRadius: 1,
+      //       blurRadius: 4,
+      //       offset: Offset(0, 2),
+      //     ),
+      //   ],
+      // ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -207,8 +163,14 @@ class StadiumPurePolygonLayout extends StatelessWidget {
             runSpacing: 8,
             children: [
               _buildLegendItem('무대 (STAGE)', Color(0xFF4A4A4A)),
-              _buildLegendItem('VIP석 (STANDING)', Color.fromRGBO(181, 101, 101, 1.0)),
-              _buildLegendItem('일반석 (SEATED)', Color.fromRGBO(240, 234, 138, 1.0)),
+              _buildLegendItem(
+                'VIP석 (STANDING)',
+                Color.fromRGBO(181, 101, 101, 1.0),
+              ),
+              _buildLegendItem(
+                '일반석 (SEATED)',
+                Color.fromRGBO(240, 234, 138, 1.0),
+              ),
               _buildLegendItem('선택된 구역', AppColors.primary),
               if (debugMode) _buildLegendItem('구역 경계', Colors.red),
             ],
@@ -444,9 +406,11 @@ class PurePolygonStadiumPainter extends CustomPainter {
           ? AppColors.primary
           : (isStage
                 ? Color(0xFF4A4A4A)
-                : (isVipZone ? Color.fromRGBO(181, 101, 101, 1.0) : Color.fromRGBO(240, 234, 138, 1.0)))
+                : (isVipZone
+                      ? Color.fromRGBO(181, 101, 101, 1.0)
+                      : Color.fromRGBO(240, 234, 138, 1.0)))
       ..style = PaintingStyle.stroke
-      ..strokeWidth = isSelectedZone ? 3 : 1.5;
+      ..strokeWidth = isSelectedZone ? 1.5 : 1.0; // 더 얇은 테두리
     canvas.drawPath(path, borderPaint);
 
     // 구역 번호 텍스트 그리기 (무대가 아닌 경우만)
@@ -472,11 +436,17 @@ class PurePolygonStadiumPainter extends CustomPainter {
     centerX /= scaledPoints.length;
     centerY /= scaledPoints.length;
 
+    // VIP 구역별 텍스트 위치 조정
+    if (zoneId == 'F1' || zoneId == 'F2') {
+      centerY -= 8; // F1, F2는 위로 올림
+    } else if (zoneId == 'F3' || zoneId == 'F4') {
+      centerY += 8; // F3, F4는 아래로 내림
+    }
+
     final textStyle = TextStyle(
-      color: isSelected ? Colors.white : Colors.black, // 흰 배경에 맞게 검은색 텍스트
+      color: isSelected ? Colors.white : Colors.grey[700], // 다크 그레이 텍스트
       fontSize: zoneId.startsWith('F') ? 14 : 12,
       fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-      // 그림자 제거
     );
 
     final textPainter = TextPainter(
@@ -493,10 +463,15 @@ class PurePolygonStadiumPainter extends CustomPainter {
 
   void _drawStageLabel(Canvas canvas, List<Offset> scaledPoints) {
     // 무대의 상단 부분 찾기 (Y 좌표가 가장 작은 지점들의 평균)
-    final topPoints = scaledPoints.where((point) => 
-      point.dy <= scaledPoints.map((p) => p.dy).reduce((a, b) => a < b ? a : b) + 30
-    ).toList();
-    
+    final topPoints = scaledPoints
+        .where(
+          (point) =>
+              point.dy <=
+              scaledPoints.map((p) => p.dy).reduce((a, b) => a < b ? a : b) +
+                  30,
+        )
+        .toList();
+
     double centerX = 0, centerY = 0;
     if (topPoints.isNotEmpty) {
       for (final point in topPoints) {
@@ -559,7 +534,7 @@ class PurePolygonStadiumPainter extends CustomPainter {
       final highlightPaint = Paint()
         ..color = Colors.white.withValues(alpha: 0.3)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 4;
+        ..strokeWidth = 2; // 더 얇은 하이라이트
 
       canvas.drawPath(path, highlightPaint);
     }
