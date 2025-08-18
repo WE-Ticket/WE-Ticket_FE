@@ -18,6 +18,7 @@ class ApiConstants {
       '/tickets/performance/{performance_id}/session/{performance_session_id}/zone/{seat_zone}/layout/';
 
   static const String createTicket = '/tickets/create/';
+  static const String ticketPaymentTarget = '/tickets/payment-target';
   static const String entryNFC = '/tickets/gate-entry-start/';
 
   // Transfer
@@ -38,6 +39,7 @@ class ApiConstants {
   static const String transferTicketCancel =
       '/transfers/transfer-ticket-cancel/';
   static const String lookupPrivateTicket = '/transfers/private-ticket-lookup/';
+  static const String transferPaymentTarget = '/transfers/payment-target';
   static const String processTransfer = '/transfers/transfer-process/';
 
   // My Page
