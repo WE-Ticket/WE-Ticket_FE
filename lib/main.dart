@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
+import 'package:flutter/foundation.dart';
+import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
+
 import 'package:we_ticket/core/utils/app_logger.dart';
 import 'package:we_ticket/features/auth/presentation/providers/auth_provider.dart';
 import 'package:we_ticket/features/auth/auth_dependencies.dart';
@@ -14,7 +18,18 @@ import 'package:we_ticket/shared/presentation/providers/api_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
+  if (defaultTargetPlatform == TargetPlatform.android) {
+    try {
+      // Android WebView 플랫폼 최적화 설정
+      final androidPlatform = AndroidWebViewPlatform();
+      WebViewPlatform.instance = androidPlatform;
+      AppLogger.success('Android WebView Platform initialized with optimizations', 'MAIN');
+    } catch (e) {
+      AppLogger.error('Failed to initialize WebView Platform', e, null, 'MAIN');
+    }
+  }
+
   // Initialize dependencies
   try {
     await initializeDependencies();
@@ -22,8 +37,8 @@ void main() async {
   } catch (e) {
     AppLogger.error('Failed to initialize dependencies', e, null, 'MAIN');
   }
-  
-  runApp(MyApp());
+
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -33,10 +48,10 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // ✅ 1. ApiProvider를 먼저 생성 (DioClient 포함)
+        //  1. ApiProvider를 먼저 생성 (DioClient 포함)
         ChangeNotifierProvider(create: (_) => ApiProvider()),
 
-        // ✅ 2. AuthProvider는 ApiProvider의 DioClient를 사용
+        //  2. AuthProvider는 ApiProvider의 DioClient를 사용
         ChangeNotifierProxyProvider<ApiProvider, AuthProvider>(
           create: (context) {
             final apiProvider = Provider.of<ApiProvider>(
@@ -46,15 +61,17 @@ class MyApp extends StatelessWidget {
             return AuthProvider(apiProvider.dioClient);
           },
           update: (context, apiProvider, previousAuthProvider) {
-            // 기존 AuthProvider가 있으면 재사용, 없으면 새로 생성
             return previousAuthProvider ?? AuthProvider(apiProvider.dioClient);
           },
         ),
 
-        // ✅ 3. ContentsProvider는 ApiProvider의 DioClient를 사용
+        // 3. ContentsProvider는 ApiProvider의 DioClient를 사용
         ChangeNotifierProxyProvider<ApiProvider, ContentsProvider>(
           create: (context) {
-            final apiProvider = Provider.of<ApiProvider>(context, listen: false);
+            final apiProvider = Provider.of<ApiProvider>(
+              context,
+              listen: false,
+            );
             return ContentsProvider(
               performanceService: PerformanceService(apiProvider.dioClient),
             );
@@ -67,7 +84,7 @@ class MyApp extends StatelessWidget {
           },
         ),
 
-        // ✅ 4. TransferProvider는 ApiProvider에 의존
+        //  4. TransferProvider는 ApiProvider에 의존
         ChangeNotifierProxyProvider<ApiProvider, TransferProvider>(
           create: (context) => TransferProvider(
             Provider.of<ApiProvider>(context, listen: false).apiService,
@@ -77,21 +94,18 @@ class MyApp extends StatelessWidget {
               TransferProvider(apiProvider.apiService),
         ),
 
-        // ✅ 5. 새로운 Clean Architecture Providers
+        //  5. 새로운 Clean Architecture Providers
         ...AuthDependencies.getProxyProviders(),
       ],
       child: MaterialApp(
         title: 'WE-Ticket',
-        localizationsDelegates: [
+        localizationsDelegates: const [
           GlobalMaterialLocalizations.delegate,
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
-        supportedLocales: [
-          Locale('ko', 'KR'), // 한국어
-          Locale('en', 'US'), // 영어
-        ],
-        locale: Locale('ko', 'KR'), // 기본 로케일을 한국어로 설정
+        supportedLocales: const [Locale('ko', 'KR'), Locale('en', 'US')],
+        locale: const Locale('ko', 'KR'),
         home: MainApp(),
         debugShowCheckedModeBanner: false,
       ),
@@ -101,29 +115,25 @@ class MyApp extends StatelessWidget {
 
 class MainApp extends StatefulWidget {
   @override
-  _MainAppState createState() => _MainAppState();
+  State<MainApp> createState() => _MainAppState();
 }
 
 class _MainAppState extends State<MainApp> {
   @override
   void initState() {
     super.initState();
-    // ✅ 앱 시작시 초기화 로직
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeApp();
     });
   }
 
-  /// ✅ 앱 초기화 로직
   Future<void> _initializeApp() async {
     try {
       print('🚀 앱 초기화 시작');
 
-      // 1. AuthProvider의 로그인 상태 확인
       final authProvider = context.read<AuthProvider>();
       await authProvider.checkAuthStatus();
 
-      // 2. 로그인 상태인 경우 초기 데이터 로드
       if (authProvider.isLoggedIn) {
         final apiProvider = context.read<ApiProvider>();
         await apiProvider.loadDashboardData();
@@ -133,7 +143,6 @@ class _MainAppState extends State<MainApp> {
       print('✅ 앱 초기화 완료');
     } catch (e) {
       print('❌ 앱 초기화 실패: $e');
-      // 초기화 실패해도 앱은 정상 실행
     }
   }
 
