@@ -45,8 +45,8 @@ class _InquiryScreenState extends State<InquiryScreen> {
     try {
       final success = await mypageProvider.submitInquiry(
         userId: authProvider.currentUserId!,
-        inquiryTitle: _titleController.text.trim().isEmpty 
-            ? null 
+        inquiryTitle: _titleController.text.trim().isEmpty
+            ? null
             : _titleController.text.trim(),
         inquiryContents: _contentsController.text.trim(),
       );
@@ -94,9 +94,10 @@ class _InquiryScreenState extends State<InquiryScreen> {
             physics: AlwaysScrollableScrollPhysics(),
             child: ConstrainedBox(
               constraints: BoxConstraints(
-                minHeight: MediaQuery.of(context).size.height - 
-                           MediaQuery.of(context).padding.top - 
-                           kToolbarHeight,
+                minHeight:
+                    MediaQuery.of(context).size.height -
+                    MediaQuery.of(context).padding.top -
+                    kToolbarHeight,
               ),
               child: IntrinsicHeight(
                 child: Padding(
@@ -107,20 +108,24 @@ class _InquiryScreenState extends State<InquiryScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildInstructions(),
-                        
+
                         SizedBox(height: 24),
-                        
+
                         _buildTitleField(),
-                        
+
                         SizedBox(height: 20),
-                        
+
                         _buildContentsField(),
-                        
+
                         SizedBox(height: 20),
-                        
+
                         _buildSubmitButton(),
-                        
-                        SizedBox(height: MediaQuery.of(context).viewInsets.bottom > 0 ? 20 : 40),
+
+                        SizedBox(
+                          height: MediaQuery.of(context).viewInsets.bottom > 0
+                              ? 20
+                              : 40,
+                        ),
                       ],
                     ),
                   ),
@@ -138,24 +143,23 @@ class _InquiryScreenState extends State<InquiryScreen> {
       width: double.infinity,
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.info.withOpacity(0.1),
+        color: AppColors.secondary.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.info.withOpacity(0.3)),
+        border: Border.all(color: AppColors.secondary.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.info_outline, 
-                   color: AppColors.info, size: 20),
+              Icon(Icons.info_outline, color: AppColors.secondary, size: 20),
               SizedBox(width: 8),
               Text(
                 '문의 안내',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.info,
+                  color: AppColors.secondaryDark,
                 ),
               ),
             ],
@@ -193,16 +197,13 @@ class _InquiryScreenState extends State<InquiryScreen> {
             SizedBox(width: 4),
             Text(
               '(선택)',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-              ),
+              style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
             ),
           ],
         ),
-        
+
         SizedBox(height: 8),
-        
+
         TextFormField(
           controller: _titleController,
           maxLength: 200,
@@ -227,15 +228,12 @@ class _InquiryScreenState extends State<InquiryScreen> {
             counterText: '',
           ),
         ),
-        
+
         SizedBox(height: 4),
-        
+
         Text(
           '${_titleController.text.length}/200',
-          style: TextStyle(
-            fontSize: 12,
-            color: AppColors.textSecondary,
-          ),
+          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
         ),
       ],
     );
@@ -257,18 +255,12 @@ class _InquiryScreenState extends State<InquiryScreen> {
                 ),
               ),
               SizedBox(width: 4),
-              Text(
-                '*',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: AppColors.error,
-                ),
-              ),
+              Text('*', style: TextStyle(fontSize: 16, color: AppColors.error)),
             ],
           ),
-          
+
           SizedBox(height: 8),
-          
+
           Container(
             height: 200,
             child: TextFormField(
@@ -286,11 +278,12 @@ class _InquiryScreenState extends State<InquiryScreen> {
                 return null;
               },
               decoration: InputDecoration(
-                hintText: '궁금한 점이나 문의사항을 자세히 작성해주세요.\n\n'
-                         '• 티켓 구매 관련 문의\n'
-                         '• 본인인증 관련 문의\n'
-                         '• 서비스 이용 중 오류\n'
-                         '• 기타 문의사항',
+                hintText:
+                    '궁금한 점이나 문의사항을 자세히 작성해주세요.\n\n'
+                    '• 티켓 구매 관련 문의\n'
+                    '• 본인인증 관련 문의\n'
+                    '• 서비스 이용 중 오류\n'
+                    '• 기타 문의사항',
                 hintStyle: TextStyle(
                   color: AppColors.textSecondary,
                   height: 1.4,
@@ -328,7 +321,7 @@ class _InquiryScreenState extends State<InquiryScreen> {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
         final user = authProvider.user;
-        
+
         return Column(
           children: [
             if (user != null)
@@ -341,8 +334,11 @@ class _InquiryScreenState extends State<InquiryScreen> {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.person_outline, 
-                         color: AppColors.textSecondary, size: 16),
+                    Icon(
+                      Icons.person_outline,
+                      color: AppColors.textSecondary,
+                      size: 16,
+                    ),
                     SizedBox(width: 8),
                     Text(
                       '문의자: ${user.userName} (@${user.loginId})',
@@ -354,15 +350,17 @@ class _InquiryScreenState extends State<InquiryScreen> {
                   ],
                 ),
               ),
-              
+
             SizedBox(height: 16),
-            
+
             if (_isLoading)
               Container(
                 height: 56,
                 child: Center(
                   child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      AppColors.primary,
+                    ),
                   ),
                 ),
               )
@@ -382,10 +380,7 @@ class _InquiryScreenState extends State<InquiryScreen> {
                   ),
                   child: Text(
                     '문의 등록',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),

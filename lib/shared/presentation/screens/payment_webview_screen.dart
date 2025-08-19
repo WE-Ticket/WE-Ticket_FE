@@ -250,20 +250,44 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen>
           null,
           'PAYMENT',
         );
-        throw Exception('Payment target API failed: ${response.statusCode}');
+        
+        // 서버 에러 메시지 파싱
+        String errorMessage = 'Payment target API failed: ${response.statusCode}';
+        try {
+          final errorData = jsonDecode(response.body);
+          if (errorData is Map<String, dynamic>) {
+            errorMessage = errorData['error'] ?? 
+                          errorData['message'] ?? 
+                          errorData['detail'] ?? 
+                          errorMessage;
+          }
+        } catch (_) {
+          // JSON 파싱 실패 시 기본 에러 메시지 사용
+        }
+        
+        // 에러 상태로 설정하고 결제 중단
+        if (mounted) {
+          setState(() {
+            _hasError = true;
+            _errorMessage = errorMessage;
+            _isLoading = false;
+          });
+        }
+        return;
       }
     } catch (e) {
       AppLogger.error('Payment target loading error', e, null, 'PAYMENT');
-      // 오류 시에도 기본 데이터 전달
-      final cleanMerchantUid = widget.paymentData.merchantUid.replaceAll(
-        RegExp(r'[^a-zA-Z0-9]'),
-        '',
-      );
-      _controller.runJavaScript('''
-        if (window.initPaymentData) {
-          window.initPaymentData(${jsonEncode({'name': widget.paymentData.displayTitle, 'price': widget.paymentData.amount, 'currency': 'KRW', 'payment_number': cleanMerchantUid})});
-        }
-      ''');
+      
+      // 에러 상태로 설정하고 결제 중단
+      if (mounted) {
+        setState(() {
+          _hasError = true;
+          _errorMessage = e.toString().contains('Payment target API failed') 
+              ? e.toString().replaceAll('Exception: ', '')
+              : 'Payment target loading error: $e';
+          _isLoading = false;
+        });
+      }
     }
   }
 
