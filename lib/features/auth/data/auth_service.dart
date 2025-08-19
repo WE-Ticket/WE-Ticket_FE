@@ -673,4 +673,40 @@ extension AuthServiceExtension on AuthService {
       return ApiResult.failure('인증 결과 처리 중 오류가 발생했습니다: $e');
     }
   }
+
+  /// 사용자 약관 동의 API
+  Future<ApiResult<void>> submitUserAgreement({
+    required int userId,
+    required String termType,
+  }) async {
+    try {
+      AppLogger.info('사용자 약관 동의 요청 시작 (사용자ID: $userId, 약관타입: $termType)', 'AUTH');
+
+      final requestData = {
+        'user_id': userId,
+        'term_type': termType,
+        'agreed_at': DateTime.now().toIso8601String(),
+      };
+
+      final response = await _dioClient.post(
+        '/users/vc-agreement/',
+        data: requestData,
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        AppLogger.success('사용자 약관 동의 완료', 'AUTH');
+        return ApiResult.success(null);
+      } else {
+        return ApiResult.failure(
+          '약관 동의 처리 실패: ${response.statusCode}',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      return _handleDioError(e, '약관 동의');
+    } catch (e) {
+      AppLogger.error('약관 동의 처리 오류', e, null, 'AUTH');
+      return ApiResult.failure('약관 동의 처리 중 오류가 발생했습니다');
+    }
+  }
 }
