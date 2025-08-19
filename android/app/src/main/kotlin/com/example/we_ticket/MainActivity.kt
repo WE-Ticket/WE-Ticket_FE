@@ -7,6 +7,8 @@ import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+
+// OmniOne SDK
 import org.omnione.did.sdk.core.api.KeyManager
 import org.omnione.did.sdk.core.api.DIDManager
 import org.omnione.did.sdk.core.keymanager.datamodel.*
@@ -15,19 +17,20 @@ import org.omnione.did.sdk.datamodel.common.enums.AlgorithmType
 import org.omnione.did.sdk.datamodel.common.BaseObject
 import org.omnione.did.sdk.datamodel.did.Service
 import org.omnione.did.sdk.datamodel.common.Proof
+import org.omnione.did.sdk.datamodel.common.enums.ProofPurpose
+import org.omnione.did.sdk.datamodel.common.enums.ProofType
+import org.omnione.did.sdk.datamodel.security.DIDAuth
 import org.omnione.did.sdk.utility.DigestUtils
 import org.omnione.did.sdk.utility.MultibaseUtils
 import org.omnione.did.sdk.utility.DataModels.DigestEnum
 import org.omnione.did.sdk.utility.DataModels.MultibaseType
-import org.omnione.did.sdk.datamodel.common.enums.ProofPurpose
-import org.omnione.did.sdk.datamodel.common.enums.ProofType
-import org.omnione.did.sdk.datamodel.security.DIDAuth
 
-///서버와 json 맞추기
+import org.omnione.did.sdk.core.api.WalletApi
+
+
+// JSON (서버와 동일 직렬화)
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonParser
-
-import java.nio.charset.StandardCharsets
 
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "did_sdk"
@@ -35,14 +38,12 @@ class MainActivity : FlutterActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        // Surface 버퍼링 최적화
+
+        // Surface/뷰 최적화(기존 유지)
         window.setFlags(
             WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
             WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED
         )
-        
-        // View 계층 최적화 (WebView 렌더링 최적화)
         window.decorView.systemUiVisibility = (
             View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
             View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
@@ -56,34 +57,28 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
+
+                    // ----------------------------------------------------------
+                    // 1) DID 생성 + BIO 프롬프트로 서명 + 저장
+                    // ----------------------------------------------------------
                     "createDid" -> {
                         try {
                             Log.d(TAG, "WE-Ticket DID 생성 시작")
 
-                            // 0. 저장된 doc이 있다면 삭제
-                            // DID Manager 인스턴스 생성 
+                            // DID & Key Manager
                             val didManager = DIDManager<BaseObject>("weticket_did", this)
-                            Log.i(TAG, "DIDManager 생성 완료")
-
                             if (didManager.isSaved()) {
-                            Log.i(TAG, "기존 DID doc 발견")
-
-                               didManager.deleteDocument()
-                            Log.i(TAG, "기존 DID doc 삭제 완료 ")
-
+                                Log.i(TAG, "기존 DID doc 발견 → 삭제")
+                                didManager.deleteDocument()
                             }
-                            
-                            // 1. KeyManager로 개인키 생성
 
-                            // KeyManager 인스턴스 생성
-                           val keyManager = KeyManager<DetailKeyInfo>("WETicketWallet", this)
+                            val keyManager = KeyManager<DetailKeyInfo>("WETicketWallet", this)
                             Log.i(TAG, "KeyManager 생성 완료")
 
-                            // key ID 
-                            // did Doc은 지워져도 key는 지워지는게 아니라서 고유해야함 그래서 고유 값 추가
+                            // 고유 keyId (키는 DIDDoc 삭제와 별개로 남으므로 고유값 권장)
                             val keyId = "weticket_key_${System.currentTimeMillis()}"
 
-                            // key 타입 결정 및 키 생성 (generateKey API)
+                            // BIO 키 생성 (Android KeyStore)
                             val bioKeyRequest = SecureKeyGenRequest(
                                 keyId,
                                 AlgorithmType.ALGORITHM_TYPE.SECP256R1,
@@ -91,32 +86,19 @@ class MainActivity : FlutterActivity() {
                                 KeyStoreAccessMethod.KEYSTORE_ACCESS_METHOD.BIOMETRY
                             )
                             keyManager.generateKey(bioKeyRequest)
-
                             Log.i(TAG, "BIO 개인키 생성 완료 (Android KeyStore)")
 
-                            // 2. 키 정보 조회 (getKeyInfos API)
+                            // 공개키 조회
                             val keyInfoList: List<KeyInfo> = keyManager.getKeyInfos(listOf(keyId))
                             val keyInfo = keyInfoList.first()
-                            Log.d(TAG, "KeyInfo 조회 완료")
-                            
-                            // 공개키 추출
                             val publicKey = keyInfo.publicKey
-                            Log.i(TAG, "공개키: ${publicKey}")
-                            //FIXME 나중에 지우기 
-                            try {
-                                val pubkeyBytes = MultibaseUtils.decode(publicKey)
-                                Log.i(TAG, "공개키(hex): ${pubkeyBytes.joinToString("") { "%02x".format(it) }}")
-                            } catch (e: Exception) {
-                                Log.e(TAG, "공개키 디코딩 실패: ${e.message}")
-                            }
+                            Log.i(TAG, "공개키(multibase): $publicKey")
 
-                            // 3. DID 문서 생성 (weticket 도메인)
-                            
-
-                            // weticket 도메인으로 DID 생성
+                            // DID 생성
                             val did: String = DIDManager.genDID("weticket")
                             Log.i(TAG, "WE-Ticket DID 생성: $did")
 
+                            // DIDKeyInfo 구성 (authentication + assertionMethod)
                             val didKeyInfos = listOf(
                                 DIDKeyInfo(
                                     keyInfo,
@@ -130,285 +112,221 @@ class MainActivity : FlutterActivity() {
                                 )
                             )
 
-                            
-                            // 4. DID Document 생성 (createDocument API)
-                            /* API 설명
-                            didManager.createDocument(did, 사용자 DID
-                            didKeyInfos, //List<DIDKeyInfo>	DID 문서에 등록할 공개키 정보 객체의 배열
-                            did, controller	String	DID 문서에 controller로 등록할 DID. null이면, did 항목을 사용한다.
-                            null);service	List<Service>	DID 문서에 명시할 서비스 정보 객체
-                             */
-                            didManager.createDocument(did, didKeyInfos, did, null);
-                            Log.d(TAG, "DID Document 생성 완료")
-                            
-                            // 6. DID Document 내용 조회
-                            val didDocument = didManager.getDocument()
-                            Log.d(TAG, "처음 DID Document 내용 조회 완료")
-                            Log.d(TAG, didDocument.toJson())
+                            // DIDDocument 생성 (임시 객체)
+                            didManager.createDocument(did, didKeyInfos, did, /*service*/ null)
+                            var didDocument = didManager.getDocument()
+                            Log.d(TAG, "DID Document(초안): ${didDocument.toJson()}")
 
-                            //7. 서명
-                             val now = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US).apply {
+                            // Proof 골격(서명 전) — verificationMethod는 실제 vm.id로 나중에 갱신
+                            val now = java.text.SimpleDateFormat(
+                                "yyyy-MM-dd'T'HH:mm:ss'Z'",
+                                java.util.Locale.US
+                            ).apply {
                                 timeZone = java.util.TimeZone.getTimeZone("UTC")
                             }.format(java.util.Date())
 
-                            // Proof 객체 생성
                             val proof = Proof().apply {
                                 created = now
                                 proofPurpose = ProofPurpose.PROOF_PURPOSE.assertionMethod
-                                verificationMethod = "${didDocument.id}?versionId=${didDocument.versionId}#$keyId"
                                 type = ProofType.PROOF_TYPE.secp256r1Signature2018
                             }
                             didDocument.proof = proof
 
-                            Log.d(TAG, "직렬화 전 DID Document 내용 조회 완료")
-                            Log.d(TAG, didDocument.toJson())
-
-                            //서버랑 맞추는 중
-                            val gson = GsonBuilder()
-                                .disableHtmlEscaping() // Python JSON escape와 맞추기
-                                .create()
-
+                            // 서버와 동일 직렬화(정렬/escape 일치)
+                            val gson = GsonBuilder().disableHtmlEscaping().create()
                             val jsonElement = JsonParser.parseString(didDocument.toJson())
                             val sortedJsonString = gson.toJson(jsonElement)
+                            Log.d(TAG, "[직렬화 미서명] $sortedJsonString")
 
-                            Log.d(TAG, "--- CLIENT SIDE ---")
-                            Log.d(TAG, "Signing JSON String: $sortedJsonString")
+                            // === 여기부터 BIO 프롬프트 + SDK가 서명 ===
+                            val walletApi = WalletApi.getInstance(this)
 
-                            val jsonData = sortedJsonString.toByteArray()
-
-                            // JSON 직렬화 → SHA-256 해시
-                            // val jsonData = didDocument.toJson().toByteArray()
-                            val digest = DigestUtils.getDigest(jsonData, DigestEnum.DIGEST_ENUM.SHA_256)
-
-                            @OptIn(kotlin.ExperimentalStdlibApi::class)
-                            Log.d(TAG, "클라이언트 digest: ${digest.toHexString()}")
-
-                            // 3. KeyManager로 서명
-                            val signature = keyManager.sign(keyId, null, digest)
-
-                            Log.d(TAG, "서명 바이트 길이: ${signature.size}")
-                            Log.d(TAG, "서명(hex): ${signature.joinToString("") { "%02x".format(it) }}")
-
-                            // 4. 서명값을 base58btc 인코딩
-                            val encodedSignature = MultibaseUtils.encode(
-                                MultibaseType.MULTIBASE_TYPE.BASE_58_BTC,
-                                signature
-                            )
-
-                            //FIXME 디버깅
-                            // === 서명 검증 테스트 ===
-                            Log.d(TAG, "=== Android 내에서 서명 검증 시작 ===")
-
+                            // BIO 키 미등록 시 1회 등록
                             try {
-                                // 1. 이미 가져온 공개키 사용 (keyInfo.publicKey)
-                                val pubkeyBytes = MultibaseUtils.decode(publicKey) // publicKey는 이미 String
-                                
-                                // 2. 서명에서 v 제거 (65바이트 → 64바이트)
-                                // val signatureWithoutV = signature.copyOfRange(0, 64)
-                                
-                                // 3. KeyManager의 verify 메소드 사용
-                                 keyManager.verify(
-                                    AlgorithmType.ALGORITHM_TYPE.SECP256R1,
-                                    pubkeyBytes,
-                                    digest,
-                                    signature //그냥 원본 데이터를 사용 
-                                )
-                                
-                                Log.d(TAG, "✅ Android 내 서명 검증 성공!")
-                                
+                                if (!walletApi.isSavedBioKey()) {
+                                    Log.i(TAG, "BIO 키 미등록 → registerBioKey()")
+                                    walletApi.registerBioKey(this)
+                                }
                             } catch (e: Exception) {
-                                Log.e(TAG, "❌ Android 검증 실패: ${e.message}")
+                                Log.w(TAG, "isSavedBioKey/registerBioKey 처리 중 경고: ${e.message}")
                             }
-                            Log.d(TAG, "=== Android 검증 끝 ===")
 
-                            
+                            // 프롬프트(반드시 뜸)
+                            Log.i(TAG, "BiometricPrompt 표시 → authenticateBioKey()")
+                            walletApi.authenticateBioKey(this, this)
 
-                            // 5. 인코딩된 서명을 proof에 대입
-                            proof.proofValue = encodedSignature
-                            didDocument.proof = proof
-                            Log.d(TAG, "서명 후 DID Document 내용 조회")
-                            Log.d(TAG, didDocument.toJson())
+                            // verificationMethod의 실제 id를 proof.verificationMethod에 반영
+                            // DIDManager가 생성한 vm의 id를 그대로 사용해야 검증측에서 찾을 수 있음
+                            val vmIdFromDoc = didDocument.verificationMethod.first().id
+                            didDocument.proof.verificationMethod =
+                                "${didDocument.id}?versionId=${didDocument.versionId}#$vmIdFromDoc"
 
-                            // 7. Key Attestation 정보 
-                            val keyAttestation = mapOf(
-                                "keyId" to keyId,
-                                "algorithm" to "SECP256R1",
-                                "storage" to "Android KeyStore",
-                                "createdAt" to System.currentTimeMillis()
-                            )
-                            Log.i(TAG, "Key Attestation 정보 생성 완료")
+                            // SDK가 Proof 포함 문서에 서명(패스코드 null = BIO)
+                            // type: 1=deviceKey DID Document, 2=holder DID Document (현재 로컬 생성 장치키로 서명 → 1)
+                            Log.i(TAG, "walletApi.addProofsToDocument() 호출(BIO)")
+                            didDocument = walletApi.addProofsToDocument(
+                                /*document=*/didDocument,
+                                /*keyIds=*/listOf(keyId),
+                                /*did=*/did,
+                                /*type=*/1,
+                                /*passcode=*/null,
+                                /*isDIDAuth=*/false
+                            ) as DIDDocument
 
+                            Log.d(TAG, "서명 완료 DID Document: ${didDocument.toJson()}")
+
+                            // 저장
+                            didManager.replaceDocument(didDocument, /*needUpdate=*/false)
                             didManager.saveDocument()
                             Log.i(TAG, "DID Document 저장 완료")
 
-                            // 8. 상세 정보를 Flutter로 반환
                             val detailedResult = mapOf(
                                 "success" to true,
                                 "did" to did,
                                 "publicKey" to publicKey,
                                 "keyId" to keyId,
                                 "didDocument" to didDocument.toJson(),
-                                "keyAttestation" to keyAttestation,
                                 "timestamp" to System.currentTimeMillis()
                             )
-                            
-                            Log.i(TAG, "WE-Ticket DID 생성 과정 완료")
+                            Log.i(TAG, "WE-Ticket DID 생성 전체 완료")
                             result.success(detailedResult)
-                            
+
                         } catch (e: Exception) {
                             Log.e(TAG, "❌ WE-Ticket DID 생성 실패: ${e.message}", e)
-                            val errorResult = mapOf(
-                                "success" to false,
-                                "error" to e.message,
-                                "timestamp" to System.currentTimeMillis()
+                            result.success(
+                                mapOf(
+                                    "success" to false,
+                                    "error" to e.message,
+                                    "timestamp" to System.currentTimeMillis()
+                                )
                             )
-                            result.success(errorResult)
                         }
                     }
-                
-                // "saveDidDoc" -> {
-                //     try {
-                //         Log.i(TAG, "WE-Ticket DID 저장 플로우 시작")
-                //         val didManager = DIDManager<BaseObject>("weticket_did", this)
 
-                //         val didJson = call.argument<String>("didDoc") ?: throw Exception("didDocumentJson is null")
-
-                //         didManager.saveDocument()
-                //         Log.i(TAG, "DID Document 저장 완료")
-
-                //         val didDocument = didManager.getDocument()
-                //         Log.d(TAG, "DID Document 내용 조회 완료")
-                //         Log.d(TAG, didDocument.toJson())
-
-                //         val detailedResult = mapOf(
-                //                 "success" to true,
-                //                 "didDocument" to didDocument.toString(),
-                //                 "timestamp" to System.currentTimeMillis()
-                //             )
-
-                //         Log.i(TAG, "WE-Ticket DID 저장 플로우 완료")
-                //         result.success(detailedResult)
-
-                //     }catch (e: Exception) {
-                //             Log.e(TAG, "❌ WE-Ticket DID 저장 실패: ${e.message}", e)
-                //             val errorResult = mapOf(
-                //                 "success" to false,
-                //                 "error" to e.message,
-                //                 "timestamp" to System.currentTimeMillis()
-                //             )
-                //             result.success(errorResult)
-                //         }
-                // }
-
-                "delDidDoc" -> {
-                    try {
-                        Log.i(TAG, "WE-Ticket DID 삭제  플로우 시작")
-                        val didManager = DIDManager<BaseObject>("weticket_did", this)
-
-                        didManager.deleteDocument()
-                        Log.i(TAG, "DID Document 삭제 완료")
-
-                        val detailedResult = mapOf(
-                                "success" to true,
-                                "timestamp" to System.currentTimeMillis()
+                    // ----------------------------------------------------------
+                    // 2) DID 문서 삭제
+                    // ----------------------------------------------------------
+                    "delDidDoc" -> {
+                        try {
+                            val didManager = DIDManager<BaseObject>("weticket_did", this)
+                            didManager.deleteDocument()
+                            Log.i(TAG, "DID Document 삭제 완료")
+                            result.success(
+                                mapOf(
+                                    "success" to true,
+                                    "timestamp" to System.currentTimeMillis()
+                                )
                             )
-                        result.success(detailedResult)
-
-                    }catch (e: Exception) {
-                            Log.e(TAG, "❌ WE-Ticket DID 삭제 실패: ${e.message}", e)
-                            val errorResult = mapOf(
-                                "success" to false,
-                                "error" to e.message,
-                                "timestamp" to System.currentTimeMillis()
+                        } catch (e: Exception) {
+                            Log.e(TAG, "❌ DID 삭제 실패: ${e.message}", e)
+                            result.success(
+                                mapOf(
+                                    "success" to false,
+                                    "error" to e.message,
+                                    "timestamp" to System.currentTimeMillis()
+                                )
                             )
-                            result.success(errorResult)
                         }
-                }
+                    }
 
-                "didAuth" -> {
-                    try {
-                        Log.i(TAG, "WE-Ticket DID 검증 플로우 시작")
+                    // ----------------------------------------------------------
+                    // 3) DID Auth 생성(BIO 프롬프트 포함)
+                    // ----------------------------------------------------------
+                    "didAuth" -> {
+                        try {
+                            val nonce = call.argument<String>("nonce")
+                                ?: throw IllegalArgumentException("nonce is null")
+                            Log.i(TAG, "전달 받은 nonce: $nonce")
 
-                        val nonce = call.argument<String>("nonce")
-                        Log.i(TAG, "전달 받은 nonce : ${nonce}")
+                            val didManager = DIDManager<BaseObject>("weticket_did", this)
+                            val didDocument = didManager.getDocument()
+                            Log.d(TAG, "저장된 DID Document: ${didDocument.toJson()}")
 
-                        val keyManager = KeyManager<DetailKeyInfo>("WETicketWallet", this)
-                        val didManager = DIDManager<BaseObject>("weticket_did", this)
-                        Log.i(TAG, "KeyManager, DID Manager 생성 완료 ")
-
-                        val didDocument = didManager.getDocument()
-                        Log.d(TAG, "DID Document 내용 조회")
-                        Log.d(TAG, didDocument.toJson())
-
-                        val keyId = didDocument.verificationMethod[0].id
-                        Log.d(TAG, "keyId 조회 : $keyId")
-
-                        // Proof 객체 생성
-                         val now = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US).apply {
+                            // DIDAuth 골격
+                            val now = java.text.SimpleDateFormat(
+                                "yyyy-MM-dd'T'HH:mm:ss'Z'",
+                                java.util.Locale.US
+                            ).apply {
                                 timeZone = java.util.TimeZone.getTimeZone("UTC")
-                        }.format(java.util.Date())
+                            }.format(java.util.Date())
 
+                            val vmIdFromDoc = didDocument.verificationMethod.first().id
 
-                        val proof = Proof().apply {
+                            val proof = Proof().apply {
                                 created = now
                                 proofPurpose = ProofPurpose.PROOF_PURPOSE.authentication
-                                verificationMethod = "${didDocument.id}?versionId=${didDocument.versionId}#$keyId"
                                 type = ProofType.PROOF_TYPE.secp256r1Signature2018
-                        }
+                                verificationMethod =
+                                    "${didDocument.id}?versionId=${didDocument.versionId}#$vmIdFromDoc"
+                            }
 
-                        Log.d(TAG, "Proof 객체 생성 완료")
+                            var didAuth = DIDAuth().apply {
+                                did = didDocument.id
+                                authNonce = nonce
+                                this.proof = proof
+                            }
+                            Log.d(TAG, "DIDAuth(서명 전): ${didAuth.toJson()}")
 
-                        var didAuth = DIDAuth().apply{
-                            did = didDocument.id
-                            authNonce = nonce
-                            this.proof = proof
-                        }
-                        Log.d(TAG, "DID Auth 객체 생성 완료")
+                            // BIO 프롬프트 → addProofsToDocument로 서명
+                            val walletApi = WalletApi.getInstance(this)
 
-                        val jsonData = didAuth.toJson().toByteArray()
-                        val digest = DigestUtils.getDigest(jsonData, DigestEnum.DIGEST_ENUM.SHA_256)
+                            // 필요 시 BioKey 등록 확인
+                            try {
+                                if (!walletApi.isSavedBioKey()) {
+                                    walletApi.registerBioKey(this)
+                                }
+                            } catch (_: Exception) { /* optional */ }
 
-                        //  KeyManager로 서명
-                        val signature = keyManager.sign(keyId, null, digest)
+                            walletApi.authenticateBioKey(this, this)
 
-                        // 4. 서명값을 base58btc 인코딩
-                        val encodedSignature = MultibaseUtils.encode(
-                             MultibaseType.MULTIBASE_TYPE.BASE_58_BTC,
-                            signature
-                        )
+                            // DIDAuth는 ProofContainer 이므로 그대로 사용
+                            // DIDAuth의 서명에 사용할 keyId = DID 문서의 첫 VM이 가리키는 키 id와 동일해야 함.
+                            // DIDManager가 DIDDocument를 만들 때 집어넣은 KeyInfo.id 가 우리가 만든 keyId이므로,
+                            // 아래에서는 DID 문서의 verificationMethod[0].id에서 fragment(#...)를 제거하여 원 키 id를 추출해도 되고,
+                            // 본 예제에서는 DID 생성 시 사용한 keyId를 Flutter 측에서 함께 보관/재사용하도록 설계하는 것을 권장.
+                            // 여기서는 간단히 DID 문서의 첫 verificationMethod가 참조하는 키 이름을 그대로 쓴다고 가정.
+                            val firstVmId = didDocument.verificationMethod.first().id
+                            // 보통 vm.id 는  "<did>#<keyId>" 꼴일 수 있으니, 뒤쪽 fragment만 키 이름으로 가정
+                            val keyIdForSign = firstVmId.substringAfterLast("#", firstVmId)
 
-                        didAuth.proof.proofValue = encodedSignature
+                            didAuth = walletApi.addProofsToDocument(
+                                /*document=*/didAuth,
+                                /*keyIds=*/listOf(keyIdForSign),
+                                /*did=*/didDocument.id,
+                                /*type=*/1,              // deviceKey DID로 서명한 경우 1
+                                /*passcode=*/null,       // BIO 서명
+                                /*isDIDAuth=*/true
+                            ) as DIDAuth
 
-                        Log.d(TAG, "서명 후 DID Auth 내용 조회")
-                        Log.d(TAG, didAuth.toJson())
+                            Log.d(TAG, "DIDAuth(서명 후): ${didAuth.toJson()}")
 
-                        val detailedResult = mapOf(
-                                "success" to true,
-                                "didDocument" to didDocument.toJson(),
-                                "didAuth" to didAuth.toJson(),
-                                "timestamp" to System.currentTimeMillis()
+                            result.success(
+                                mapOf(
+                                    "success" to true,
+                                    "didDocument" to didDocument.toJson(),
+                                    "didAuth" to didAuth.toJson(),
+                                    "timestamp" to System.currentTimeMillis()
+                                )
                             )
+                            Log.i(TAG, "WE-Ticket DID Auth 플로우 완료")
 
-                        Log.i(TAG, "WE-Ticket DID Auth 플로우 완료")
-                        result.success(detailedResult)
-
-                    }catch (e: Exception) {
-                            Log.e(TAG, "❌ WE-Ticket DID Auth 생성 실패: ${e.message}", e)
-                            val errorResult = mapOf(
-                                "success" to false,
-                                "error" to e.message,
-                                "timestamp" to System.currentTimeMillis()
+                        } catch (e: Exception) {
+                            Log.e(TAG, "❌ WE-Ticket DID Auth 실패: ${e.message}", e)
+                            result.success(
+                                mapOf(
+                                    "success" to false,
+                                    "error" to e.message,
+                                    "timestamp" to System.currentTimeMillis()
+                                )
                             )
-                            result.success(errorResult)
                         }
-                }
+                    }
 
-                else -> {
-                        Log.w(TAG, "⚠️ 알 수 없는 메서드 호출: ${call.method}")
+                    else -> {
+                        Log.w(TAG, "⚠️ 알 수 없는 메서드: ${call.method}")
                         result.notImplemented()
+                    }
                 }
             }
-
-        }
     }
 }
