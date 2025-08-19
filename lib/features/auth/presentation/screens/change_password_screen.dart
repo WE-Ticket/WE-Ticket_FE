@@ -10,11 +10,8 @@ enum PasswordChangeStep { phoneVerify, codeVerify, setNewPassword, completed }
 
 class ChangePasswordScreen extends StatefulWidget {
   final String currentUserId;
-  
-  const ChangePasswordScreen({
-    super.key, 
-    required this.currentUserId,
-  });
+
+  const ChangePasswordScreen({super.key, required this.currentUserId});
 
   @override
   State<ChangePasswordScreen> createState() => _ChangePasswordScreenState();
@@ -26,7 +23,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final _codeController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  
+
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
@@ -58,7 +55,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
       if (result.isSuccess) {
         setState(() => _currentStep = PasswordChangeStep.codeVerify);
-        
+
         // 테스트 모드: 응답에서 인증코드 추출하여 다이얼로그로 표시
         if (result.data != null && result.data!.verificationCode != null) {
           _showTestModeCodeDialog(context, result.data!.verificationCode!);
@@ -66,7 +63,10 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           AppSnackBar.showSuccess(context, '인증코드가 발송되었습니다.');
         }
       } else {
-        AppSnackBar.showError(context, result.errorMessage ?? '인증코드 발송에 실패했습니다.');
+        AppSnackBar.showError(
+          context,
+          result.errorMessage ?? '인증코드 발송에 실패했습니다.',
+        );
       }
     } catch (e) {
       if (!mounted) return;
@@ -126,7 +126,10 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         setState(() => _currentStep = PasswordChangeStep.completed);
         AppSnackBar.showSuccess(context, '비밀번호가 성공적으로 변경되었습니다.');
       } else {
-        AppSnackBar.showError(context, result.errorMessage ?? '비밀번호 변경에 실패했습니다.');
+        AppSnackBar.showError(
+          context,
+          result.errorMessage ?? '비밀번호 변경에 실패했습니다.',
+        );
       }
     } catch (e) {
       if (!mounted) return;
@@ -168,7 +171,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 SizedBox(height: 24),
                 _buildInstructions(),
                 SizedBox(height: 24),
-                
+
                 if (_currentStep == PasswordChangeStep.phoneVerify)
                   _buildPhoneVerifyStep()
                 else if (_currentStep == PasswordChangeStep.codeVerify)
@@ -177,7 +180,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   _buildPasswordResetStep()
                 else
                   _buildCompletedStep(),
-                
+
                 SizedBox(height: 40),
               ],
             ),
@@ -236,7 +239,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     String text;
     switch (_currentStep) {
       case PasswordChangeStep.phoneVerify:
-        text = '계정과 연결된 전화번호를 입력해주세요. (전화번호는 하이픈 없이 입력)';
+        text = '계정과 연결된 전화번호를 입력해주세요.';
         break;
       case PasswordChangeStep.codeVerify:
         text = '전화번호로 발송된 인증코드를 입력해주세요.';
@@ -252,13 +255,13 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.info.withOpacity(0.1),
+        color: AppColors.secondary.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.info.withOpacity(0.3)),
+        border: Border.all(color: AppColors.secondary.withOpacity(0.3)),
       ),
       child: Row(
         children: [
-          Icon(Icons.info_outline, color: AppColors.info, size: 20),
+          Icon(Icons.info_outline, color: AppColors.secondaryDark, size: 20),
           SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -336,7 +339,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               _obscurePassword ? Icons.visibility_off : Icons.visibility,
               color: AppColors.textSecondary,
             ),
-            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+            onPressed: () =>
+                setState(() => _obscurePassword = !_obscurePassword),
           ),
           validator: (value) {
             if (value == null || value.isEmpty) {
@@ -345,8 +349,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             if (value.length < 8) {
               return '비밀번호는 8자 이상이어야 합니다';
             }
-            if (!RegExp(r'^(?=.*[a-zA-Z])(?=.*\d)[a-zA-Z\d]{8,}$')
-                .hasMatch(value)) {
+            if (!RegExp(
+              r'^(?=.*[a-zA-Z])(?=.*\d)[a-zA-Z\d]{8,}$',
+            ).hasMatch(value)) {
               return '영문, 숫자 조합 8자리 이상이어야 합니다';
             }
             return null;
@@ -363,7 +368,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
               color: AppColors.textSecondary,
             ),
-            onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+            onPressed: () => setState(
+              () => _obscureConfirmPassword = !_obscureConfirmPassword,
+            ),
           ),
           validator: (value) {
             if (value == null || value.isEmpty) {
@@ -392,11 +399,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       ),
       child: Column(
         children: [
-          Icon(
-            Icons.check_circle_outline,
-            color: AppColors.success,
-            size: 48,
-          ),
+          Icon(Icons.check_circle_outline, color: AppColors.success, size: 48),
           SizedBox(height: 16),
           Text(
             '비밀번호 변경 완료!',
@@ -409,10 +412,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           SizedBox(height: 8),
           Text(
             '새로운 비밀번호로 로그인해주세요.',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppColors.textSecondary,
-            ),
+            style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
           ),
           SizedBox(height: 24),
           SizedBox(
@@ -521,22 +521,25 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.bug_report, color: AppColors.warning, size: 24),
-            SizedBox(width: 8),
-            Text(
-              '테스트 모드',
-              style: TextStyle(color: AppColors.warning),
-            ),
-          ],
-        ),
+        // title: Row(
+        //   children: [
+        //     Icon(Icons.bug_report, color: AppColors.warning, size: 18),
+        //     SizedBox(width: 8),
+        //     Text(
+        //       '테스트 모드',
+        //       style: TextStyle(
+        //         color: AppColors.warning,
+        //         fontWeight: FontWeight.bold,
+        //       ),
+        //     ),
+        //   ],
+        // ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '실제 문자는 발송되지 않습니다.\n테스트용 인증코드를 확인하세요.',
+              '현재는 테스트 모드로 실제 문자는 발송되지 않습니다.\n 다음 인증코드를 확인하세요.',
               style: TextStyle(
                 fontSize: 14,
                 color: AppColors.textSecondary,
@@ -582,10 +585,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 Expanded(
                   child: Text(
                     '코드를 선택하여 복사할 수 있습니다',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.info,
-                    ),
+                    style: TextStyle(fontSize: 12, color: AppColors.info),
                   ),
                 ),
               ],

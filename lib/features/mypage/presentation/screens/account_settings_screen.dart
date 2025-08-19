@@ -173,15 +173,15 @@ class AccountSettingsScreen extends StatelessWidget {
               }
             },
           ),
-          Divider(height: 24, color: AppColors.gray200),
-          _buildMenuTile(
-            icon: Icons.notifications_outlined,
-            title: '알림 설정',
-            subtitle: '푸시 알림 및 이메일 알림 설정',
-            onTap: () {
-              AppSnackBar.showInfo(context, '알림 설정 기능은 추후 구현 예정입니다.');
-            },
-          ),
+          // Divider(height: 24, color: AppColors.gray200),
+          // _buildMenuTile(
+          //   icon: Icons.notifications_outlined,
+          //   title: '알림 설정',
+          //   subtitle: '푸시 알림 및 이메일 알림 설정',
+          //   onTap: () {
+          //     AppSnackBar.showInfo(context, '알림 설정 기능은 추후 구현 예정입니다.');
+          //   },
+          // ),
         ],
       ),
     );
@@ -266,21 +266,21 @@ class AccountSettingsScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(Icons.warning_outlined, color: AppColors.error, size: 20),
-              SizedBox(width: 8),
-              Text(
-                '위험 구역',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.error,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 16),
+          // Row(
+          //   children: [
+          //     Icon(Icons.warning_outlined, color: AppColors.error, size: 20),
+          //     SizedBox(width: 8),
+          //     Text(
+          //       '위험 구역',
+          //       style: TextStyle(
+          //         fontSize: 18,
+          //         fontWeight: FontWeight.bold,
+          //         color: AppColors.error,
+          //       ),
+          //     ),
+          //   ],
+          // ),
+          // SizedBox(height: 16),
           _buildMenuTile(
             icon: Icons.delete_forever_outlined,
             title: '회원 탈퇴',

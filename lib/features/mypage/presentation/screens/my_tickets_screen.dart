@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:we_ticket/features/auth/presentation/providers/auth_provider.dart';
+import 'package:we_ticket/features/transfer/presentation/screens/my_transfer_manage_screen.dart';
 import 'package:we_ticket/shared/presentation/screens/ticket_detail_screen.dart';
 import 'package:we_ticket/shared/presentation/providers/api_provider.dart';
 import '../../../../core/constants/app_colors.dart';
@@ -48,22 +49,28 @@ class _MyTicketsScreenState extends State<MyTicketsScreen>
   List<Map<String, dynamic>> _getFilteredTickets(int tabIndex) {
     final selectedFilter = _filterOptions[tabIndex];
     List<Map<String, dynamic>> filtered;
-    
+
     switch (selectedFilter) {
       case '입장 예정':
-        filtered = _myTickets.where((ticket) => ticket['status'] == 'pending').toList();
+        filtered = _myTickets
+            .where((ticket) => ticket['status'] == 'pending')
+            .toList();
         break;
       case '양도 등록 중':
-        filtered = _myTickets.where((ticket) => ticket['status'] == 'transferring').toList();
+        filtered = _myTickets
+            .where((ticket) => ticket['status'] == 'transferring')
+            .toList();
         break;
       case '사용 완료':
-        filtered = _myTickets.where((ticket) => ticket['status'] == 'completed').toList();
+        filtered = _myTickets
+            .where((ticket) => ticket['status'] == 'completed')
+            .toList();
         break;
       default: // 전체 보유
         filtered = _myTickets;
         break;
     }
-    
+
     return filtered;
   }
 
@@ -98,7 +105,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen>
       });
 
       print('✅ 내 티켓 목록 ${_myTickets.length}개 조회 성공 (전체 데이터)');
-      
+
       // 상태별 분포 출력 (디버깅용)
       final statusCounts = <String, int>{};
       for (final ticket in _myTickets) {
@@ -215,7 +222,6 @@ class _MyTicketsScreenState extends State<MyTicketsScreen>
     return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -266,12 +272,12 @@ class _MyTicketsScreenState extends State<MyTicketsScreen>
       color: AppColors.surface,
       child: TabBar(
         controller: _tabController,
-        tabs: _filterOptions.map((filter) => Tab(
-          child: Text(
-            filter,
-            style: TextStyle(fontSize: 13),
-          ),
-        )).toList(),
+        tabs: _filterOptions
+            .map(
+              (filter) =>
+                  Tab(child: Text(filter, style: TextStyle(fontSize: 13))),
+            )
+            .toList(),
         labelColor: AppColors.primary,
         unselectedLabelColor: AppColors.textSecondary,
         indicatorColor: AppColors.primary,
@@ -334,7 +340,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen>
     if (filteredTickets.isEmpty) {
       return _buildEmptyFilter(tabIndex);
     }
-    
+
     return ListView.builder(
       padding: EdgeInsets.all(16),
       itemCount: filteredTickets.length,
@@ -723,9 +729,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen>
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           '티켓 양도',
           style: TextStyle(
@@ -754,10 +758,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen>
                   ),
                   child: Text(
                     '취소',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
@@ -765,9 +766,12 @@ class _MyTicketsScreenState extends State<MyTicketsScreen>
               Expanded(
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.pop(context);
-                    // TODO: 양도 등록 화면으로 이동
-                    AppSnackBar.showInfo(context, '양도 등록 화면으로 이동합니다');
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => MyTransferManageScreen(),
+                      ),
+                    );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
@@ -779,10 +783,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen>
                   ),
                   child: Text(
                     '양도하기',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
@@ -794,8 +795,10 @@ class _MyTicketsScreenState extends State<MyTicketsScreen>
   }
 
   void _handleTransferManage(Map<String, dynamic> ticket) {
-    // TODO: 양도 관리 화면으로 이동
-    AppSnackBar.showInfo(context, '${ticket['title'] ?? '티켓'} 양도 관리');
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => MyTransferManageScreen()),
+    );
   }
 
   void _showUsedTicketInfo(Map<String, dynamic> ticket) {

@@ -5,6 +5,7 @@ import 'package:we_ticket/features/auth/presentation/providers/auth_provider.dar
 import 'package:we_ticket/features/entry/screens/manual_entry_screen.dart'
     show ManualEntryScreen;
 import 'package:we_ticket/features/entry/screens/nfc_entry_screen.dart';
+import 'package:we_ticket/features/transfer/presentation/screens/my_transfer_manage_screen.dart';
 import 'package:we_ticket/shared/presentation/providers/api_provider.dart';
 import '../../../core/constants/app_colors.dart';
 
@@ -289,16 +290,16 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
               icon: Icon(Icons.arrow_back, color: AppColors.white),
               onPressed: () => Navigator.pop(context),
             ),
-            actions: [
-              IconButton(
-                icon: Icon(Icons.refresh, color: AppColors.white),
-                onPressed: widget.ticketId != null ? _loadTicketDetail : null,
-              ),
-              IconButton(
-                icon: Icon(Icons.share, color: AppColors.white),
-                onPressed: () {},
-              ),
-            ],
+            // actions: [
+            //   IconButton(
+            //     icon: Icon(Icons.refresh, color: AppColors.white),
+            //     onPressed: widget.ticketId != null ? _loadTicketDetail : null,
+            //   ),
+            //   // IconButton(
+            //   //   icon: Icon(Icons.share, color: AppColors.white),
+            //   //   onPressed: () {},
+            //   // ),
+            // ],
             flexibleSpace: FlexibleSpaceBar(
               background: Stack(
                 fit: StackFit.expand,
@@ -344,14 +345,15 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                   // 티켓 디지털 표시
                   _buildDigitalTicketSection(),
 
+                  // 티켓 상태별 액션 버튼
+                  _buildActionButtonsSection(),
+                  SizedBox(height: 25),
+
                   // 공연 상세 정보
                   _buildConcertDetailsSection(),
 
                   // NFT 정보
-                  _buildNFTInfoSection(),
-
-                  // 티켓 상태별 액션 버튼
-                  _buildActionButtonsSection(),
+                  // _buildNFTInfoSection(),
 
                   // 주의사항 및 관람 안내
                   _buildNoticeSection(),
@@ -404,18 +406,18 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                     ),
                   ),
                   SizedBox(height: 4),
-                  GestureDetector(
-                    onTap: () => _copyTicketId(ticket['id']),
-                    child: Text(
-                      '# ${ticket['id']?.toUpperCase() ?? 'UNKNOWN'}',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'monospace',
-                      ),
-                    ),
-                  ),
+                  // GestureDetector(
+                  //   onTap: () => _copyTicketId(ticket['id']),
+                  //   child: Text(
+                  //     '# ${ticket['id']?.toUpperCase() ?? 'UNKNOWN'}',
+                  //     style: TextStyle(
+                  //       fontSize: 16,
+                  //       color: AppColors.primary,
+                  //       fontWeight: FontWeight.bold,
+                  //       fontFamily: 'monospace',
+                  //     ),
+                  //   ),
+                  // ),
                 ],
               ),
               Container(
@@ -475,7 +477,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                     Icon(Icons.verified, size: 24, color: AppColors.primary),
                     SizedBox(width: 8),
                     Text(
-                      'NFT 인증 완료',
+                      '인증 완료된 NFT 티켓',
                       style: TextStyle(
                         fontSize: 16,
                         color: AppColors.primary,
@@ -486,7 +488,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                 ),
                 SizedBox(height: 8),
                 Text(
-                  '블록체인에 기록된 디지털 티켓',
+                  '블록체인에 기록된 안전한 디지털 티켓',
                   style: TextStyle(
                     fontSize: 12,
                     color: AppColors.textSecondary,
@@ -626,28 +628,22 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
             // NFC 입장하기 버튼 (모바일 신분증 인증자만)
             Consumer<AuthProvider>(
               builder: (context, authProvider, child) {
-                final canUseNFC =
-                    authProvider.currentUserAuthLevel == 'mobile_id' ||
-                    authProvider.currentUserAuthLevel == 'mobile_id_totally';
-                // final canUseNFC = true;
-
                 return SizedBox(
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton.icon(
-                    onPressed: canUseNFC ? () => _handleNFCEntry() : null,
+                    onPressed: () => _handleNFCEntry(),
                     icon: Icon(Icons.nfc, size: 24),
                     label: Text(
-                      canUseNFC ? 'NFC 간편 입장' : 'NFC 입장 (모바일 신분증 필요)',
+                      'NFC 간편 입장',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: canUseNFC
-                          ? AppColors.success
-                          : AppColors.gray400,
+                      backgroundColor: AppColors.success,
+
                       foregroundColor: AppColors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -716,7 +712,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.error,
+                  backgroundColor: AppColors.warning,
                   foregroundColor: AppColors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -770,8 +766,6 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
       MaterialPageRoute(
         builder: (context) => NFCEntryScreen(
           ticketId: _ticketDetail!['id'],
-          //FIXME 더미 테스트 삭제
-          // ticketId: "1",
           ticketData: _ticketDetail!,
         ),
       ),
@@ -822,7 +816,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
           SizedBox(height: 12),
 
           Text(
-            '• 입장 시 신분증과 NFT 티켓이 모두 필요합니다\n'
+            '• 입장 시 해당 모바일 NFT 티켓이 필요합니다\n'
             '• 공연 시작 30분 전까지 입장해주세요\n'
             '• 재입장은 불가하니 유의해주세요\n'
             '• 촬영 및 녹음은 금지되어 있습니다\n'
@@ -962,17 +956,16 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   }
 
   void _handleTransfer() {
-    // TODO: 양도 등록 화면으로 이동
-    ScaffoldMessenger.of(
+    Navigator.push(
       context,
-    ).showSnackBar(SnackBar(content: Text('양도 등록 화면으로 이동합니다')));
+      MaterialPageRoute(builder: (context) => MyTransferManageScreen()),
+    );
   }
 
   void _handleTransferManage() {
-    // TODO: 양도 관리 화면으로 이동
-    Navigator.pop(context);
-    ScaffoldMessenger.of(
+    Navigator.push(
       context,
-    ).showSnackBar(SnackBar(content: Text('양도 관리 화면으로 이동합니다')));
+      MaterialPageRoute(builder: (context) => MyTransferManageScreen()),
+    );
   }
 }
