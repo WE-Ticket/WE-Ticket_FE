@@ -144,167 +144,21 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
         });
         print('✅ 좌석 배치 정보 로딩 완료: ${result.data!.totalSeats}석');
       } else {
-        throw Exception(result.errorMessage ?? '좌석 배치 정보 로딩 실패');
+        setState(() {
+          _errorMessage = result.errorMessage ?? '좌석 배치 정보 로딩 실패';
+          _isLoadingSeatLayout = false;
+        });
+        print('❌ 좌석 배치 정보 로딩 실패: ${result.errorMessage}');
       }
     } catch (e) {
-      print('❌ 좌석 배치 정보 로딩 실패: $e');
-      // API 실패 시 더미 데이터로 대체
-      final dummySeatLayout = _generateSeatLayoutFromAPI(seatZone);
-
       setState(() {
-        _currentSeatLayout = dummySeatLayout;
+        _errorMessage = '좌석 배치를 불러올 수 없습니다.\n$e';
         _isLoadingSeatLayout = false;
       });
+      print('❌ 좌석 배치 정보 로딩 실패: $e');
     }
   }
 
-  /// API 응답을 기반으로 좌석 배치 생성 (실제 API에서 받아야 하지만 실패 시 더미 생성)
-  SeatLayout _generateSeatLayoutFromAPI(String seatZone) {
-    if (_sessionSeatInfo == null) {
-      return _generateDefaultSeatLayout(seatZone);
-    }
-
-    // 선택한 구역의 정보 찾기
-    final zoneInfo = _sessionSeatInfo!.seatPricingInfo
-        .where((zone) => zone.seatZone == seatZone)
-        .firstOrNull;
-
-    if (zoneInfo == null) {
-      return _generateDefaultSeatLayout(seatZone);
-    }
-
-    // 구역별 기본 좌석 배치 (max_row, max_col 기반)
-    final zoneConfig = _getZoneConfiguration(seatZone);
-    final maxRow = zoneConfig['maxRow'] as String;
-    final maxCol = zoneConfig['maxCol'] as int;
-
-    // 행 생성 (A부터 maxRow까지)
-    final rows = _generateRowNames(maxRow);
-    final totalSeats = rows.length * maxCol;
-
-    // 잔여석 수를 기반으로 좌석 상태 결정
-    final availableCount = zoneInfo.remainingSeats;
-    final soldCount = totalSeats - availableCount;
-
-    print(
-      '🎭 구역 $seatZone 좌석 생성: 총 $totalSeats석, 사용가능 $availableCount석, 판매됨 $soldCount석',
-    );
-
-    // 좌석 상태 배열 생성
-    List<String> seatStatuses = [];
-    seatStatuses.addAll(List.filled(availableCount, 'available'));
-    seatStatuses.addAll(List.filled(soldCount, 'sold'));
-    seatStatuses.shuffle(); // 랜덤하게 섞기
-
-    // 좌석 행 생성 (새로운 API 형태에 맞게)
-    List<SeatRow> seatRows = [];
-    int seatIndex = 0;
-    int seatIdCounter = 1000; // 임시 seat_id 시작값
-
-    for (String row in rows) {
-      List<Seat> seats = [];
-      for (int col = 1; col <= maxCol; col++) {
-        final status = seatIndex < seatStatuses.length
-            ? seatStatuses[seatIndex]
-            : 'sold';
-
-        // 새로운 API 형태에 맞게 Seat 객체 생성
-        seats.add(
-          Seat(
-            seatId: seatIdCounter++, // 실제 API에서는 진짜 seat_id가 옴
-            seatRow: row,
-            seatCol: col,
-            reservationStatus: status,
-          ),
-        );
-        seatIndex++;
-      }
-      seatRows.add(SeatRow(row: row, seats: seats));
-    }
-
-    return SeatLayout(
-      performanceId: _performanceId,
-      performanceSessionId: _sessionId,
-      seatZone: seatZone,
-      price: zoneInfo.price,
-      maxRow: maxRow,
-      maxCol: maxCol,
-      seatLayout: seatRows,
-    );
-  }
-
-  /// 구역별 기본 설정값 (max_row, max_col)
-  Map<String, dynamic> _getZoneConfiguration(String zone) {
-    // VIP 구역 (F1, F2, F3, F4)
-    if (zone.startsWith('F')) {
-      return {'maxRow': 'D', 'maxCol': 8}; // VIP 스탠딩
-    }
-
-    // 일반석 구역 (1-43)
-    final zoneNum = int.tryParse(zone);
-    if (zoneNum != null) {
-      if (zoneNum <= 11) {
-        return {'maxRow': 'H', 'maxCol': 12}; // 가까운 구역
-      } else if (zoneNum <= 25) {
-        return {'maxRow': 'F', 'maxCol': 10}; // 중간 구역
-      } else {
-        return {'maxRow': 'E', 'maxCol': 8}; // 먼 구역
-      }
-    }
-
-    return {'maxRow': 'E', 'maxCol': 10}; // 기본값
-  }
-
-  /// A부터 maxRow까지 행 이름 생성
-  List<String> _generateRowNames(String maxRow) {
-    List<String> rows = [];
-    int maxRowCode = maxRow.codeUnitAt(0);
-
-    for (int i = 65; i <= maxRowCode; i++) {
-      // A(65)부터 시작
-      rows.add(String.fromCharCode(i));
-    }
-
-    return rows;
-  }
-
-  /// 기본 좌석 배치 생성 (API 실패 시)
-  SeatLayout _generateDefaultSeatLayout(String seatZone) {
-    final config = _getZoneConfiguration(seatZone);
-    final maxRow = config['maxRow'] as String;
-    final maxCol = config['maxCol'] as int;
-
-    final rows = _generateRowNames(maxRow);
-    List<SeatRow> seatRows = [];
-    int seatIdCounter = 1000; // 임시 seat_id 시작값
-
-    for (String row in rows) {
-      List<Seat> seats = [];
-      for (int col = 1; col <= maxCol; col++) {
-        // 기본적으로 절반은 available, 절반은 sold
-        final status = (col % 2 == 0) ? 'available' : 'sold';
-        seats.add(
-          Seat(
-            seatId: seatIdCounter++,
-            seatRow: row,
-            seatCol: col,
-            reservationStatus: status,
-          ),
-        );
-      }
-      seatRows.add(SeatRow(row: row, seats: seats));
-    }
-
-    return SeatLayout(
-      performanceId: _performanceId,
-      performanceSessionId: _sessionId,
-      seatZone: seatZone,
-      price: 150000, // 기본 가격
-      maxRow: maxRow,
-      maxCol: maxCol,
-      seatLayout: seatRows,
-    );
-  }
 
   /// 구역 정보 가져오기 (API 데이터 + 고정 구역)
   SeatPricingInfo? _getZoneInfo(String zone) {
@@ -324,21 +178,17 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
       _currentSeatLayout = null;
     });
 
-    // 서버에서 받아온 구역(1,2,3,4)만 좌석 레이아웃 로드
-    final zoneInfo = _getZoneInfo(zone);
-    if (zoneInfo != null && zoneInfo.isAvailable) {
-      _loadSeatLayout(zone);
+    // 모든 구역에 대해 좌석 레이아웃 로드 시도
+    _loadSeatLayout(zone);
 
-      // 좌석 선택 영역으로 자동 스크롤
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: Duration(milliseconds: 500),
-          curve: Curves.easeInOut,
-        );
-      });
-    }
-    // 다른 구역은 선택만 되고 좌석 레이아웃은 로드하지 않음
+    // 좌석 선택 영역으로 자동 스크롤
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+      );
+    });
   }
 
   @override
@@ -457,50 +307,6 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
     );
   }
 
-  Widget _buildPriceItem(String title, Color color, String price) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 16,
-          height: 16,
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.3),
-            border: Border.all(color: color, width: 2),
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ),
-        SizedBox(width: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            Text(
-              price,
-              style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Color _getZoneColor(String zone) {
-    // VIP 구역 (빨간색)
-    if (zone.startsWith('F')) {
-      return Color(0xFFD32F2F);
-    }
-
-    // 일반석 구역 (노란색)
-    return Color(0xFFFFC107);
-  }
 
   Widget _buildZoneLayout() {
     return Container(
@@ -949,13 +755,8 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
   }
 
   Widget _buildNextButton() {
-    final selectedZoneInfo = _selectedZone != null
-        ? _getZoneInfo(_selectedZone!)
-        : null;
-    final isActiveZone =
-        selectedZoneInfo != null && selectedZoneInfo.isAvailable;
     final canProceed =
-        _selectedSeatId != null && _currentSeatLayout != null && isActiveZone;
+        _selectedSeatId != null && _currentSeatLayout != null;
 
     return Container(
       padding: EdgeInsets.all(16),
@@ -1004,13 +805,6 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
       return '구역을 선택해주세요';
     }
 
-    final selectedZoneInfo = _getZoneInfo(_selectedZone!);
-    final isActiveZone =
-        selectedZoneInfo != null && selectedZoneInfo.isAvailable;
-
-    if (!isActiveZone) {
-      return '해당 구역은 곧 이용 가능합니다';
-    }
 
     if (_selectedSeatNumber == null) {
       return '좌석을 선택해주세요';
@@ -1090,8 +884,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
     }
 
     final selectedZoneInfo = _getZoneInfo(_selectedZone!);
-    // 서버에서 받아온 활성 구역(1,2,3,4)만 결제 가능
-    if (selectedZoneInfo == null || !selectedZoneInfo.isAvailable) {
+    if (selectedZoneInfo == null) {
       return;
     }
 
@@ -1100,6 +893,8 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
       (seat) => seat.seatId == _selectedSeatId,
     );
 
+    print('💳 결제 데이터 생성: performanceId=$_performanceId, sessionId=$_sessionId, seatId=${selectedSeat.seatId}');
+    
     // 새로운 PaymentData 모델 사용
     final paymentData = TicketingPaymentData(
       merchantUid: 'TKT_${DateTime.now().millisecondsSinceEpoch}',

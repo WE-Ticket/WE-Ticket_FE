@@ -204,11 +204,13 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen>
                   : 0,
               'seat_id': widget.paymentData is TicketingPaymentData
                   ? (widget.paymentData as TicketingPaymentData)
+                            .selectedSeat['seatId'] ??
+                        (widget.paymentData as TicketingPaymentData)
                             .selectedSeat['seat_id'] ??
                         (widget.paymentData as TicketingPaymentData)
                             .selectedSeat['id'] ??
-                        1
-                  : 1,
+                        0
+                  : 0,
               'user_id': userId,
             };
 
@@ -334,11 +336,13 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen>
                   : 0,
               'seat_id': widget.paymentData is TicketingPaymentData
                   ? (widget.paymentData as TicketingPaymentData)
+                            .selectedSeat['seatId'] ??
+                        (widget.paymentData as TicketingPaymentData)
                             .selectedSeat['seat_id'] ??
                         (widget.paymentData as TicketingPaymentData)
                             .selectedSeat['id'] ??
-                        1
-                  : 1,
+                        0
+                  : 0,
               'user_id': userId,
             };
 

@@ -4,6 +4,10 @@ import 'package:we_ticket/features/transfer/presentation/screens/my_transfer_man
 import '../../../../core/constants/app_colors.dart';
 import '../../../../shared/presentation/widgets/app_snackbar.dart';
 import '../../../auth/presentation/providers/auth_guard.dart';
+import '../../../auth/presentation/providers/auth_level_provider.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../auth/domain/entities/auth_level_entities.dart';
+import '../../../auth/presentation/screens/auth_management_screen.dart';
 import '../providers/transfer_provider.dart';
 import '../../data/transfer_models.dart';
 import 'transfer_detail_screen.dart';
@@ -62,6 +66,140 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
       listen: false,
     );
     await transferProvider.loadTransferTickets();
+
+    // 사용자 인증 레벨도 로드
+    await _loadUserAuthLevel();
+  }
+
+  /// 사용자 인증 레벨 로드
+  Future<void> _loadUserAuthLevel() async {
+    if (!mounted) return;
+
+    final authProvider = context.read<AuthProvider>();
+    final authLevelProvider = context.read<AuthLevelProvider>();
+
+    final userId = authProvider.currentUserId;
+    if (userId != null) {
+      await authLevelProvider.loadUserAuthLevel(userId);
+    }
+  }
+
+  /// 모바일 신분증 인증이 필요한 기능 접근 시 체크
+  bool _checkMobileIdAuth({
+    required VoidCallback onAuthenticated,
+    String? customMessage,
+  }) {
+    final authLevelProvider = context.read<AuthLevelProvider>();
+
+    if (authLevelProvider.currentLevel.isAtLeast(AuthLevel.mobileId)) {
+      onAuthenticated();
+      return true;
+    } else {
+      _showAuthUpgradeDialog(customMessage);
+      return false;
+    }
+  }
+
+  /// 인증 업그레이드 다이얼로그 표시
+  void _showAuthUpgradeDialog(String? customMessage) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.security, color: AppColors.warning, size: 24),
+              SizedBox(width: 8),
+              Text(
+                '안전 인증 필요',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                customMessage ?? '양도 거래는 모바일 신분증 인증이 완료된 사용자만 이용할 수 있습니다.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                  height: 1.4,
+                ),
+              ),
+              SizedBox(height: 12),
+              Container(
+                padding: EdgeInsets.all(12),
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.warning.withOpacity(0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '안전 인증 혜택',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.warning,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      '• 안전한 양도 거래\n• 강화된 계정 보안\n• 신뢰할 수 있는 서비스',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                '취소',
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AuthManagementScreen(),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text('인증하기'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -219,11 +357,16 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
                   AuthGuard.requireAuth(
                     context,
                     onAuthenticated: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => MyTransferManageScreen(),
-                        ),
+                      _checkMobileIdAuth(
+                        onAuthenticated: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => MyTransferManageScreen(),
+                            ),
+                          );
+                        },
+                        customMessage: '양도 관리는 모바일 신분증 인증이 필요합니다.',
                       );
                     },
                     message: '양도 관리는 로그인이 필요합니다',
@@ -251,11 +394,16 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
                   AuthGuard.requireAuth(
                     context,
                     onAuthenticated: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => PrivateTransferScreen(),
-                        ),
+                      _checkMobileIdAuth(
+                        onAuthenticated: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => PrivateTransferScreen(),
+                            ),
+                          );
+                        },
+                        customMessage: '비공개 양도는 모바일 신분증 인증이 필요합니다.',
                       );
                     },
                     message: '비공개 양도는 로그인이 필요합니다',
@@ -659,12 +807,24 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
 
     return GestureDetector(
       onTap: () {
-        Navigator.push(
+        AuthGuard.requireAuth(
           context,
-          MaterialPageRoute(
-            builder: (context) =>
-                TransferDetailScreen(transferTicketId: ticket.transferTicketId),
-          ),
+          onAuthenticated: () {
+            _checkMobileIdAuth(
+              onAuthenticated: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => TransferDetailScreen(
+                      transferTicketId: ticket.transferTicketId,
+                    ),
+                  ),
+                );
+              },
+              customMessage: '양도 티켓 상세 정보는 모바일 신분증 인증이 필요합니다.',
+            );
+          },
+          message: '양도 티켓 상세 정보는 로그인이 필요합니다',
         );
       },
       child: Container(
