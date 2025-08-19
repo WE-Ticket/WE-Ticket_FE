@@ -879,26 +879,15 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     String gateId,
   ) async {
     try {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('디버깅 입장 처리 중...'),
-            duration: Duration(seconds: 2),
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => NFCEntryScreen(
+            ticketId: _ticketDetail!['id'],
+            ticketData: _ticketDetail!,
           ),
-        );
-      }
-
-      // 실제로는 입장 API를 호출해야 함
-      await Future.delayed(Duration(seconds: 1));
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('디버깅 입장 완료!'),
-            backgroundColor: AppColors.success,
-          ),
-        );
-      }
+        ),
+      );
     } catch (e) {
       rethrow;
     }

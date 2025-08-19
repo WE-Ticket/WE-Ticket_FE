@@ -6,7 +6,6 @@ import 'package:we_ticket/features/ticketing/data/services/ticket_service.dart';
 import 'package:we_ticket/shared/presentation/screens/nft_ticket_complete_screen.dart';
 import 'package:we_ticket/shared/presentation/providers/api_provider.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../features/auth/presentation/providers/auth_provider.dart';
 
 class NFTIssuanceScreen extends StatefulWidget {
   final PaymentData paymentData;
@@ -94,7 +93,7 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
     }
   }
 
-  /// 티켓 발행 프로세스
+  /// 티켓 발행 프로세스 (애니메이션만)
   Future<void> _processTicketing() async {
     final ticketData = widget.paymentData as TicketingPaymentData;
 
@@ -104,30 +103,10 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
       print('✅ 결제 검증 완료');
     });
 
-    // 2단계: NFT 티켓 생성 요청
-    CreateTicketResponse? ticketResponse;
+    // 2단계: NFT 티켓 생성 (애니메이션만)
     await _executeStep(1, () async {
-      final authProvider = context.read<AuthProvider>();
-      final userId = authProvider.currentUserId;
-
-      if (userId == null) {
-        throw Exception('로그인이 필요합니다. 다시 로그인해주세요.');
-      }
-
-      final request = CreateTicketRequest(
-        performanceSessionId: ticketData.performanceSessionId,
-        seatId: _safeParseInt(ticketData.selectedSeat['seatId']),
-        userId: userId,
-      );
-
-      print('🔍 티켓 생성 요청: ${request}');
-      final result = await _ticketService.createTicket(request);
-      if (result.isSuccess) {
-        ticketResponse = result.data;
-        print('✅ NFT 티켓 생성 완료: ${ticketResponse?.ticketId}');
-      } else {
-        throw Exception(result.errorMessage ?? 'NFT 티켓 생성 실패');
-      }
+      await Future.delayed(Duration(milliseconds: 2000));
+      print('✅ NFT 티켓 생성 완료');
     });
 
     // 3단계: 블록체인 등록 처리
@@ -143,10 +122,10 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
     });
 
     await Future.delayed(Duration(milliseconds: 500));
-    _navigateToCompleteScreen(ticketResponse);
+    _navigateToCompleteScreen(null);
   }
 
-  /// 양도 이행 프로세스
+  /// 양도 이행 프로세스 (애니메이션만)
   Future<void> _processTransfer() async {
     final transferData = widget.paymentData as TransferPaymentData;
 
@@ -156,38 +135,15 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
       print('✅ 양도 요청 검증 완료');
     });
 
-    // 2단계: 소유권 이전 처리 (실제 API 호출)
-    Map<String, dynamic>? transferResponse;
+    // 2단계: 소유권 이전 처리 (애니메이션만)
     await _executeStep(1, () async {
-      try {
-        // 실제 양도 API 호출
-        final apiRequest = transferData.toTransferApiRequest();
-        print('🔍 양도 API 호출: $apiRequest');
-
-        final apiProvider = context.read<ApiProvider>();
-        final transferService = apiProvider.apiService.transfer;
-
-        final result = await transferService.postProcessTransfer(
-          transferTicketId: apiRequest['transfer_ticket_id'],
-          userId: apiRequest['buyer_user_id'],
-        );
-        if (result.isSuccess) {
-          transferResponse = result.data;
-        } else {
-          throw Exception(result.errorMessage ?? '양도 처리 실패');
-        }
-      } catch (e) {
-        print('❌ 양도 API 호출 실패: $e');
-        _handleError(e.toString());
-        return;
-      }
+      await Future.delayed(Duration(milliseconds: 1800));
+      print('✅ 소유권 이전 완료');
     });
-
-    if (_hasError) return;
 
     // 3단계: 블록체인 기록
     await _executeStep(2, () async {
-      await Future.delayed(Duration(milliseconds: 2200));
+      await Future.delayed(Duration(milliseconds: 2000));
       print('✅ 블록체인 기록 완료');
     });
 
@@ -198,7 +154,7 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
     });
 
     await Future.delayed(Duration(milliseconds: 500));
-    _navigateToCompleteScreen(null, transferResponse);
+    _navigateToCompleteScreen(null, null);
   }
 
   Future<void> _executeStep(
@@ -232,20 +188,26 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
 
     if (isTransfer) {
       final transferData = widget.paymentData as TransferPaymentData;
+      final apiResponse = transferData.apiResponse;
 
-      // 양도 완료 데이터 생성
+      // 양도 완룼 데이터 생성
       resultData = {
         'type': 'transfer',
         'transferId':
+            apiResponse?['transfer_ticket_id']?.toString() ??
             transferResponse?['transfer_ticket_id']?.toString() ??
             'TRF_${DateTime.now().millisecondsSinceEpoch}',
         'transactionHash':
+            apiResponse?['transaction_hash'] ??
             transferResponse?['transaction_hash'] ??
             'TXN_${DateTime.now().millisecondsSinceEpoch}',
         'completedAt':
+            apiResponse?['finished_datetime'] ??
             transferResponse?['finished_datetime'] ??
             DateTime.now().toIso8601String(),
-        'transferStatus': transferResponse?['transfer_status'] ?? 'completed',
+        'transferStatus': 
+            apiResponse?['transfer_status'] ??
+            transferResponse?['transfer_status'] ?? 'completed',
 
         // 공연 정보
         'performanceTitle': transferData.performanceTitle,
@@ -270,34 +232,57 @@ class _NFTIssuanceScreenState extends State<NFTIssuanceScreen>
       };
     } else {
       final ticketData = widget.paymentData as TicketingPaymentData;
+      final apiResponse = ticketData.apiResponse;
 
-      if (ticketResponse != null) {
+      if (apiResponse != null) {
         // 실제 API 응답 데이터 사용
-        resultData = ticketResponse.toCompleteScreenData();
-      } else {
-        // 더미 데이터 생성
         resultData = {
           'type': 'ticketing',
-          'nftId': 'NFT_${DateTime.now().millisecondsSinceEpoch}',
-          'tokenId': '${DateTime.now().millisecondsSinceEpoch}',
-          'contractAddress':
-              '0x${DateTime.now().millisecondsSinceEpoch.toRadixString(16)}',
-          'blockchainNetwork': 'OmniOne Chain',
+          'ticketId': apiResponse['ticket_id']?.toString() ?? '',
+          'performanceTitle': apiResponse['performance_title'] ?? '공연',
+          'performerName': apiResponse['performer_name'] ?? '공연자',
+          'sessionDatetime': apiResponse['session_datetime'] ?? '',
+          'venueName': apiResponse['venue_name'] ?? '공연장',
+          'seatZone': apiResponse['seat_zone'] ?? '',
+          'seatRow': apiResponse['seat_row'] ?? '',
+          'seatColumn': apiResponse['seat_column']?.toString() ?? '',
+          'seatGrade': apiResponse['seat_grade'] ?? '',
           'issuedAt': DateTime.now().toIso8601String(),
+          
+          // 추가 정보
+          'concertInfo': ticketData.concertInfo,
+          'selectedSession': ticketData.selectedSession,
+          'selectedSeat': ticketData.selectedSeat,
+          'selectedZone': ticketData.selectedZone,
+          'paymentAmount': ticketData.amount,
+          'paymentMethod': ticketData.paymentMethod,
+          'merchantUid': ticketData.merchantUid,
+        };
+      } else {
+        // 더미 데이터 생성 (백업용)
+        resultData = {
+          'type': 'ticketing',
+          'ticketId': 'TKT_${DateTime.now().millisecondsSinceEpoch}',
+          'performanceTitle': ticketData.sessionSeatInfo['title'] ?? '공연',
+          'performerName': ticketData.concertInfo['performer'] ?? '공연자',
+          'sessionDatetime': ticketData.selectedSession['datetime'] ?? '',
+          'venueName': ticketData.concertInfo['venue'] ?? '공연장',
+          'seatZone': ticketData.selectedZone,
+          'seatRow': ticketData.selectedSeat['row'] ?? '',
+          'seatColumn': ticketData.selectedSeat['column']?.toString() ?? '',
+          'seatGrade': ticketData.seatGrade,
+          'issuedAt': DateTime.now().toIso8601String(),
+          
+          // 추가 정보
+          'concertInfo': ticketData.concertInfo,
+          'selectedSession': ticketData.selectedSession,
+          'selectedSeat': ticketData.selectedSeat,
+          'selectedZone': ticketData.selectedZone,
+          'paymentAmount': ticketData.amount,
+          'paymentMethod': ticketData.paymentMethod,
+          'merchantUid': ticketData.merchantUid,
         };
       }
-
-      // 추가 정보 포함
-      resultData.addAll({
-        'concertInfo': ticketData.concertInfo,
-        'selectedSession': ticketData.selectedSession,
-        'selectedSeat': ticketData.selectedSeat,
-        'selectedZone': ticketData.selectedZone,
-        'seatGrade': ticketData.seatGrade,
-        'paymentAmount': ticketData.amount,
-        'paymentMethod': ticketData.paymentMethod,
-        'merchantUid': ticketData.merchantUid,
-      });
     }
 
     Navigator.pushReplacement(

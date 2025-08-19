@@ -57,39 +57,42 @@ class _DebugLogDialogState extends State<DebugLogDialog> {
           children: [
             // 헤더
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  widget.title,
-                  style: const TextStyle(
-                    color: AppColors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Text(
+                    widget.title,
+                    style: const TextStyle(
+                      color: AppColors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-                Row(
-                  children: [
-                    // 로그 복사 버튼
-                    IconButton(
-                      onPressed: _copyLogs,
-                      icon: const Icon(Icons.copy, color: AppColors.white),
-                      tooltip: '로그 복사',
-                    ),
-                    // 로그 클리어 버튼
-                    IconButton(
-                      onPressed: _clearLogs,
-                      icon: const Icon(Icons.clear_all, color: AppColors.white),
-                      tooltip: '로그 지우기',
-                    ),
-                    // 닫기 버튼
-                    IconButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                        widget.onClose?.call();
-                      },
-                      icon: const Icon(Icons.close, color: AppColors.white),
-                    ),
-                  ],
+                // 로그 복사 버튼
+                IconButton(
+                  onPressed: _copyLogs,
+                  icon: const Icon(Icons.copy, color: AppColors.white, size: 20),
+                  tooltip: '로그 복사',
+                  padding: const EdgeInsets.all(4),
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                ),
+                // 로그 클리어 버튼
+                IconButton(
+                  onPressed: _clearLogs,
+                  icon: const Icon(Icons.clear_all, color: AppColors.white, size: 20),
+                  tooltip: '로그 지우기',
+                  padding: const EdgeInsets.all(4),
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                ),
+                // 닫기 버튼
+                IconButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    widget.onClose?.call();
+                  },
+                  icon: const Icon(Icons.close, color: AppColors.white, size: 20),
+                  padding: const EdgeInsets.all(4),
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                 ),
               ],
             ),

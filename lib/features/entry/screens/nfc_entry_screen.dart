@@ -9,6 +9,7 @@ import 'package:we_ticket/features/auth/presentation/providers/auth_provider.dar
 import 'package:we_ticket/features/entry/screens/manual_entry_screen.dart';
 import 'package:we_ticket/shared/presentation/providers/api_provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/utils/debug_log_dialog.dart';
 import 'package:flutter_nfc_kit/flutter_nfc_kit.dart';
 
 class NFCEntryScreen extends StatefulWidget {
@@ -232,36 +233,52 @@ class _NFCEntryScreenState extends State<NFCEntryScreen>
     });
     try {
       print('WE-Ticket 입장 시스템 시작');
+      DebugLogManager.instance.info('WE-Ticket 입장 시스템 시작');
 
       print('[입장시스템] nonce 요청 시작');
+      DebugLogManager.instance.info('[입장시스템] nonce 요청 시작');
       final nonceResult = await entryNonce(userId, ticketId, gateId);
       final nonce = nonceResult['nonce'];
       print('[입장시스템] nonce 받아오기 성공 - nonce : $nonce');
+      DebugLogManager.instance.success(
+        '[입장시스템] nonce 받아오기 성공 - nonce : $nonce',
+      );
 
       print('[입장시스템] nonce로 auth DID 생성');
+      DebugLogManager.instance.info('[입장시스템] nonce로 auth DID 생성');
       final response = await platform.invokeMethod('didAuth', {'nonce': nonce});
       final result = _safeMapConversion(response);
 
       if (result['success'] == true) {
         print('[Flutter] auth DID 생성 성공');
+        DebugLogManager.instance.success('[Flutter] auth DID 생성 성공');
         print('[Flutter] 생성된 auth did : ${result['didAuth']}');
+        DebugLogManager.instance.debug(
+          '[Flutter] 생성된 auth did : ${result['didAuth']}',
+        );
       } else {
         print('[Flutter] ❌ WE-Ticket DID Auth  생성 실패: ${result['error']}');
+        DebugLogManager.instance.error(
+          '[Flutter] WE-Ticket DID Auth 생성 실패: ${result['error']}',
+        );
         throw Exception('WE-Ticket DID Auth  생성 실패: ${result['error']}');
       }
 
       print('didAuth 검증 서버에 요청 시작');
+      DebugLogManager.instance.info('didAuth 검증 서버에 요청 시작');
       final success = await postDidAuth(userId, ticketId, result);
 
       //TODO 후속 절차
       if (success) {
         print('[입장 시스템] 입장 성공!');
+        DebugLogManager.instance.success('[입장 시스템] 입장 성공!');
         setState(() {
           _entryResult = true;
           _isProcessing = false;
         });
       } else {
         print('[입장 시스템] 입장 실패ㅠㅠ');
+        DebugLogManager.instance.error('[입장 시스템] 입장 실패');
         setState(() {
           _entryResult = false;
           _isProcessing = false;
@@ -269,9 +286,11 @@ class _NFCEntryScreenState extends State<NFCEntryScreen>
       }
     } on PlatformException catch (e) {
       print('[Flutter] ❌ 플랫폼 예외: ${e.message}');
+      DebugLogManager.instance.error('[Flutter] 플랫폼 예외: ${e.message}');
       throw Exception('플랫폼 오류: ${e.message}');
     } catch (e) {
       print('[Flutter] ❌ WE-Ticket DID Auth 예외: $e');
+      DebugLogManager.instance.error('[Flutter] WE-Ticket DID Auth 예외: $e');
       throw Exception('WE-Ticket DID Auth 중 예상치 못한 오류: $e');
     }
   }
@@ -283,9 +302,8 @@ class _NFCEntryScreenState extends State<NFCEntryScreen>
     String gateId,
   ) async {
     print('입장을 위한 nonce 요청');
-    final url = Uri.parse(
-      'http://13.236.171.188:8000/api/tickets/entry-nonce/',
-    );
+    DebugLogManager.instance.info('입장을 위한 nonce 요청');
+    final url = Uri.parse('http://43.201.185.8:8000/api/tickets/entry-nonce/');
 
     final payload = {
       'user_id': userId,
@@ -294,6 +312,7 @@ class _NFCEntryScreenState extends State<NFCEntryScreen>
     };
 
     print('nonce 요청 payload : $payload ');
+    DebugLogManager.instance.debug('nonce 요청 payload : $payload');
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -311,28 +330,43 @@ class _NFCEntryScreenState extends State<NFCEntryScreen>
         //FIXME 타임 스탬프도 받아야 함!!
         Map<String, dynamic> result = jsonDecode(response.body);
         print('[Flutter] ✅ nonce 요청 성공: ${response.body}');
+        DebugLogManager.instance.success(
+          '[Flutter] nonce 요청 성공: ${response.body}',
+        );
         return result;
       } else {
         print('[Flutter] ❌ nonce 요청 성공: ${response.statusCode}');
+        DebugLogManager.instance.error(
+          '[Flutter] nonce 요청 실패: ${response.statusCode}',
+        );
         print('[Flutter] 응답 내용: ${response.body}');
+        DebugLogManager.instance.error('[Flutter] 응답 내용: ${response.body}');
         return {};
       }
     } catch (e) {
       print('[Flutter] ❌ 요청 예외 발생: $e');
+      DebugLogManager.instance.error('[Flutter] 요청 예외 발생: $e');
       throw Exception('nonce 요청 중 오류 발생: $e');
     }
   }
 
   //FIXME Key Attenstation 넘기기
+  void _showDebugLogDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const DebugLogDialog(title: '입장 디버그 로그'),
+    );
+  }
+
   Future<bool> postDidAuth(
     int userId,
     String ticketId,
     Map<String, dynamic> didData,
   ) async {
     print('입장을 위한 auth DID API 시작');
-    final url = Uri.parse(
-      'http://13.236.171.188:8000/api/users/did-auth/entry/',
-    );
+    DebugLogManager.instance.info('입장을 위한 auth DID API 시작');
+    final url = Uri.parse('http://43.201.185.8:8000/api/users/did-auth/entry/');
 
     final payload = {
       'user_id': userId,
@@ -348,6 +382,7 @@ class _NFCEntryScreenState extends State<NFCEntryScreen>
     };
 
     print('입장 요청 did auth payload : $payload ');
+    DebugLogManager.instance.debug('입장 요청 did auth payload : $payload');
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -363,14 +398,22 @@ class _NFCEntryScreenState extends State<NFCEntryScreen>
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         print('[Flutter] ✅ auth did 요청 성공: ${response.body}');
+        DebugLogManager.instance.success(
+          '[Flutter] auth did 요청 성공: ${response.body}',
+        );
         return true;
       } else {
         print('[Flutter] ❌ did auth 요청 실패: ${response.statusCode}');
+        DebugLogManager.instance.error(
+          '[Flutter] did auth 요청 실패: ${response.statusCode}',
+        );
         print('[Flutter] 응답 내용: ${response.body}');
+        DebugLogManager.instance.error('[Flutter] 응답 내용: ${response.body}');
         return false;
       }
     } catch (e) {
       print('[Flutter] ❌ did auth 요청 예외 발생: $e');
+      DebugLogManager.instance.error('[Flutter] did auth 요청 예외 발생: $e');
       throw Exception('did auth 요청 중 오류 발생: $e');
     }
   }
@@ -590,7 +633,7 @@ class _NFCEntryScreenState extends State<NFCEntryScreen>
                       ),
                     ],
 
-                    SizedBox(height: 40),
+                    SizedBox(height: 20),
 
                     // 액션 버튼
                     if (!_isScanning && !_isProcessing) ...[
@@ -652,8 +695,18 @@ class _NFCEntryScreenState extends State<NFCEntryScreen>
               ),
             ),
 
-            SizedBox(height: 20),
-            
+            SizedBox(height: 5),
+
+            TextButton(
+              onPressed: () {
+                _showDebugLogDialog();
+                final authProvider = context.read<AuthProvider>();
+                final userId = authProvider.currentUserId; // 현재 로그인한 사용자 ID
+                _entryAccess(userId!, widget.ticketId, 'GATE_001');
+              },
+              child: Text('디버깅용 입장 시작'),
+            ),
+
             // 수동 검표 버튼
             SizedBox(
               width: double.infinity,
@@ -673,10 +726,7 @@ class _NFCEntryScreenState extends State<NFCEntryScreen>
                 icon: Icon(Icons.person_pin, size: 20),
                 label: Text(
                   '수동 검표',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                 ),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.primary,
@@ -688,57 +738,59 @@ class _NFCEntryScreenState extends State<NFCEntryScreen>
               ),
             ),
 
+            SizedBox(height: 100),
+
             // 안내 정보
-            if (_entryResult == null) ...[
-              Container(
-                padding: EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.security,
-                          size: 16,
-                          color: AppColors.primary,
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          'ZKP 인증으로 개인정보 보호',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.verified,
-                          size: 16,
-                          color: AppColors.primary,
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          '블록체인 기반 안전한 입장 기록',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            // if (_entryResult == null) ...[
+            //   Container(
+            //     padding: EdgeInsets.all(16),
+            //     decoration: BoxDecoration(
+            //       color: AppColors.primary.withOpacity(0.1),
+            //       borderRadius: BorderRadius.circular(8),
+            //     ),
+            //     child: Column(
+            //       children: [
+            //         Row(
+            //           children: [
+            //             Icon(
+            //               Icons.security,
+            //               size: 16,
+            //               color: AppColors.primary,
+            //             ),
+            //             SizedBox(width: 8),
+            //             Text(
+            //               'ZKP 인증으로 개인정보 보호',
+            //               style: TextStyle(
+            //                 fontSize: 12,
+            //                 color: AppColors.primary,
+            //                 fontWeight: FontWeight.w500,
+            //               ),
+            //             ),
+            //           ],
+            //         ),
+            //         SizedBox(height: 4),
+            //         Row(
+            //           children: [
+            //             Icon(
+            //               Icons.verified,
+            //               size: 16,
+            //               color: AppColors.primary,
+            //             ),
+            //             SizedBox(width: 8),
+            //             Text(
+            //               '블록체인 기반 안전한 입장 기록',
+            //               style: TextStyle(
+            //                 fontSize: 12,
+            //                 color: AppColors.primary,
+            //                 fontWeight: FontWeight.w500,
+            //               ),
+            //             ),
+            //           ],
+            //         ),
+            //       ],
+            //     ),
+            //   ),
+            // ],
           ],
         ),
       ),
