@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../domain/entities/did_entities.dart';
 
-/// DID 생성 진행상황을 보여주는 다이얼로그
+/// 보안 인증서 생성 진행상황을 보여주는 다이얼로그
 class DidCreationDialog extends StatelessWidget {
   final DidCreationProgress progress;
 
@@ -119,10 +119,11 @@ class DidCreationDialog extends StatelessWidget {
   String _getTitle() {
     switch (progress.status) {
       case DidCreationStatus.creating:
-      case DidCreationStatus.registering:
         return '보안 인증서 생성 중';
+      case DidCreationStatus.registering:
+        return '보안 인증서 등록 중';
       case DidCreationStatus.completed:
-        return '생성 완료';
+        return '보안 인증서 발급 완료';
       case DidCreationStatus.failed:
         return '생성 실패';
       case DidCreationStatus.idle:

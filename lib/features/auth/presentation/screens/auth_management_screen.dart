@@ -13,6 +13,7 @@ import '../widgets/auth_upgrade_card.dart';
 import '../widgets/did_creation_dialog.dart';
 import '../widgets/auth_method_selection_dialog.dart';
 import '../widgets/additional_auth_explanation_dialog.dart';
+import '../widgets/auth_success_dialog.dart';
 import '../../../../shared/presentation/widgets/app_snackbar.dart';
 import 'omnione_cx_auth_screen.dart';
 
@@ -265,9 +266,6 @@ class _AuthManagementScreenState extends State<AuthManagementScreen> {
 
       // 2. DID 생성 플로우 시작
       await _startDidCreationFlow(didProvider, userId!);
-
-      // 3. 성공 메시지 표시
-      _showSuccess('본인인증이 완료되었습니다!');
     } catch (e) {
       AppLogger.error('인증 성공 처리 오류', e, null, 'AUTH');
       _showError('인증 처리 중 오류가 발생했습니다.');
@@ -278,7 +276,7 @@ class _AuthManagementScreenState extends State<AuthManagementScreen> {
     DidProvider didProvider,
     int userId,
   ) async {
-    // DID 생성 다이얼로그 표시
+    // 보안 인증서 생성 다이얼로그 표시
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -289,7 +287,7 @@ class _AuthManagementScreenState extends State<AuthManagementScreen> {
       ),
     );
 
-    // DID 생성 및 등록 실행
+    // 보안 인증서 생성 및 등록 실행
     final success = await didProvider.createAndRegisterDid(userId: userId);
 
     // 다이얼로그 닫기
@@ -297,8 +295,20 @@ class _AuthManagementScreenState extends State<AuthManagementScreen> {
       Navigator.of(context).pop();
     }
 
-    if (!success && didProvider.errorMessage != null) {
-      _showError(didProvider.errorMessage!);
+    // 결과에 따른 다이얼로그 표시
+    if (mounted) {
+      if (success) {
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const AuthSuccessDialog(
+            title: '보안 인증서 발급 완료',
+            message: '보안 인증서가 성공적으로 발급되었습니다.\n이제 안전한 티켓 거래 서비스를 이용하실 수 있습니다.',
+          ),
+        );
+      } else if (didProvider.errorMessage != null) {
+        _showError(didProvider.errorMessage!);
+      }
     }
   }
 

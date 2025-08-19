@@ -26,7 +26,9 @@ class AppDelegate: FlutterAppDelegate {
         self.handleDelDidDoc(result: result)
 
       case "didAuth":
-        self.handleDidAuth(result: result)
+        let args = call.arguments as? [String: Any]
+        let nonce = args?["nonce"] as? String
+        self.handleDidAuth(nonce: nonce, result: result)
 
       default:
         result(FlutterMethodNotImplemented)
@@ -46,7 +48,7 @@ extension AppDelegate {
       do {
         print("[ios] WE-Ticket DID 생성 시작")
         // 1) KeyManager 생성 & 키 생성 (예시: 생체/Keychain/Secure Enclave 등)
-        let keyManager = try .init(fileName:  "WETicketWallet")
+        let keyManager = try KeyManager(fileName: "WETicketWallet")
 
         let keyId = "weticket_key_\(Int(Date().timeIntervalSince1970 * 1000))"
         let bioKeyRequest = SecureKeyGenRequest(id: keyId,
@@ -67,8 +69,8 @@ extension AppDelegate {
         let did = try didManager.genDID(methodName: "weticket")
         print("[ios] WE-Ticket DID 생성 : \(did)")
 
-        var didKeyInfos: [DIDKeyInfo] = .init()
-        didKeyInfos.append(.init(keyInfo: keyInfo, methodType: [.assertionMethod, .authentication]))
+        var didKeyInfos: [DIDKeyInfo] = []
+        didKeyInfos.append(DIDKeyInfo(keyInfo: keyInfo, methodType: [.assertionMethod, .authentication]))
         print("[ios] DID Key Info 생성 : \(didKeyInfos)")
 
         // 4) DID Document 생성 & proof 채우기
@@ -155,38 +157,84 @@ extension AppDelegate {
     }
   }
 
-  func handleDidAuth(result: @escaping FlutterResult) {
+  // func handleDidAuth(result: @escaping FlutterResult) {
+  //   DispatchQueue.global(qos: .userInitiated).async {
+  //     do {
+  //       print("[ios] DID Auth 과정 시작 ")
+
+  //       let nonce = call.arguments["nonce"] as? String
+  //       print("[ios] 전달받은 nonce : \(nonce)")
+
+  //       let keyManager = try .init(fileName:  "WETicketWallet")
+  //       let didManager = try DIDManager(fileName: "weticket_did")
+
+  //       var didDocument = try didManager.getDocument()
+  //       print("[ios] DID Doc 조회 : \(didDocument)")
+
+  //       let keyId = didDocument.verificationMethod.first!.id
+  //       print("[ios] key Id 조회 : \(keyId)")
+
+  //       let proof = Proof(created: nowISO8601(),
+  //                         proofPurpose: .authentication,
+  //                         verificationMethod: "\(didDocument.id)?versionId=\(didDocument.versionId)#\(keyId)",
+  //                         type: .secp256r1Signature2018)
+
+  //       var didAuth = DIDAuth(did: didDocument.id, authNonce: nonce, proof: proof)
+  //       print("[ios] proof 및 did Auth 생성 완료")
+  //       print("[ios] 서명 전 DID Auth : \(didAuth)")
+
+  //       let jsonData = didAuth.toJson().data(using: .utf8)!
+  //       let digest = DigestUtils.getDigest(jsonData, .sha256)
+  //       let signature = try keyManager.sign(id: keyId,  digest: digest)
+  //       let encodedSig = MultibaseUtils.encode(.base58btc, signature)
+  //       didAuth.proof.proofValue = encodedSig
+  //       print("[ios] 서명 후 DID Auth : \(didAuth)")
+
+  //       let payload: [String: Any] = [
+  //         "success": true,
+  //         "didDocument": didDocument.toJson(),
+  //         "didAuth": didAuth.toJson(),
+  //         "timestamp": Int(Date().timeIntervalSince1970 * 1000)
+  //       ]
+
+  //       print("[ios] DID Auth 서명 과정 완료. ")
+  //       DispatchQueue.main.async { result(payload) }
+
+  //     } catch {
+  //       print("❌ [ios] DID Auth 서명 과정 실패.")
+  //       DispatchQueue.main.async {
+  //         result([
+  //           "success": false,
+  //           "error": "\(error)",
+  //           "timestamp": Int(Date().timeIntervalSince1970 * 1000)
+  //         ])
+  //       }
+  //     }
+  //   }
+  // }
+
+  func handleDidAuth(nonce: String?, result: @escaping FlutterResult) {
     DispatchQueue.global(qos: .userInitiated).async {
       do {
-        print("[ios] DID Auth 과정 시작 ")
-
-        let nonce = call.arguments["nonce"] as? String
-        print("[ios] 전달받은 nonce : \(nonce)")
-
-        let keyManager = try .init(fileName:  "WETicketWallet")
+        let keyManager = try KeyManager(fileName: "WETicketWallet")
         let didManager = try DIDManager(fileName: "weticket_did")
-
-        var didDocument = try didManager.getDocument()
-        print("[ios] DID Doc 조회 : \(didDocument)")
+        let didDocument = try didManager.getDocument()
 
         let keyId = didDocument.verificationMethod.first!.id
-        print("[ios] key Id 조회 : \(keyId)")
-
-        let proof = Proof(created: nowISO8601(),
-                          proofPurpose: .authentication,
-                          verificationMethod: "\(didDocument.id)?versionId=\(didDocument.versionId)#\(keyId)",
-                          type: .secp256r1Signature2018)
+        var proof = Proof(
+          created: nowISO8601(),
+          proofPurpose: .authentication,
+          verificationMethod: "\(didDocument.id)?versionId=\(didDocument.versionId)#\(keyId)",
+          type: .secp256r1Signature2018
+        )
 
         var didAuth = DIDAuth(did: didDocument.id, authNonce: nonce, proof: proof)
-        print("[ios] proof 및 did Auth 생성 완료")
-        print("[ios] 서명 전 DID Auth : \(didAuth)")
 
         let jsonData = didAuth.toJson().data(using: .utf8)!
         let digest = DigestUtils.getDigest(jsonData, .sha256)
-        let signature = try keyManager.sign(id: keyId,  digest: digest)
+        let signature = try keyManager.sign(id: keyId, digest: digest)
         let encodedSig = MultibaseUtils.encode(.base58btc, signature)
         didAuth.proof.proofValue = encodedSig
-        print("[ios] 서명 후 DID Auth : \(didAuth)")
 
         let payload: [String: Any] = [
           "success": true,
@@ -194,23 +242,17 @@ extension AppDelegate {
           "didAuth": didAuth.toJson(),
           "timestamp": Int(Date().timeIntervalSince1970 * 1000)
         ]
-
-        print("[ios] DID Auth 서명 과정 완료. ")
         DispatchQueue.main.async { result(payload) }
 
       } catch {
-        print("❌ [ios] DID Auth 서명 과정 실패.")
         DispatchQueue.main.async {
-          result([
-            "success": false,
-            "error": "\(error)",
-            "timestamp": Int(Date().timeIntervalSince1970 * 1000)
-          ])
+          result(["success": false, "error": "\(error)", "timestamp": Int(Date().timeIntervalSince1970 * 1000)])
         }
       }
     }
   }
 }
+
 
 // 유틸: ISO8601 문자열
 func nowISO8601() -> String {

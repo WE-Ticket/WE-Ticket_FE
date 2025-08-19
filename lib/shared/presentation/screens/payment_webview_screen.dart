@@ -318,6 +318,8 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen>
     }
   }
 
+  Map<String, dynamic>? _apiResponse;
+
   Future<bool> _processPaymentCompletion(String paymentId) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -396,12 +398,12 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen>
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final result = jsonDecode(response.body);
-        final isPaid = result['status'] == 'PAID';
+        _apiResponse = result; // API 응답 저장
         AppLogger.info(
-          'Payment completion result: isPaid=$isPaid, status=${result['status']}',
+          'Payment completion successful with status: ${response.statusCode}',
           'PAYMENT',
         );
-        return isPaid;
+        return true;
       } else {
         AppLogger.error(
           'Payment completion API failed',
@@ -562,10 +564,17 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen>
 
     Future.delayed(const Duration(seconds: 1), () {
       if (!mounted) return;
+      
+      // API 응답이 있으면 PaymentData에 추가
+      PaymentData paymentDataWithResponse = widget.paymentData;
+      if (_apiResponse != null) {
+        paymentDataWithResponse = widget.paymentData.copyWithApiResponse(_apiResponse!);
+      }
+      
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => NFTIssuanceScreen(paymentData: widget.paymentData),
+          builder: (_) => NFTIssuanceScreen(paymentData: paymentDataWithResponse),
         ),
       );
     });

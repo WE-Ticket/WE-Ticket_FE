@@ -83,7 +83,7 @@ class _NFTTicketCompleteScreenState extends State<NFTTicketCompleteScreen>
                 SizedBox(height: 12),
                 _buildTicketCard(),
                 SizedBox(height: 32),
-                _buildDetailInfo(),
+                // _buildDetailInfo(),
                 SizedBox(height: 32),
               ],
             ),
@@ -192,16 +192,16 @@ class _NFTTicketCompleteScreenState extends State<NFTTicketCompleteScreen>
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    SizedBox(height: 4),
-                    Text(
-                      _getTicketId(),
-                      style: TextStyle(
-                        color: AppColors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'monospace',
-                      ),
-                    ),
+                    // SizedBox(height: 4),
+                    // Text(
+                    //   _getTicketId(),
+                    //   style: TextStyle(
+                    //     color: AppColors.white,
+                    //     fontSize: 16,
+                    //     fontWeight: FontWeight.bold,
+                    //     fontFamily: 'monospace',
+                    //   ),
+                    // ),
                   ],
                 ),
                 Container(

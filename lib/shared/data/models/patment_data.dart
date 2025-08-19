@@ -4,18 +4,23 @@ abstract class PaymentData {
   final String merchantUid;
   final int amount;
   final String? paymentMethod;
+  final Map<String, dynamic>? apiResponse;
 
   const PaymentData({
     required this.paymentType,
     required this.merchantUid,
     required this.amount,
     this.paymentMethod,
+    this.apiResponse,
   });
 
   Map<String, dynamic> toMap();
   String get displayTitle;
   String get processTitle;
   String get completeTitle;
+
+  // API 응답 데이터를 추가한 새로운 인스턴스 생성
+  PaymentData copyWithApiResponse(Map<String, dynamic> response);
 }
 
 class TicketingPaymentData extends PaymentData {
@@ -42,6 +47,7 @@ class TicketingPaymentData extends PaymentData {
     required String merchantUid,
     required int amount,
     String? paymentMethod,
+    Map<String, dynamic>? apiResponse,
     required this.concertInfo,
     required this.selectedSession,
     required this.performanceId,
@@ -58,6 +64,7 @@ class TicketingPaymentData extends PaymentData {
          merchantUid: merchantUid,
          amount: amount,
          paymentMethod: paymentMethod,
+         apiResponse: apiResponse,
        );
 
   @override
@@ -77,6 +84,7 @@ class TicketingPaymentData extends PaymentData {
       'merchantUid': merchantUid,
       'amount': amount,
       'paymentMethod': paymentMethod,
+      'apiResponse': apiResponse,
       'concertInfo': concertInfo,
       'selectedSession': selectedSession,
       'performanceId': performanceId,
@@ -91,11 +99,33 @@ class TicketingPaymentData extends PaymentData {
     };
   }
 
+  @override
+  TicketingPaymentData copyWithApiResponse(Map<String, dynamic> response) {
+    return TicketingPaymentData(
+      merchantUid: merchantUid,
+      amount: amount,
+      paymentMethod: paymentMethod,
+      apiResponse: response,
+      concertInfo: concertInfo,
+      selectedSession: selectedSession,
+      performanceId: performanceId,
+      performanceSessionId: performanceSessionId,
+      sessionSeatInfo: sessionSeatInfo,
+      selectedZone: selectedZone,
+      selectedSeat: selectedSeat,
+      seatGrade: seatGrade,
+      price: price,
+      priceDisplay: priceDisplay,
+      seatLayout: seatLayout,
+    );
+  }
+
   factory TicketingPaymentData.fromMap(Map<String, dynamic> map) {
     return TicketingPaymentData(
       merchantUid: map['merchantUid'] ?? map['merchant_uid'] ?? 'unknown',
       amount: map['amount'] ?? map['price'] ?? 0,
       paymentMethod: map['paymentMethod'],
+      apiResponse: map['apiResponse'],
       concertInfo: map['concertInfo'] ?? {},
       selectedSession: map['selectedSession'] ?? {},
       performanceId: map['performanceId'] ?? 0,
@@ -139,6 +169,7 @@ class TransferPaymentData extends PaymentData {
     required String merchantUid,
     required int amount,
     String? paymentMethod,
+    Map<String, dynamic>? apiResponse,
     required this.transferTicketId,
     required this.performanceTitle,
     required this.performerName,
@@ -159,6 +190,7 @@ class TransferPaymentData extends PaymentData {
          merchantUid: merchantUid,
          amount: amount,
          paymentMethod: paymentMethod,
+         apiResponse: apiResponse,
        );
 
   @override
@@ -177,6 +209,7 @@ class TransferPaymentData extends PaymentData {
       'merchantUid': merchantUid,
       'amount': amount,
       'paymentMethod': paymentMethod,
+      'apiResponse': apiResponse,
       'transferTicketId': transferTicketId,
       'performanceTitle': performanceTitle,
       'performerName': performerName,
@@ -195,6 +228,31 @@ class TransferPaymentData extends PaymentData {
     };
   }
 
+  @override
+  TransferPaymentData copyWithApiResponse(Map<String, dynamic> response) {
+    return TransferPaymentData(
+      merchantUid: merchantUid,
+      amount: amount,
+      paymentMethod: paymentMethod,
+      apiResponse: response,
+      transferTicketId: transferTicketId,
+      performanceTitle: performanceTitle,
+      performerName: performerName,
+      sessionDatetime: sessionDatetime,
+      venueName: venueName,
+      seatNumber: seatNumber,
+      seatGrade: seatGrade,
+      transferPrice: transferPrice,
+      buyerFee: buyerFee,
+      totalPrice: totalPrice,
+      transferPriceDisplay: transferPriceDisplay,
+      buyerFeeDisplay: buyerFeeDisplay,
+      totalPriceDisplay: totalPriceDisplay,
+      isPrivateTransfer: isPrivateTransfer,
+      buyerUserId: buyerUserId,
+    );
+  }
+
   factory TransferPaymentData.fromMap(Map<String, dynamic> map) {
     return TransferPaymentData(
       merchantUid:
@@ -203,6 +261,7 @@ class TransferPaymentData extends PaymentData {
           'TRF_${DateTime.now().millisecondsSinceEpoch}',
       amount: map['amount'] ?? map['totalPrice'] ?? 0,
       paymentMethod: map['paymentMethod'],
+      apiResponse: map['apiResponse'],
       transferTicketId: map['transferTicketId'] ?? 0,
       performanceTitle: map['performanceTitle'] ?? '',
       performerName: map['performerName'] ?? '',
