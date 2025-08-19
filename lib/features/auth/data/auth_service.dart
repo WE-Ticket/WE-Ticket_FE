@@ -14,7 +14,7 @@ class AuthService {
   final DioClient _dioClient;
 
   AuthService(this._dioClient);
-  
+
   // DioClient getter 추가 (AuthRepositoryImpl에서 사용)
   DioClient get dioClient => _dioClient;
 
@@ -220,7 +220,7 @@ class AuthService {
         final errorCode = errorData['error_code'];
         final message = errorData['message'];
         final existingLoginId = errorData['existing_login_id'];
-        
+
         // 본인인증 중복 오류인 경우
         if (errorCode == 'duplicated_ci' && existingLoginId != null) {
           return ApiResult.failure(
@@ -232,19 +232,20 @@ class AuthService {
             statusCode: 409,
           );
         }
-        
+
         // 기타 409 오류
         if (message != null) {
           return ApiResult.failure(message.toString(), statusCode: 409);
         }
       }
-      
+
       // 기본 409 메시지
       return ApiResult.failure('이미 사용 중인 아이디이거나 휴대폰 번호입니다', statusCode: 409);
     } else {
       return ApiResult.networkError('네트워크 오류가 발생했습니다');
     }
   }
+
   /// 아이디 찾기 - 전화번호로 인증코드 요청
   Future<ApiResult<FindIdResponse>> findId({
     required String phoneNumber,
@@ -287,10 +288,7 @@ class AuthService {
     try {
       AppLogger.auth('아이디 인증 시작');
 
-      final request = VerifyIdRequest(
-        phoneNumber: phoneNumber,
-        code: code,
-      );
+      final request = VerifyIdRequest(phoneNumber: phoneNumber, code: code);
 
       final response = await _dioClient.post(
         '/users/verify-id/',
@@ -338,7 +336,9 @@ class AuthService {
       );
 
       if (response.statusCode == 200) {
-        final findPasswordResponse = FindPasswordResponse.fromJson(response.data);
+        final findPasswordResponse = FindPasswordResponse.fromJson(
+          response.data,
+        );
         AppLogger.success('비밀번호 찾기 인증코드 발송 완료', 'AUTH');
         return ApiResult.success(findPasswordResponse);
       } else if (response.statusCode == 404) {
@@ -378,7 +378,9 @@ class AuthService {
       );
 
       if (response.statusCode == 200) {
-        final verifyPasswordResponse = VerifyPasswordResponse.fromJson(response.data);
+        final verifyPasswordResponse = VerifyPasswordResponse.fromJson(
+          response.data,
+        );
         AppLogger.success('비밀번호 재설정 인증 성공', 'AUTH');
         return ApiResult.success(verifyPasswordResponse);
       } else if (response.statusCode == 404) {
@@ -420,7 +422,9 @@ class AuthService {
       );
 
       if (response.statusCode == 200) {
-        final resetPasswordResponse = ResetPasswordResponse.fromJson(response.data);
+        final resetPasswordResponse = ResetPasswordResponse.fromJson(
+          response.data,
+        );
         AppLogger.success('비밀번호 재설정 완료', 'AUTH');
         return ApiResult.success(resetPasswordResponse);
       } else if (response.statusCode == 404) {
@@ -508,9 +512,7 @@ class AuthService {
   }
 
   /// 회원 탈퇴
-  Future<ApiResult<void>> deleteAccount({
-    required String password,
-  }) async {
+  Future<ApiResult<void>> deleteAccount({required String password}) async {
     try {
       AppLogger.auth('회원 탈퇴 시도');
 
@@ -536,10 +538,6 @@ class AuthService {
     }
   }
 }
-
-//FIXME: 백엔드 API 추가 요청 필요
-// 1. ✅ /users/token/refresh/ - 토큰 갱신 API (완료)
-// 2. ✅ 본인인증 중복 확인 - identity-verification-record API의 409 응답으로 처리 (완료)
 
 /// AuthService Extension - OmniOne 인증 처리
 extension AuthServiceExtension on AuthService {
@@ -590,19 +588,18 @@ extension AuthServiceExtension on AuthService {
     }
   }
 
-
   /// 동시접속 감지시 세션 만료 처리
   Future<ApiResult<void>> handleConcurrentLoginDetected() async {
     try {
       AppLogger.warning('동시접속 감지 - 세션 만료 처리', 'AUTH');
-      
+
       // 1. DioClient 토큰 완전 삭제
       await _dioClient.clearTokens();
-      
+
       // 2. SharedPreferences 정리
       final prefs = await SharedPreferences.getInstance();
       await prefs.clear();
-      
+
       AppLogger.info('동시접속으로 인한 자동 로그아웃 완료', 'AUTH');
       return ApiResult.success(null);
     } catch (e) {
@@ -643,22 +640,25 @@ extension AuthServiceExtension on AuthService {
       } else {
         return ApiResult.validationError('잘못된 인증 데이터 형식입니다.');
       }
-      
+
       // 현재 레벨을 기준으로 다음 레벨 결정
       final String nextVerificationLevel;
       switch (currentAuthLevel) {
         case 0: // none -> general
           nextVerificationLevel = "general";
           break;
-        case 1: // general -> mobile_id  
+        case 1: // general -> mobile_id
           nextVerificationLevel = 'mobile_id';
           break;
         default:
           // 이미 최고 레벨이거나 예상치 못한 레벨
           nextVerificationLevel = 'mobile_id';
       }
-      
-      AppLogger.info('레벨 전환: $currentAuthLevel -> $nextVerificationLevel', 'AUTH');
+
+      AppLogger.info(
+        '레벨 전환: $currentAuthLevel -> $nextVerificationLevel',
+        'AUTH',
+      );
 
       String verificationResult = dataMap['token'];
 

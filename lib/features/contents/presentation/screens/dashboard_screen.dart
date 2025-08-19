@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:provider/provider.dart';
 import 'package:we_ticket/features/contents/presentation/screens/concert_list_screen.dart';
 import 'package:we_ticket/features/contents/presentation/screens/concert_detail_screen.dart';
@@ -66,23 +67,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
             backgroundColor: AppColors.surface,
             elevation: 0,
             title: Row(
+              mainAxisAlignment: MainAxisAlignment.start,
               children: [
-                Icon(
-                  Icons.confirmation_number,
-                  color: AppColors.primary,
-                  size: 28,
-                ),
-                SizedBox(width: 8),
-                Text(
-                  'WE-Ticket',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                SizedBox(width: 5),
+                SvgPicture.asset('assets/images/WE-logo1.svg', height: 45),
               ],
             ),
+            // title: Row(
+            //   children: [
+            //     Icon(
+            //       Icons.confirmation_number,
+            //       color: AppColors.primary,
+            //       size: 28,
+            //     ),
+            //     SizedBox(width: 8),
+            //     Text(
+            //       'WE-Ticket',
+            //       style: TextStyle(
+            //         color: AppColors.textPrimary,
+            //         fontSize: 20,
+            //         fontWeight: FontWeight.bold,
+            //       ),
+            //     ),
+            //   ],
+            // ),
             actions: [
               IconButton(
                 icon: Icon(Icons.person_outline, color: AppColors.textPrimary),
@@ -127,7 +135,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildFeaturedSlider(ContentsProvider contentsProvider) {
     // 로딩 상태
-    if (contentsProvider.isLoading && (contentsProvider.hotPerformances?.isEmpty ?? true)) {
+    if (contentsProvider.isLoading &&
+        (contentsProvider.hotPerformances?.isEmpty ?? true)) {
       return Container(
         height: 220,
         child: Column(
@@ -210,8 +219,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       SizedBox(height: 8),
                       TextButton(
-                        onPressed: () =>
-                            contentsProvider.loadDashboardData(),
+                        onPressed: () => contentsProvider.loadDashboardData(),
                         child: Text(
                           '다시 시도',
                           style: TextStyle(color: AppColors.primary),
@@ -683,8 +691,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   SizedBox(height: 8),
                   TextButton(
-                    onPressed: () =>
-                        contentsProvider.loadDashboardData(),
+                    onPressed: () => contentsProvider.loadDashboardData(),
                     child: Text(
                       '다시 시도',
                       style: TextStyle(color: AppColors.primary),

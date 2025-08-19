@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:provider/provider.dart';
 import 'package:we_ticket/features/auth/data/auth_service.dart';
 import '../providers/auth_provider.dart';
@@ -108,16 +109,17 @@ class _LoginScreenState extends State<LoginScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.confirmation_number, size: 45, color: AppColors.primary),
-            SizedBox(width: 10),
-            Text(
-              'WE-Ticket',
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: AppColors.primary,
-              ),
-            ),
+            SvgPicture.asset('assets/images/WE-logo1.svg', height: 80),
+            // Icon(Icons.confirmation_number, size: 45, color: AppColors.primary),
+            // SizedBox(width: 10),
+            // Text(
+            //   'WE-Ticket',
+            //   style: TextStyle(
+            //     fontSize: 32,
+            //     fontWeight: FontWeight.bold,
+            //     color: AppColors.primary,
+            //   ),
+            // ),
           ],
         ),
         SizedBox(height: 8),
@@ -241,10 +243,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           Text(
             ' | ',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppColors.textSecondary,
-            ),
+            style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
           ),
           TextButton(
             onPressed: () {
