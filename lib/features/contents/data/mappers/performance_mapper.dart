@@ -17,13 +17,17 @@ class PerformanceMapper {
   }
 
   /// Convert PerformanceAvailableItem (data) to PerformanceAvailable (domain)
-  PerformanceAvailable availableItemToDomain(data_models.PerformanceAvailableItem model) {
+  PerformanceAvailable availableItemToDomain(
+    data_models.PerformanceAvailableItem model,
+  ) {
     return PerformanceAvailable(
       id: model.performanceId,
       title: model.title,
       performerName: model.performerName,
       imageUrl: model.mainImage,
-      nextShowDate: _parseDateTime(model.startDate),
+      startDate: _parseDateTime(model.startDate),
+      endDate: _parseDateTime(model.endDate),
+      venueName: model.venueName,
       availableSeats: 100, // Dummy value - not available in model
       canBook: true, // Available items are bookable by default
     );
@@ -78,7 +82,9 @@ class PerformanceMapper {
   }
 
   /// Convert PerformanceListResponse (data) to PerformanceList (domain)
-  PerformanceList listResponseToDomain(data_models.PerformanceListResponse model) {
+  PerformanceList listResponseToDomain(
+    data_models.PerformanceListResponse model,
+  ) {
     final performances = model.results
         .map((item) => listItemToDomain(item))
         .toList();

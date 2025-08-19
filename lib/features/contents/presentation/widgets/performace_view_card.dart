@@ -106,7 +106,7 @@ Widget buildPerformanceDashboardListCard(
                 ),
                 SizedBox(height: 4),
                 Text(
-                  _getDateVenueText(performance),
+                  '${performance.startDate.toString().split(' ')[0]} | ${performance.venueName}',
                   style: TextStyle(
                     fontSize: 12,
                     color: AppColors.textSecondary,
@@ -124,10 +124,7 @@ Widget buildPerformanceDashboardListCard(
   );
 }
 
-Widget buildPerformanceListCard(
-  BuildContext context,
-  Performance performance,
-) {
+Widget buildPerformanceListCard(BuildContext context, Performance performance) {
   return GestureDetector(
     onTap: () => _navigateToDetail(context, performance.id),
     child: Container(
@@ -221,10 +218,7 @@ Widget buildPerformanceListCard(
   );
 }
 
-Widget buildPerformanceBigCard(
-  BuildContext context,
-  Performance performance,
-) {
+Widget buildPerformanceBigCard(BuildContext context, Performance performance) {
   return GestureDetector(
     onTap: () {
       Navigator.push(
@@ -383,10 +377,7 @@ Widget buildPerformanceBigCard(
   );
 }
 
-Widget buildPerformanceGridCard(
-  BuildContext context,
-  Performance performance,
-) {
+Widget buildPerformanceGridCard(BuildContext context, Performance performance) {
   return GestureDetector(
     onTap: () => _navigateToDetail(context, performance.id),
     child: Container(
@@ -650,20 +641,9 @@ String _getImageUrl(dynamic performance) {
   } else if (performance is PerformanceAvailable) {
     imageUrl = performance.imageUrl;
   }
-  return (imageUrl?.isNotEmpty == true) 
-    ? imageUrl! 
-    : 'https://via.placeholder.com/60x60?text=No+Image';
-}
-
-String _getDateVenueText(dynamic performance) {
-  if (performance is Performance) {
-    return '${performance.startDate.toString().split(' ')[0]} | ${performance.venueName}';
-  } else if (performance is PerformanceAvailable) {
-    return performance.nextShowDate != null 
-      ? '${performance.nextShowDateFormatted} | 예매 가능'
-      : '일정 미정 | 예매 가능';
-  }
-  return '정보 없음';
+  return (imageUrl?.isNotEmpty == true)
+      ? imageUrl!
+      : 'https://via.placeholder.com/60x60?text=No+Image';
 }
 
 void _navigateToDetail(BuildContext context, int performanceId) {

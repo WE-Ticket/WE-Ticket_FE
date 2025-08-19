@@ -20,7 +20,14 @@ class PerformanceHot extends Equatable {
   });
 
   @override
-  List<Object?> get props => [id, title, performerName, imageUrl, viewCount, isFeatured];
+  List<Object?> get props => [
+    id,
+    title,
+    performerName,
+    imageUrl,
+    viewCount,
+    isFeatured,
+  ];
 
   @override
   String toString() => 'PerformanceHot(id: $id, title: $title)';
@@ -32,7 +39,9 @@ class PerformanceAvailable extends Equatable {
   final String title;
   final String performerName;
   final String? imageUrl;
-  final DateTime? nextShowDate;
+  final DateTime? startDate;
+  final DateTime? endDate;
+  final String? venueName;
   final int availableSeats;
   final bool canBook;
 
@@ -41,7 +50,9 @@ class PerformanceAvailable extends Equatable {
     required this.title,
     required this.performerName,
     this.imageUrl,
-    this.nextShowDate,
+    this.startDate,
+    this.endDate,
+    this.venueName,
     required this.availableSeats,
     required this.canBook,
   });
@@ -49,23 +60,18 @@ class PerformanceAvailable extends Equatable {
   /// Check if performance has available seats
   bool get hasAvailableSeats => availableSeats > 0;
 
-  /// Get formatted next show date
-  String get nextShowDateFormatted {
-    if (nextShowDate == null) return '일정 미정';
-    final date = nextShowDate!;
-    return '${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
-  }
-
   @override
   List<Object?> get props => [
-        id,
-        title,
-        performerName,
-        imageUrl,
-        nextShowDate,
-        availableSeats,
-        canBook,
-      ];
+    id,
+    title,
+    performerName,
+    imageUrl,
+    startDate,
+    endDate,
+    venueName,
+    availableSeats,
+    canBook,
+  ];
 
   @override
   String toString() => 'PerformanceAvailable(id: $id, title: $title)';
@@ -156,26 +162,27 @@ class PerformanceDetail extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        title,
-        performerName,
-        genre,
-        description,
-        imageUrl,
-        venueName,
-        venueAddress,
-        startDate,
-        endDate,
-        canBook,
-        duration,
-        ageRating,
-        tags,
-        minPrice,
-        maxPrice,
-      ];
+    id,
+    title,
+    performerName,
+    genre,
+    description,
+    imageUrl,
+    venueName,
+    venueAddress,
+    startDate,
+    endDate,
+    canBook,
+    duration,
+    ageRating,
+    tags,
+    minPrice,
+    maxPrice,
+  ];
 
   @override
-  String toString() => 'PerformanceDetail(id: $id, title: $title, venue: $venueName)';
+  String toString() =>
+      'PerformanceDetail(id: $id, title: $title, venue: $venueName)';
 }
 
 /// Domain entity for paginated performance list
@@ -204,14 +211,15 @@ class PerformanceList extends Equatable {
 
   @override
   List<Object?> get props => [
-        performances,
-        totalCount,
-        currentPage,
-        totalPages,
-        hasNext,
-        hasPrevious,
-      ];
+    performances,
+    totalCount,
+    currentPage,
+    totalPages,
+    hasNext,
+    hasPrevious,
+  ];
 
   @override
-  String toString() => 'PerformanceList(count: $totalCount, page: $currentPage)';
+  String toString() =>
+      'PerformanceList(count: $totalCount, page: $currentPage)';
 }
