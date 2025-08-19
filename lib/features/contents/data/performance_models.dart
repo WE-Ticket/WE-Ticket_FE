@@ -12,7 +12,7 @@ class PerformanceHotItem {
   final String venueName;
   final String venueLocation;
   final String mainImage;
-  final String detailImage;
+  final List<String> detailImages;
   final String agencyName;
   final String ticketOpenDatetime;
   final bool isHot;
@@ -30,7 +30,7 @@ class PerformanceHotItem {
     required this.venueName,
     required this.venueLocation,
     required this.mainImage,
-    required this.detailImage,
+    required this.detailImages,
     required this.agencyName,
     required this.ticketOpenDatetime,
     required this.isHot,
@@ -50,7 +50,7 @@ class PerformanceHotItem {
       venueName: JsonParserUtils.parseString(json['venue_name']),
       venueLocation: JsonParserUtils.parseString(json['venue_location']),
       mainImage: JsonParserUtils.parseString(json['main_image']),
-      detailImage: JsonParserUtils.parseString(json['detail_image']),
+      detailImages: JsonParserUtils.parseStringList(json['detail_images']),
       agencyName: JsonParserUtils.parseString(json['agency_name']),
       ticketOpenDatetime: JsonParserUtils.parseString(
         json['ticket_open_datetime'],
@@ -197,7 +197,7 @@ class PerformanceDetail {
   final String ageRating;
   final String genre;
   final List<String> tags;
-  final String detailImage;
+  final List<String> detailImages;
   final bool isTicketOpen;
   final bool isHot;
   final bool isSoldOut;
@@ -218,7 +218,7 @@ class PerformanceDetail {
     required this.ageRating,
     required this.genre,
     required this.tags,
-    required this.detailImage,
+    required this.detailImages,
     required this.isTicketOpen,
     required this.isHot,
     required this.isSoldOut,
@@ -242,7 +242,7 @@ class PerformanceDetail {
       ageRating: JsonParserUtils.parseString(json['age_rating']),
       genre: JsonParserUtils.parseString(json['genre']),
       tags: JsonParserUtils.parseStringList(json['tags']),
-      detailImage: JsonParserUtils.parseString(json['detail_image']),
+      detailImages: JsonParserUtils.parseStringList(json['detail_images']),
       isTicketOpen: JsonParserUtils.parseBool(json['is_ticket_open']),
       isSoldOut: JsonParserUtils.parseBool(json['is_sold_out']),
       isAvailable: JsonParserUtils.parseBool(json['is_available']),

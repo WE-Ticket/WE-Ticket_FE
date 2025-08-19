@@ -38,7 +38,7 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
     try {
       final contentsProvider = context.read<ContentsProvider>();
       await contentsProvider.loadPerformanceDetail(widget.performanceId);
-      
+
       // Get the result from provider state
       final detail = contentsProvider.selectedPerformance;
       final error = contentsProvider.errorMessage;
@@ -319,7 +319,8 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
                             onAuthenticated: () {
                               // 인증 완료 후 예매 진행
                               final Map<String, dynamic> performanceInfo = {
-                                'performance_id': _performanceDetail!.performanceId,
+                                'performance_id':
+                                    _performanceDetail!.performanceId,
                                 'title': _performanceDetail?.title ?? '제목 없음',
                                 'performer_name':
                                     _performanceDetail?.performerName ?? '미정',
@@ -402,7 +403,8 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
 
   bool _getIsHot() {
     if (_performanceDetail != null) {
-      return _performanceDetail!.tags.contains('HOT') || _performanceDetail!.tags.contains('인기');
+      return _performanceDetail!.tags.contains('HOT') ||
+          _performanceDetail!.tags.contains('인기');
     }
     return false;
   }
@@ -434,7 +436,6 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
     return '장소 미정';
   }
 
-
   bool _getIsTicketOpen() {
     if (_performanceDetail != null) {
       return _performanceDetail!.canBook;
@@ -444,7 +445,8 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
 
   // 공연 세션 정보
   List<String> _getSessions() {
-    if (_performanceDetail != null && _performanceDetail!.sessionList.isNotEmpty) {
+    if (_performanceDetail != null &&
+        _performanceDetail!.sessionList.isNotEmpty) {
       return _performanceDetail!.sessionList;
     }
     return [];
@@ -584,7 +586,10 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
       decoration: BoxDecoration(
         color: AppColors.warning.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.warning.withValues(alpha: 0.3), width: 1),
+        border: Border.all(
+          color: AppColors.warning.withValues(alpha: 0.3),
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -714,7 +719,6 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
       ],
     );
   }
-
 
   Widget _buildSessionItem(String sessionDateTime, int sessionNumber) {
     final DateTime? dateTime = _parseDateTime(sessionDateTime);
@@ -900,51 +904,60 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
               ],
             ),
           )
-        else if (_performanceDetail?.detailImage != null &&
-            _performanceDetail!.detailImage.isNotEmpty)
+        else if (_performanceDetail?.detailImages != null &&
+            _performanceDetail!.detailImages.isNotEmpty)
           Container(
             width: double.infinity,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(6),
               border: Border.all(color: AppColors.gray200),
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: Image.network(
-                _performanceDetail!.detailImage,
-                fit: BoxFit.cover,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Container(
-                    height: 200,
-                    color: AppColors.gray100,
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  );
-                },
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    height: 200,
-                    color: AppColors.gray100,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.image_not_supported, size: 48, color: AppColors.gray400),
-                        SizedBox(height: 8),
-                        Text(
-                          '상세 이미지를 불러올 수 없습니다',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: AppColors.gray500,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: _performanceDetail!.detailImages.map((imageUrl) {
+                  return Image.network(
+                    imageUrl,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Container(
+                        height: 200,
+                        color: AppColors.gray100,
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.primary,
                           ),
                         ),
-                      ],
-                    ),
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        height: 200,
+                        color: AppColors.gray100,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.image_not_supported,
+                              size: 48,
+                              color: AppColors.gray400,
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              '상세 이미지를 불러올 수 없습니다',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: AppColors.gray500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   );
-                },
+                }).toList(),
               ),
             ),
           )
