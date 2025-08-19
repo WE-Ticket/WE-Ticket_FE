@@ -73,24 +73,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 SvgPicture.asset('assets/images/WE-logo1.svg', height: 45),
               ],
             ),
-            // title: Row(
-            //   children: [
-            //     Icon(
-            //       Icons.confirmation_number,
-            //       color: AppColors.primary,
-            //       size: 28,
-            //     ),
-            //     SizedBox(width: 8),
-            //     Text(
-            //       'WE-Ticket',
-            //       style: TextStyle(
-            //         color: AppColors.textPrimary,
-            //         fontSize: 20,
-            //         fontWeight: FontWeight.bold,
-            //       ),
-            //     ),
-            //   ],
-            // ),
+
             actions: [
               IconButton(
                 icon: Icon(Icons.person_outline, color: AppColors.textPrimary),
@@ -449,7 +432,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ),
                                 SizedBox(height: 4),
                                 Text(
-                                  '장르: ${performance.genre}',
+                                  '${performance.startDate.isNotEmpty ? performance.startDate : '날짜 미정'} | ${performance.venueName.isNotEmpty ? performance.venueName : '장소 미정'}',
                                   style: TextStyle(
                                     color: AppColors.white.withOpacity(0.7),
                                     fontSize: 14,
