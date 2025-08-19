@@ -345,12 +345,12 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                   // 티켓 디지털 표시
                   _buildDigitalTicketSection(),
 
-                  // 티켓 상태별 액션 버튼
-                  _buildActionButtonsSection(),
-                  SizedBox(height: 25),
-
                   // 공연 상세 정보
                   _buildConcertDetailsSection(),
+                  SizedBox(height: 25),
+
+                  // 티켓 상태별 액션 버튼
+                  _buildActionButtonsSection(),
 
                   // NFT 정보
                   // _buildNFTInfoSection(),

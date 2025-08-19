@@ -59,6 +59,19 @@ class MainActivity : FlutterActivity() {
                     "createDid" -> {
                         try {
                             Log.d(TAG, "WE-Ticket DID 생성 시작")
+
+                            // 0. 저장된 doc이 있다면 삭제
+                            // DID Manager 인스턴스 생성 
+                            val didManager = DIDManager<BaseObject>("weticket_did", this)
+                            Log.i(TAG, "DIDManager 생성 완료")
+
+                            if (didManager.isSaved()) {
+                            Log.i(TAG, "기존 DID doc 발견")
+
+                               didManager.deleteDocument()
+                            Log.i(TAG, "기존 DID doc 삭제 완료 ")
+
+                            }
                             
                             // 1. KeyManager로 개인키 생성
 
@@ -98,9 +111,7 @@ class MainActivity : FlutterActivity() {
                             }
 
                             // 3. DID 문서 생성 (weticket 도메인)
-                            // DID Manager 인스턴스 생성 
-                            val didManager = DIDManager<BaseObject>("weticket_did", this)
-                            Log.i(TAG, "DIDManager 생성 완료")
+                            
 
                             // weticket 도메인으로 DID 생성
                             val did: String = DIDManager.genDID("weticket")
