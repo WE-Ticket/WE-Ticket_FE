@@ -11,9 +11,7 @@ class AuthMethodSelectionDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: AppColors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -30,14 +28,11 @@ class AuthMethodSelectionDialog extends StatelessWidget {
             const SizedBox(height: 8),
             const Text(
               '원하시는 인증 방법을 선택해주세요',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-              ),
+              style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            
+
             // 간편인증 옵션
             _buildAuthMethodCard(
               context: context,
@@ -48,9 +43,9 @@ class AuthMethodSelectionDialog extends StatelessWidget {
               color: AppColors.info,
               authType: 'simple',
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // 모바일신분증 옵션
             _buildAuthMethodCard(
               context: context,
@@ -61,9 +56,9 @@ class AuthMethodSelectionDialog extends StatelessWidget {
               color: AppColors.primary,
               authType: 'mobile_id',
             ),
-            
+
             const SizedBox(height: 24),
-            
+
             // 취소 버튼
             SizedBox(
               width: double.infinity,
@@ -79,10 +74,7 @@ class AuthMethodSelectionDialog extends StatelessWidget {
                 ),
                 child: const Text(
                   '취소',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
               ),
             ),
@@ -147,57 +139,57 @@ class AuthMethodSelectionDialog extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        description,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
+                      // Text(
+                      //   description,
+                      //   style: const TextStyle(
+                      //     fontSize: 14,
+                      //     color: AppColors.textSecondary,
+                      //   ),
+                      // ),
                     ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                const Text(
-                  '이용 가능:',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Wrap(
-                    spacing: 8,
-                    children: benefits.map((benefit) {
-                      return Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: color.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          benefit,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: color,
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ],
-            ),
+            // const SizedBox(height: 16),
+            // Row(
+            //   children: [
+            //     const Text(
+            //       '이용 가능:',
+            //       style: TextStyle(
+            //         fontSize: 12,
+            //         fontWeight: FontWeight.w600,
+            //         color: AppColors.textSecondary,
+            //       ),
+            //     ),
+            //     const SizedBox(width: 8),
+            //     Expanded(
+            //       child: Wrap(
+            //         spacing: 8,
+            //         children: benefits.map((benefit) {
+            //           return Container(
+            //             padding: const EdgeInsets.symmetric(
+            //               horizontal: 8,
+            //               vertical: 4,
+            //             ),
+            //             decoration: BoxDecoration(
+            //               color: color.withOpacity(0.1),
+            //               borderRadius: BorderRadius.circular(12),
+            //             ),
+            //             child: Text(
+            //               benefit,
+            //               style: TextStyle(
+            //                 fontSize: 11,
+            //                 fontWeight: FontWeight.w600,
+            //                 color: color,
+            //               ),
+            //             ),
+            //           );
+            //         }).toList(),
+            //       ),
+            //     ),
+            //   ],
+            // ),
           ],
         ),
       ),
