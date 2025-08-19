@@ -32,10 +32,7 @@ class AuthUpgradeCard extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        GestureDetector(
-          onTap: onUpgradeTap,
-          child: _buildUpgradeCard(),
-        ),
+        GestureDetector(onTap: onUpgradeTap, child: _buildUpgradeCard()),
       ],
     );
   }
@@ -56,7 +53,7 @@ class AuthUpgradeCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  '완전 인증 회원 완료',
+                  '안전 인증 회원 완료',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -87,9 +84,7 @@ class AuthUpgradeCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: color.withOpacity(0.3),
-        ),
+        border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Row(
         children: [
@@ -100,10 +95,7 @@ class AuthUpgradeCard extends StatelessWidget {
               color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(
-              _getUpgradeIcon(option.targetLevel),
-              color: color,
-            ),
+            child: Icon(_getUpgradeIcon(option.targetLevel), color: color),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -138,11 +130,7 @@ class AuthUpgradeCard extends StatelessWidget {
               ],
             ),
           ),
-          Icon(
-            Icons.arrow_forward_ios,
-            size: 20,
-            color: color,
-          ),
+          Icon(Icons.arrow_forward_ios, size: 20, color: color),
         ],
       ),
     );
