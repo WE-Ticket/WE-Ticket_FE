@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:we_ticket/features/auth/presentation/providers/auth_provider.dart';
 import 'package:we_ticket/shared/presentation/providers/api_provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import 'package:provider/provider.dart';
@@ -20,7 +21,9 @@ class TransferRegistrationDialogs {
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => Dialog(
           backgroundColor: AppColors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           child: Container(
             width: MediaQuery.of(context).size.width * 0.9,
             padding: EdgeInsets.all(24),
@@ -223,10 +226,7 @@ class TransferRegistrationDialogs {
                 ),
                 child: Text(
                   '취소',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
               ),
             ),
@@ -378,8 +378,13 @@ class TransferRegistrationDialogs {
     try {
       final apiProvider = context.read<ApiProvider>();
       final transferService = apiProvider.apiService.transfer;
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+      // AuthProvider에서 현재 사용자 ID 가져오기
+      final userId = authProvider.user?.userId;
 
       final response = await transferService.postTransferTicketRegister(
+        userId: userId,
         ticketId: ticket['ticketId'],
         isPublicTransfer: transferType == 'public',
         transferTicketPrice: ticket['originalPrice'],
@@ -389,7 +394,7 @@ class TransferRegistrationDialogs {
       if (!response.isSuccess) {
         throw Exception(response.errorMessage ?? '양도 등록 실패');
       }
-      
+
       // ✅ 응답에서 코드가 오면 (비공개일 경우)
       String? generatedCode;
       if (transferType == 'private' && response.data != null) {

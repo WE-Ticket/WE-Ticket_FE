@@ -38,7 +38,10 @@ class TransferService {
       queryParameters: queryParams,
       parser: (data) {
         final transferList = TransferListResponse.fromJson(data);
-        AppLogger.success('양도 티켓 리스트 조회 성공 (${transferList.results.length}개)', 'TRANSFER');
+        AppLogger.success(
+          '양도 티켓 리스트 조회 성공 (${transferList.results.length}개)',
+          'TRANSFER',
+        );
         return transferList;
       },
     );
@@ -68,7 +71,9 @@ class TransferService {
 
   /// 고유번호 조회
   /// POST /api/transfers/unique-code-lookup/
-  Future<ApiResult<TransferUniqueCode>> getUniqueCode(int transferTicketId) async {
+  Future<ApiResult<TransferUniqueCode>> getUniqueCode(
+    int transferTicketId,
+  ) async {
     AppLogger.info('고유번호 조회 시작 (티켓 ID: $transferTicketId)', 'TRANSFER');
 
     return await _dioClient.postResult<TransferUniqueCode>(
@@ -76,7 +81,10 @@ class TransferService {
       data: {'transfer_ticket_id': transferTicketId},
       parser: (data) {
         final uniqueCode = TransferUniqueCode.fromJson(data);
-        AppLogger.success('고유번호 조회 성공: ${uniqueCode.tempUniqueCode}', 'TRANSFER');
+        AppLogger.success(
+          '고유번호 조회 성공: ${uniqueCode.tempUniqueCode}',
+          'TRANSFER',
+        );
         return uniqueCode;
       },
     );
@@ -84,7 +92,9 @@ class TransferService {
 
   /// 고유번호 재발급
   /// POST /api/transfers/unique-code-regeneration/
-  Future<ApiResult<TransferUniqueCode>> regenerateUniqueCode(int transferTicketId) async {
+  Future<ApiResult<TransferUniqueCode>> regenerateUniqueCode(
+    int transferTicketId,
+  ) async {
     AppLogger.info('고유번호 재발급 시작 (티켓 ID: $transferTicketId)', 'TRANSFER');
 
     return await _dioClient.postResult<TransferUniqueCode>(
@@ -92,7 +102,10 @@ class TransferService {
       data: {'transfer_ticket_id': transferTicketId},
       parser: (data) {
         final uniqueCode = TransferUniqueCode.fromJson(data);
-        AppLogger.success('고유번호 재발급 성공: ${uniqueCode.tempUniqueCode}', 'TRANSFER');
+        AppLogger.success(
+          '고유번호 재발급 성공: ${uniqueCode.tempUniqueCode}',
+          'TRANSFER',
+        );
         return uniqueCode;
       },
     );
@@ -117,7 +130,9 @@ class TransferService {
 
   /// 양도 방식 변경 (공개/비공개 토글)
   /// POST /api/transfers/transfer-ticket-toggle-public/
-  Future<ApiResult<Map<String, dynamic>>> toggleTransferType(int transferTicketId) async {
+  Future<ApiResult<Map<String, dynamic>>> toggleTransferType(
+    int transferTicketId,
+  ) async {
     AppLogger.info('양도 방식 변경 시작 (티켓 ID: $transferTicketId)', 'TRANSFER');
 
     return await _dioClient.postResult<Map<String, dynamic>>(
@@ -132,7 +147,9 @@ class TransferService {
 
   /// 양도 취소
   /// POST /api/transfers/transfer-ticket-cancel/
-  Future<ApiResult<Map<String, dynamic>>> cancelTransfer(int transferTicketId) async {
+  Future<ApiResult<Map<String, dynamic>>> cancelTransfer(
+    int transferTicketId,
+  ) async {
     AppLogger.info('양도 취소 시작 (티켓 ID: $transferTicketId)', 'TRANSFER');
 
     return await _dioClient.postResult<Map<String, dynamic>>(
@@ -166,7 +183,10 @@ class TransferService {
         final tickets = listData
             .map((json) => MyTransferTicket.fromJson(json))
             .toList();
-        AppLogger.success('내 양도 등록 티켓 리스트 조회 성공 (${tickets.length}개)', 'TRANSFER');
+        AppLogger.success(
+          '내 양도 등록 티켓 리스트 조회 성공 (${tickets.length}개)',
+          'TRANSFER',
+        );
         return tickets;
       },
     );
@@ -193,13 +213,17 @@ class TransferService {
         final tickets = listData
             .map((json) => TransferableTicket.fromJson(json))
             .toList();
-        AppLogger.success('내 양도 가능 티켓 리스트 조회 성공 (${tickets.length}개)', 'TRANSFER');
+        AppLogger.success(
+          '내 양도 가능 티켓 리스트 조회 성공 (${tickets.length}개)',
+          'TRANSFER',
+        );
         return tickets;
       },
     );
   }
 
   Future<ApiResult<Map<String, dynamic>>> postTransferTicketRegister({
+    required userId,
     required String ticketId,
     required bool isPublicTransfer,
     int? transferTicketPrice,
@@ -207,6 +231,7 @@ class TransferService {
     AppLogger.info('양도 티켓 등록 시작 (티켓 ID: $ticketId)', 'TRANSFER');
 
     final data = <String, dynamic>{
+      'user_id': userId,
       'ticket_id': ticketId,
       'is_public_transfer': isPublicTransfer,
     };
@@ -225,9 +250,8 @@ class TransferService {
   }
 
   /// 공연별 양도 티켓 필터링 (로컬 처리)
-  Future<Either<Failure, List<TransferTicketItem>>> getTransferTicketsByPerformance(
-    int performanceId,
-  ) async {
+  Future<Either<Failure, List<TransferTicketItem>>>
+  getTransferTicketsByPerformance(int performanceId) async {
     AppLogger.info('공연별 양도 티켓 필터링 시작 (공연 ID: $performanceId)', 'TRANSFER');
 
     final transferListResult = await getTransferTicketList(
@@ -236,11 +260,23 @@ class TransferService {
 
     if (transferListResult.isSuccess && transferListResult.data != null) {
       final transferList = transferListResult.data!;
-      AppLogger.success('공연별 양도 티켓 필터링 완료: ${transferList.results.length}개 결과', 'TRANSFER');
+      AppLogger.success(
+        '공연별 양도 티켓 필터링 완료: ${transferList.results.length}개 결과',
+        'TRANSFER',
+      );
       return Right(transferList.results);
     } else {
-      AppLogger.error('공연별 양도 티켓 필터링 실패', transferListResult.errorMessage, null, 'TRANSFER');
-      return Left(ServerFailure(message: transferListResult.errorMessage ?? '알 수 없는 오류가 발생했습니다'));
+      AppLogger.error(
+        '공연별 양도 티켓 필터링 실패',
+        transferListResult.errorMessage,
+        null,
+        'TRANSFER',
+      );
+      return Left(
+        ServerFailure(
+          message: transferListResult.errorMessage ?? '알 수 없는 오류가 발생했습니다',
+        ),
+      );
     }
   }
 
@@ -250,7 +286,10 @@ class TransferService {
     required int userId,
     required int transferTicketId,
   }) async {
-    AppLogger.info('양도 진행 시작 (사용자 ID: $userId, 양도 티켓 ID: $transferTicketId)', 'TRANSFER');
+    AppLogger.info(
+      '양도 진행 시작 (사용자 ID: $userId, 양도 티켓 ID: $transferTicketId)',
+      'TRANSFER',
+    );
 
     final data = <String, dynamic>{
       "transfer_ticket_id": transferTicketId,
@@ -269,7 +308,8 @@ class TransferService {
   }
 
   /// 날짜 범위별 양도 티켓 필터링 (API에서 지원하지 않아 로컬 처리)
-  Future<Either<Failure, List<TransferTicketItem>>> getTransferTicketsByDateRange({
+  Future<Either<Failure, List<TransferTicketItem>>>
+  getTransferTicketsByDateRange({
     required DateTime startDate,
     required DateTime endDate,
   }) async {
@@ -285,16 +325,30 @@ class TransferService {
             sessionDate.isBefore(endDate.add(Duration(days: 1)));
       }).toList();
 
-      AppLogger.success('날짜 범위별 양도 티켓 필터링 완료: ${filteredResults.length}개 결과', 'TRANSFER');
+      AppLogger.success(
+        '날짜 범위별 양도 티켓 필터링 완료: ${filteredResults.length}개 결과',
+        'TRANSFER',
+      );
       return Right(filteredResults);
     } else {
-      AppLogger.error('날짜 범위별 양도 티켓 필터링 실패', transferListResult.errorMessage, null, 'TRANSFER');
-      return Left(ServerFailure(message: transferListResult.errorMessage ?? '알 수 없는 오류가 발생했습니다'));
+      AppLogger.error(
+        '날짜 범위별 양도 티켓 필터링 실패',
+        transferListResult.errorMessage,
+        null,
+        'TRANSFER',
+      );
+      return Left(
+        ServerFailure(
+          message: transferListResult.errorMessage ?? '알 수 없는 오류가 발생했습니다',
+        ),
+      );
     }
   }
 
   /// 양도 티켓 검색 (제목, 아티스트명으로 검색 - 로컬 처리)
-  Future<Either<Failure, List<TransferTicketItem>>> searchTransferTickets(String query) async {
+  Future<Either<Failure, List<TransferTicketItem>>> searchTransferTickets(
+    String query,
+  ) async {
     AppLogger.info('양도 티켓 검색 시작: "$query"', 'TRANSFER');
 
     final transferListResult = await getTransferTicketList();
@@ -307,11 +361,23 @@ class TransferService {
             ticket.performerName.toLowerCase().contains(searchQuery);
       }).toList();
 
-      AppLogger.success('양도 티켓 검색 완료: ${filteredResults.length}개 결과', 'TRANSFER');
+      AppLogger.success(
+        '양도 티켓 검색 완료: ${filteredResults.length}개 결과',
+        'TRANSFER',
+      );
       return Right(filteredResults);
     } else {
-      AppLogger.error('양도 티켓 검색 실패', transferListResult.errorMessage, null, 'TRANSFER');
-      return Left(ServerFailure(message: transferListResult.errorMessage ?? '알 수 없는 오류가 발생했습니다'));
+      AppLogger.error(
+        '양도 티켓 검색 실패',
+        transferListResult.errorMessage,
+        null,
+        'TRANSFER',
+      );
+      return Left(
+        ServerFailure(
+          message: transferListResult.errorMessage ?? '알 수 없는 오류가 발생했습니다',
+        ),
+      );
     }
   }
 }

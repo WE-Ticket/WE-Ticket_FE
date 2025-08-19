@@ -318,7 +318,7 @@ class TransferableTicket {
 
   factory TransferableTicket.fromJson(Map<String, dynamic> json) {
     return TransferableTicket(
-      ticketId: JsonParserUtils.parseString(json['ticket']),
+      ticketId: JsonParserUtils.parseString(json['ticket_id']),
       performanceId: JsonParserUtils.parseInt(json['performance_id']),
       performanceMainImage: json['performance_main_image'],
       performanceTitle: JsonParserUtils.parseString(json['performance_title']),

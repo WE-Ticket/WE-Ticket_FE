@@ -14,7 +14,9 @@ abstract class TransferRepository {
   });
 
   /// Get detailed information about a specific transfer ticket
-  Future<Either<Failure, TransferTicketDetail>> getTransferTicketDetail(int transferTicketId);
+  Future<Either<Failure, TransferTicketDetail>> getTransferTicketDetail(
+    int transferTicketId,
+  );
 
   /// Get unique code for private transfer
   Future<Either<Failure, String>> getUniqueCode(int transferTicketId);
@@ -47,6 +49,7 @@ abstract class TransferRepository {
 
   /// Register a ticket for transfer
   Future<Either<Failure, void>> registerTicketForTransfer({
+    required userId,
     required String ticketId,
     required bool isPublicTransfer,
     int? transferTicketPrice,
@@ -59,7 +62,9 @@ abstract class TransferRepository {
   });
 
   /// Filter transfer tickets by performance
-  Future<Either<Failure, List<TransferTicket>>> getTransferTicketsByPerformance(int performanceId);
+  Future<Either<Failure, List<TransferTicket>>> getTransferTicketsByPerformance(
+    int performanceId,
+  );
 
   /// Filter transfer tickets by date range
   Future<Either<Failure, List<TransferTicket>>> getTransferTicketsByDateRange({
@@ -68,5 +73,7 @@ abstract class TransferRepository {
   });
 
   /// Search transfer tickets by query
-  Future<Either<Failure, List<TransferTicket>>> searchTransferTickets(String query);
+  Future<Either<Failure, List<TransferTicket>>> searchTransferTickets(
+    String query,
+  );
 }

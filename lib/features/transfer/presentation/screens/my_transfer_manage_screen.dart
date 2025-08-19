@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:we_ticket/shared/presentation/providers/api_provider.dart';
-import 'package:we_ticket/features/transfer/data/transfer_service.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/transfer_provider.dart';
