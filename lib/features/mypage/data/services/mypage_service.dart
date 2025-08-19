@@ -82,4 +82,46 @@ class MyPageService {
       },
     );
   }
+
+  /// 1:1 문의 등록
+  Future<ApiResult<InquiryResponse>> submitInquiry({
+    required int userId,
+    String? inquiryTitle,
+    required String inquiryContents,
+  }) async {
+    try {
+      AppLogger.info('1:1 문의 등록 시작 (사용자 ID: $userId)', 'MYPAGE_SERVICE');
+
+      final request = InquiryRequest(
+        userId: userId,
+        inquiryTitle: inquiryTitle?.trim(),
+        inquiryContents: inquiryContents.trim(),
+      );
+
+      final response = await _dioClient.post(
+        '/users/inquiry/',
+        data: request.toJson(),
+      );
+
+      if (response.statusCode == 201) {
+        final inquiryResponse = InquiryResponse.fromJson(response.data);
+        AppLogger.success('1:1 문의 등록 성공', 'MYPAGE_SERVICE');
+        return ApiResult.success(inquiryResponse);
+      } else {
+        AppLogger.error(
+          '1:1 문의 등록 실패: ${response.statusCode}',
+          null,
+          null,
+          'MYPAGE_SERVICE',
+        );
+        return ApiResult.failure(
+          '문의 등록 실패: ${response.statusCode}',
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      AppLogger.error('1:1 문의 등록 오류', e, null, 'MYPAGE_SERVICE');
+      return ApiResult.failure('문의 등록 중 오류가 발생했습니다');
+    }
+  }
 }

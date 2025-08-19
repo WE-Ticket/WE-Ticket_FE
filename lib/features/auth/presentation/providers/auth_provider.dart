@@ -159,9 +159,7 @@ class AuthProvider extends ChangeNotifier {
 
       // 2. 로그인 아이디 중복 확인
       print('🆔 로그인 아이디 중복 확인 시작: $loginId');
-      final idCheckResult = await authService.checkLoginId(
-        loginId: loginId,
-      );
+      final idCheckResult = await authService.checkLoginId(loginId: loginId);
 
       if (idCheckResult.isSuccess && idCheckResult.data!.isDuplicate) {
         _setError('이미 사용 중인 아이디입니다');
@@ -226,9 +224,7 @@ class AuthProvider extends ChangeNotifier {
     required AuthService authService,
   }) async {
     try {
-      final result = await authService.checkLoginId(
-        loginId: loginId,
-      );
+      final result = await authService.checkLoginId(loginId: loginId);
 
       if (result.isSuccess) {
         return result.data!.isDuplicate;
@@ -354,10 +350,14 @@ class AuthProvider extends ChangeNotifier {
       print('🚪 로그아웃 시작');
 
       // 1. DioClient 토큰 완전 삭제
+      print('🔍 DioClient 토큰 삭제 시작');
       await _dioClient.clearTokens();
+      print('✅ DioClient 토큰 삭제 완료');
 
       // 2. 모든 사용자 데이터 삭제
+      print('🔍 사용자 데이터 삭제 시작');
       await _clearAllUserData();
+      print('✅ 사용자 데이터 삭제 완료');
 
       print('✅ 로그아웃 완료');
     } catch (e) {
@@ -371,18 +371,25 @@ class AuthProvider extends ChangeNotifier {
   /// ✅ 모든 사용자 데이터 완전 삭제
   Future<void> _clearAllUserData() async {
     try {
+      print('🔍 메모리 상태 초기화 시작');
       // 메모리 상태 초기화
       _user = null;
       _isLoggedIn = false;
       _clearError();
       _setAuthProcessing(false, null);
+      print('✅ 메모리 상태 초기화 완료');
 
       // SharedPreferences 완전 삭제
+      print('🔍 SharedPreferences 삭제 시작');
       final prefs = await SharedPreferences.getInstance();
       await prefs.clear();
+      print('✅ SharedPreferences 삭제 완료');
+
+      print('🔍 UI 업데이트 (notifyListeners) 시작');
+      notifyListeners();
+      print('✅ UI 업데이트 완료');
 
       print('🗑️ 모든 사용자 데이터 삭제 완료');
-      notifyListeners();
     } catch (e) {
       print('❌ 사용자 데이터 삭제 오류: $e');
       rethrow;

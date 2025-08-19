@@ -119,21 +119,18 @@ extension StringExtensions on String {
     return RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(this);
   }
   
-  /// Check if string is a valid password (8+ chars, mixed case, number, special char)
+  /// Check if string is a valid password (8+ chars, letters and numbers)
   bool get isValidPassword {
     if (length < 8) return false;
     
-    // Check for at least one uppercase letter
-    if (!RegExp(r'[A-Z]').hasMatch(this)) return false;
-    
-    // Check for at least one lowercase letter
-    if (!RegExp(r'[a-z]').hasMatch(this)) return false;
+    // Check for at least one letter (uppercase or lowercase)
+    if (!RegExp(r'[a-zA-Z]').hasMatch(this)) return false;
     
     // Check for at least one digit
     if (!RegExp(r'[0-9]').hasMatch(this)) return false;
     
-    // Check for at least one special character
-    if (!RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(this)) return false;
+    // Only allow letters and digits
+    if (!RegExp(r'^[a-zA-Z0-9]+$').hasMatch(this)) return false;
     
     return true;
   }

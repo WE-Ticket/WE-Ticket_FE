@@ -6,6 +6,8 @@ import '../../../../core/network/dio_client.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../shared/presentation/widgets/app_snackbar.dart';
 import 'signup_screen.dart';
+import 'find_id_screen.dart';
+import 'find_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   final VoidCallback? onLoginSuccess;
@@ -84,10 +86,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               SizedBox(height: 20),
+              // 소셜 로그인 기능 임시 비활성화
+              /*
               _buildDivider(),
               SizedBox(height: 20),
               _buildSocialLogin(),
               SizedBox(height: 24),
+              */
               _buildSignupLink(),
               SizedBox(height: 20),
             ],
@@ -215,18 +220,49 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildFindPassword() {
     return Container(
       alignment: Alignment.centerRight,
-      child: TextButton(
-        onPressed: () {
-          AppSnackBar.showInfo(context, '아이디/비밀번호 찾기 기능은 추후 구현 예정');
-        },
-        child: Text(
-          '아이디/비밀번호 찾기',
-          style: TextStyle(
-            fontSize: 14,
-            color: AppColors.primary,
-            fontWeight: FontWeight.w500,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => FindIdScreen()),
+              );
+            },
+            child: Text(
+              '아이디 찾기',
+              style: TextStyle(
+                fontSize: 14,
+                color: AppColors.primary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
-        ),
+          Text(
+            ' | ',
+            style: TextStyle(
+              fontSize: 14,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => FindPasswordScreen()),
+              );
+            },
+            child: Text(
+              '비밀번호 찾기',
+              style: TextStyle(
+                fontSize: 14,
+                color: AppColors.primary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

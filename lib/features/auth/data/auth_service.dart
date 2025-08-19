@@ -373,7 +373,7 @@ class AuthService {
       );
 
       final response = await _dioClient.post(
-        '/auth/verify-password/',
+        '/users/verify-password/',
         data: request.toJson(),
       );
 
@@ -415,7 +415,7 @@ class AuthService {
       );
 
       final response = await _dioClient.post(
-        '/user/reset-password/',
+        '/users/reset-password/',
         data: request.toJson(),
       );
 
@@ -503,6 +503,35 @@ class AuthService {
       return _handleDioError(e, '전화번호 중복 확인');
     } catch (e) {
       AppLogger.error('전화번호 중복 확인 오류', e, null, 'AUTH');
+      return ApiResult.failure('알 수 없는 오류가 발생했습니다');
+    }
+  }
+
+  /// 회원 탈퇴
+  Future<ApiResult<void>> deleteAccount({
+    required String password,
+  }) async {
+    try {
+      AppLogger.auth('회원 탈퇴 시도');
+
+      final response = await _dioClient.delete(
+        '/users/account/delete/',
+        data: {'password': password},
+      );
+
+      if (response.statusCode == 200) {
+        AppLogger.success('회원 탈퇴 성공', 'AUTH');
+        return ApiResult.success(null);
+      } else {
+        return ApiResult.failure(
+          '회원 탈퇴 실패: ${response.statusCode}',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      return _handleDioError(e, '회원 탈퇴');
+    } catch (e) {
+      AppLogger.error('회원 탈퇴 오류', e, null, 'AUTH');
       return ApiResult.failure('알 수 없는 오류가 발생했습니다');
     }
   }

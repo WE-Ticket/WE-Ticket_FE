@@ -115,3 +115,49 @@ class PaymentHistoryModel {
     return 'PaymentHistoryModel(id: $id, type: $type, title: $title)';
   }
 }
+
+/// 1:1 문의 요청 모델
+class InquiryRequest {
+  final int userId;
+  final String? inquiryTitle;
+  final String inquiryContents;
+
+  InquiryRequest({
+    required this.userId,
+    this.inquiryTitle,
+    required this.inquiryContents,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'user_id': userId,
+      'inquiry_title': inquiryTitle,
+      'inquiry_contents': inquiryContents,
+    };
+  }
+
+  @override
+  String toString() {
+    return 'InquiryRequest(userId: $userId, title: $inquiryTitle)';
+  }
+}
+
+/// 1:1 문의 응답 모델
+class InquiryResponse {
+  final String message;
+
+  InquiryResponse({required this.message});
+
+  factory InquiryResponse.fromJson(Map<String, dynamic> json) {
+    return InquiryResponse(
+      message: JsonParserUtils.parseString(json['message']),
+    );
+  }
+
+  bool get isSuccess => message.contains('성공');
+
+  @override
+  String toString() {
+    return 'InquiryResponse(message: $message)';
+  }
+}

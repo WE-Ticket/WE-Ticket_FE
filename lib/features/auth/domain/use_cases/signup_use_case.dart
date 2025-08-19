@@ -62,7 +62,7 @@ class SignupUseCase {
     }
 
     if (!signupData.password.isValidPassword) {
-      return const ValidationFailure(message: '비밀번호는 8자 이상이며, 영문자, 숫자, 특수문자를 포함해야 합니다');
+      return const ValidationFailure(message: '비밀번호는 8자 이상이며, 영문자와 숫자 조합이어야 합니다');
     }
 
     // Validate agreements

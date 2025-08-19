@@ -275,6 +275,14 @@ class DioClient {
     }
   }
 
+  Future<Response> delete(String path, {Map<String, dynamic>? data}) async {
+    try {
+      return await _dio.delete(path, data: data);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
   String _handleError(DioException error) {
     switch (error.type) {
       case DioExceptionType.connectionTimeout:

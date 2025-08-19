@@ -5,6 +5,8 @@ import 'package:we_ticket/features/auth/presentation/screens/auth_management_scr
 import 'package:we_ticket/features/contents/presentation/screens/dashboard_screen.dart';
 import 'package:we_ticket/features/mypage/presentation/screens/my_tickets_screen.dart';
 import 'package:we_ticket/features/mypage/presentation/screens/purchase_history_screen.dart';
+import 'package:we_ticket/features/mypage/presentation/screens/inquiry_screen.dart';
+import 'package:we_ticket/features/mypage/presentation/screens/account_settings_screen.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../shared/presentation/widgets/app_snackbar.dart';
@@ -258,8 +260,12 @@ class MyPageScreen extends StatelessWidget {
                 title: '설정 및 계정 관리',
                 color: AppColors.secondary,
                 onTap: () {
-                  // TODO: 설정 및 계정 관리 화면으로 이동
-                  AppSnackBar.showInfo(context, '설정 및 계정 관리 기능은 추후 구현 예정');
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AccountSettingsScreen(),
+                    ),
+                  );
                 },
               ),
             ),
@@ -385,8 +391,12 @@ class MyPageScreen extends StatelessWidget {
 
           GestureDetector(
             onTap: () {
-              // TODO: 1:1 문의 화면으로 이동
-              AppSnackBar.showInfo(context, '문의 기능은 추후 구현 예정');
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => InquiryScreen(),
+                ),
+              );
             },
             child: Container(
               margin: EdgeInsets.only(left: 10),

@@ -5,6 +5,7 @@ import '../../domain/entities/payment_history.dart';
 import '../../domain/use_cases/get_owned_tickets_use_case.dart';
 import '../../domain/use_cases/get_ticket_detail_use_case.dart';
 import '../../domain/use_cases/get_payment_history_use_case.dart';
+import '../../data/services/mypage_service.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/utils/app_logger.dart';
 
@@ -14,6 +15,7 @@ class MyPageProvider extends ChangeNotifier {
   final GetOwnedTicketsUseCase _getOwnedTicketsUseCase;
   final GetTicketDetailUseCase _getTicketDetailUseCase;
   final GetPaymentHistoryUseCase _getPaymentHistoryUseCase;
+  final MyPageService _myPageService;
 
   // 상태 관리
   bool _isLoading = false;
@@ -37,9 +39,11 @@ class MyPageProvider extends ChangeNotifier {
     required GetOwnedTicketsUseCase getOwnedTicketsUseCase,
     required GetTicketDetailUseCase getTicketDetailUseCase,
     required GetPaymentHistoryUseCase getPaymentHistoryUseCase,
+    required MyPageService myPageService,
   })  : _getOwnedTicketsUseCase = getOwnedTicketsUseCase,
         _getTicketDetailUseCase = getTicketDetailUseCase,
-        _getPaymentHistoryUseCase = getPaymentHistoryUseCase;
+        _getPaymentHistoryUseCase = getPaymentHistoryUseCase,
+        _myPageService = myPageService;
 
   // Getters
   bool get isLoading => _isLoading;
@@ -276,6 +280,41 @@ class MyPageProvider extends ChangeNotifier {
   /// 에러 메시지 클리어
   void clearError() {
     _clearError();
+  }
+
+  /// 1:1 문의 등록
+  Future<bool> submitInquiry({
+    required int userId,
+    String? inquiryTitle,
+    required String inquiryContents,
+  }) async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      AppLogger.info('1:1 문의 등록 시작 (사용자 ID: $userId)', 'MYPAGE');
+
+      final result = await _myPageService.submitInquiry(
+        userId: userId,
+        inquiryTitle: inquiryTitle,
+        inquiryContents: inquiryContents,
+      );
+
+      if (result.isSuccess) {
+        AppLogger.success('1:1 문의 등록 성공', 'MYPAGE');
+        return true;
+      } else {
+        _setError(result.errorMessage!);
+        AppLogger.error('1:1 문의 등록 실패: ${result.errorMessage}', null, null, 'MYPAGE');
+        return false;
+      }
+    } catch (e) {
+      AppLogger.error('1:1 문의 등록 예외', e, null, 'MYPAGE');
+      _setError('문의 등록 중 오류가 발생했습니다');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
   }
 
   // Private methods
