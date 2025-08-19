@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
 import 'package:flutter/foundation.dart';
+import 'package:we_ticket/core/constants/app_colors.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 
@@ -25,7 +26,10 @@ void main() async {
       // Android WebView 플랫폼 최적화 설정
       final androidPlatform = AndroidWebViewPlatform();
       WebViewPlatform.instance = androidPlatform;
-      AppLogger.success('Android WebView Platform initialized with optimizations', 'MAIN');
+      AppLogger.success(
+        'Android WebView Platform initialized with optimizations',
+        'MAIN',
+      );
     } catch (e) {
       AppLogger.error('Failed to initialize WebView Platform', e, null, 'MAIN');
     }
@@ -103,6 +107,20 @@ class MyApp extends StatelessWidget {
       ],
       child: MaterialApp(
         title: 'WE-Ticket',
+        theme: ThemeData(
+          useMaterial3: true,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: AppColors.primary,
+          ).copyWith(surface: Colors.white),
+          dialogTheme: const DialogThemeData(
+            // ← 여기!
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.transparent, // 완전한 흰색
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(12)),
+            ),
+          ),
+        ),
         localizationsDelegates: const [
           GlobalMaterialLocalizations.delegate,
           GlobalWidgetsLocalizations.delegate,
