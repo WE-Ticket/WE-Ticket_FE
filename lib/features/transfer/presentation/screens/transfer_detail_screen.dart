@@ -283,7 +283,7 @@ class _TransferDetailScreenState extends State<TransferDetailScreen> {
           _buildDetailRow(
             Icons.event_seat,
             '좌석 정보',
-            '${ticketDetail.seatNumber} (${ticketDetail.seatGrade})',
+            '${ticketDetail.seatGrade}석 ${ticketDetail.seatZone}구역 ${ticketDetail.seatNumber}',
           ),
           _buildDetailRow(
             Icons.access_time,

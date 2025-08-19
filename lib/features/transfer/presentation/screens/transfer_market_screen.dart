@@ -993,7 +993,7 @@ class _TransferMarketScreenState extends State<TransferMarketScreen> {
                       ),
                       SizedBox(height: 2),
                       Text(
-                        ticket.seatNumber,
+                        '${ticket.seatGrade}석 ${ticket.seatZone}구역 ${ticket.seatNumber}',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,

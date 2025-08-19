@@ -37,6 +37,8 @@ class TransferTicketItem {
   final String performerName;
   final String sessionDatetime;
   final String venueName;
+  final String seatZone;
+  final String seatGrade;
   final String seatNumber;
   final int transferTicketPrice;
   final String createdDatetime;
@@ -50,6 +52,8 @@ class TransferTicketItem {
     required this.sessionDatetime,
     required this.venueName,
     required this.seatNumber,
+    required this.seatZone,
+    required this.seatGrade,
     required this.transferTicketPrice,
     required this.createdDatetime,
   });
@@ -64,6 +68,8 @@ class TransferTicketItem {
       sessionDatetime: JsonParserUtils.parseString(json['session_datetime']),
       venueName: JsonParserUtils.parseString(json['venue_name']),
       seatNumber: JsonParserUtils.parseString(json['seat_number']),
+      seatZone: JsonParserUtils.parseString(json['seat_zone']),
+      seatGrade: JsonParserUtils.parseString(json['seat_grade']),
       transferTicketPrice: JsonParserUtils.parseInt(
         json['transfer_ticket_price'],
       ),
@@ -91,6 +97,7 @@ class TransferTicketDetail {
   final String venueLocation;
   final String seatNumber;
   final String seatGrade;
+  final String seatZone;
   final int seatPrice;
   final int transferTicketPrice;
   final int transferBuyerFee;
@@ -112,6 +119,7 @@ class TransferTicketDetail {
     required this.venueLocation,
     required this.seatNumber,
     required this.seatGrade,
+    required this.seatZone,
     required this.seatPrice,
     required this.transferTicketPrice,
     required this.transferBuyerFee,
@@ -133,6 +141,7 @@ class TransferTicketDetail {
       venueLocation: JsonParserUtils.parseString(json['venue_location']),
       seatNumber: JsonParserUtils.parseString(json['seat_number']),
       seatGrade: JsonParserUtils.parseString(json['seat_grade']),
+      seatZone: JsonParserUtils.parseString(json['seat_zone']),
       seatPrice: JsonParserUtils.parseInt(json['seat_price']),
       transferTicketPrice: JsonParserUtils.parseInt(
         json['transfer_ticket_price'],
