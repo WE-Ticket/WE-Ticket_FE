@@ -7,10 +7,11 @@ import 'package:we_ticket/core/constants/api_constants.dart';
 import 'package:we_ticket/core/network/dio_client.dart';
 import 'package:we_ticket/core/network/api_result.dart';
 import 'package:we_ticket/core/utils/app_logger.dart';
+import 'package:we_ticket/core/mixins/api_error_handler_mixin.dart';
 import 'package:we_ticket/features/auth/data/auth_validators.dart';
 import 'package:we_ticket/features/auth/data/user_models.dart';
 
-class AuthService {
+class AuthService with ApiErrorHandlerMixin {
   final DioClient _dioClient;
 
   AuthService(this._dioClient);
@@ -23,57 +24,49 @@ class AuthService {
     required String loginId,
     required String password,
   }) async {
-    try {
-      AppLogger.auth('로그인 시도 시작 (아이디: $loginId)');
+    AppLogger.auth('로그인 시도 시작 (아이디: $loginId)');
 
-      // 기본 입력 검증
-      final validation = AuthValidators.validateLoginData(
-        loginId: loginId,
-        password: password,
-      );
+    // 기본 입력 검증
+    final validation = AuthValidators.validateLoginData(
+      loginId: loginId,
+      password: password,
+    );
 
-      if (!validation.isValid) {
-        return ApiResult.validationError(validation.firstError!);
-      }
-
-      final request = LoginRequest(
-        loginId: loginId.trim(),
-        loginPassword: password,
-      );
-
-      final response = await _dioClient.post(
-        ApiConstants.login,
-        data: request.toJson(),
-      );
-
-      if (response.statusCode == 200) {
-        final loginResponse = LoginResponse.fromJson(response.data);
-
-        final accessToken = loginResponse.accessToken;
-        final refreshToken = loginResponse.refreshToken;
-
-        // 1. DioClient에 설정
-        await _dioClient.setAccessToken(accessToken);
-        await _dioClient.setRefreshToken(refreshToken);
-
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('access_token', accessToken);
-        await prefs.setString('refresh_token', refreshToken);
-
-        AppLogger.success('로그인 성공: 사용자 ID ${loginResponse.userId}', 'AUTH');
-        return ApiResult.success(loginResponse);
-      } else {
-        return ApiResult.failure(
-          '로그인 요청 실패: ${response.statusCode}',
-          statusCode: response.statusCode,
-        );
-      }
-    } on DioException catch (e) {
-      return _handleDioError(e, '로그인');
-    } catch (e) {
-      AppLogger.error('로그인 오류', e, null, 'AUTH');
-      return ApiResult.failure('알 수 없는 오류가 발생했습니다');
+    if (!validation.isValid) {
+      return ApiResult.validationError(validation.firstError!);
     }
+
+    final request = LoginRequest(
+      loginId: loginId.trim(),
+      loginPassword: password,
+    );
+
+    final result = await _dioClient.postResult<LoginResponse>(
+      ApiConstants.login,
+      data: request.toJson(),
+      parser: (data) {
+        final loginResponse = LoginResponse.fromJson(data);
+        return loginResponse;
+      },
+    );
+
+    if (result.isSuccess && result.data != null) {
+      final loginResponse = result.data!;
+      final accessToken = loginResponse.accessToken;
+      final refreshToken = loginResponse.refreshToken;
+
+      // DioClient에 토큰 설정
+      await _dioClient.setAccessToken(accessToken);
+      await _dioClient.setRefreshToken(refreshToken);
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('access_token', accessToken);
+      await prefs.setString('refresh_token', refreshToken);
+
+      AppLogger.success('로그인 성공: 사용자 ID ${loginResponse.userId}', 'AUTH');
+    }
+
+    return result;
   }
 
   /// 회원가입
@@ -190,60 +183,31 @@ class AuthService {
     }
   }
 
+  /// AuthService 전용 DioException 에러 처리 (409 특별 처리 포함)
   ApiResult<T> _handleDioError<T>(DioException e, String action) {
-    AppLogger.error(
-      '$action DioException: ${e.response?.statusCode}',
-      e,
-      null,
-      'AUTH',
-    );
+    final statusCode = e.response?.statusCode;
+    final errorData = e.response?.data;
 
-    if (e.response?.statusCode == 400) {
-      if (action == '로그인') {
-        // Parse specific error message from response if available
-        final errorData = e.response?.data;
-        if (errorData != null && errorData is Map<String, dynamic>) {
-          final errorMessage =
-              errorData['error'] ?? errorData['message'] ?? errorData['detail'];
-          if (errorMessage != null) {
-            return ApiResult.validationError(errorMessage.toString());
-          }
-        }
-        return ApiResult.validationError('로그인 정보가 올바르지 않습니다');
-      } else {
-        return ApiResult.validationError('입력 정보를 확인해주세요');
+    // 409 Conflict 특별 처리 (AuthService만의 특별 로직)
+    if (statusCode == 409 && errorData is Map<String, dynamic>) {
+      final errorCode = errorData['error_code'];
+      final existingLoginId = errorData['existing_login_id'];
+
+      if (errorCode == 'duplicated_ci' && existingLoginId != null) {
+        AppLogger.error('본인인증 중복 오류', errorData, null, 'AUTH');
+        return ApiResult.failure(
+          'WE-Ticket은 하나의 계정에서만 본인인증이 가능합니다.\n\n'
+          '다음 계정에서 본인인증이 되어있음이 확인되었습니다:\n'
+          '- 계정 아이디: $existingLoginId\n\n'
+          '해당 계정으로 다시 재로그인 후 본인인증 및 서비스를 이용해주세요.\n'
+          '기타 문의사항은 고객센터로 연락해주시기 바랍니다.',
+          statusCode: 409,
+        );
       }
-    } else if (e.response?.statusCode == 409) {
-      // 409 응답 데이터 파싱
-      final errorData = e.response?.data;
-      if (errorData != null && errorData is Map<String, dynamic>) {
-        final errorCode = errorData['error_code'];
-        final message = errorData['message'];
-        final existingLoginId = errorData['existing_login_id'];
-
-        // 본인인증 중복 오류인 경우
-        if (errorCode == 'duplicated_ci' && existingLoginId != null) {
-          return ApiResult.failure(
-            'WE-Ticket은 하나의 계정에서만 본인인증이 가능합니다.\n\n'
-            '다음 계정에서 본인인증이 되어있음이 확인되었습니다:\n'
-            '- 계정 아이디: $existingLoginId\n\n'
-            '해당 계정으로 다시 재로그인 후 본인인증 및 서비스를 이용해주세요.\n'
-            '기타 문의사항은 고객센터로 연락해주시기 바랍니다.',
-            statusCode: 409,
-          );
-        }
-
-        // 기타 409 오류
-        if (message != null) {
-          return ApiResult.failure(message.toString(), statusCode: 409);
-        }
-      }
-
-      // 기본 409 메시지
-      return ApiResult.failure('이미 사용 중인 아이디이거나 휴대폰 번호입니다', statusCode: 409);
-    } else {
-      return ApiResult.networkError('네트워크 오류가 발생했습니다');
     }
+
+    // 일반적인 에러 처리는 믹스인 사용
+    return handleDioError<T>(e, action, 'AUTH');
   }
 
   /// 아이디 찾기 - 전화번호로 인증코드 요청
@@ -537,6 +501,34 @@ class AuthService {
       return ApiResult.failure('알 수 없는 오류가 발생했습니다');
     }
   }
+
+  /// 사용자 약관 동의 API
+  Future<ApiResult<void>> submitUserAgreement({
+    required int userId,
+    required String termType,
+  }) async {
+    AppLogger.info(
+      '사용자 약관 동의 요청 시작 (사용자ID: $userId, 약관타입: $termType)',
+      'AUTH',
+    );
+
+    final now = DateTime.now();
+    final requestData = {
+      'user_id': userId,
+      'term_type': '개인정보 추가수집 동의',
+      'agreed_at': '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}', // YYYY-MM-DD 형식
+    };
+
+    final result = await _dioClient.postResult<void>(
+      '/users/vc-agreement/',
+      data: requestData,
+      parser: (data) {
+        AppLogger.success('사용자 약관 동의 완료', 'AUTH');
+      },
+    );
+
+    return result;
+  }
 }
 
 /// AuthService Extension - OmniOne 인증 처리
@@ -548,44 +540,31 @@ extension AuthServiceExtension on AuthService {
     required bool isSuccess,
     required String verificationResult,
   }) async {
-    try {
-      AppLogger.auth(
-        '본인인증 결과 기록 시작 (사용자 ID: $userId, 다음 Auth level: $nextVerificationLevel)',
-      );
+    AppLogger.auth(
+      '본인인증 결과 기록 시작 (사용자 ID: $userId, 다음 Auth level: $nextVerificationLevel)',
+    );
 
-      final request = IdentityVerificationRequest(
-        userId: userId,
-        nextVerificationLevel: nextVerificationLevel,
-        isSuccess: isSuccess,
-        verificationResult: verificationResult,
-      );
+    final request = IdentityVerificationRequest(
+      userId: userId,
+      nextVerificationLevel: nextVerificationLevel,
+      isSuccess: isSuccess,
+      verificationResult: verificationResult,
+    );
 
-      final response = await _dioClient.post(
-        '/users/identity-verification-record/',
-        data: request.toJson(),
-      );
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final verificationResponse = IdentityVerificationResponse.fromJson(
-          response.data,
-        );
+    final result = await _dioClient.postResult<IdentityVerificationResponse>(
+      '/users/identity-verification-record/',
+      data: request.toJson(),
+      parser: (data) {
+        final verificationResponse = IdentityVerificationResponse.fromJson(data);
         AppLogger.success(
           '본인인증 기록 성공: ${verificationResponse.message}',
           'AUTH',
         );
-        return ApiResult.success(verificationResponse);
-      } else {
-        return ApiResult.failure(
-          '본인인증 기록 실패: ${response.statusCode}',
-          statusCode: response.statusCode,
-        );
-      }
-    } on DioException catch (e) {
-      return _handleDioError(e, '본인인증 기록');
-    } catch (e) {
-      AppLogger.error('본인인증 기록 오류', e, null, 'AUTH');
-      return ApiResult.failure('알 수 없는 오류가 발생했습니다');
-    }
+        return verificationResponse;
+      },
+    );
+
+    return result;
   }
 
   /// 동시접속 감지시 세션 만료 처리
@@ -643,22 +622,28 @@ extension AuthServiceExtension on AuthService {
 
       // 현재 레벨을 기준으로 다음 레벨 결정
       final String nextVerificationLevel;
+      // switch (currentAuthLevel) {
+      //   case 0: // none -> general
+      //     nextVerificationLevel = "general";
+      //     break;
+      //   case 1: // general -> mobile_id
+      //     nextVerificationLevel = 'mobile_id';
+      //     break;
+      //   default:
+      //     // 이미 최고 레벨이거나 예상치 못한 레벨
+      //     nextVerificationLevel = 'mobile_id';
+      // }
+
       switch (currentAuthLevel) {
-        case 0: // none -> general
-          nextVerificationLevel = "general";
+        case 1:
+          nextVerificationLevel = 'general';
           break;
-        case 1: // general -> mobile_id
+        case 2:
           nextVerificationLevel = 'mobile_id';
           break;
         default:
-          // 이미 최고 레벨이거나 예상치 못한 레벨
-          nextVerificationLevel = 'mobile_id';
+          nextVerificationLevel = 'general';
       }
-
-      AppLogger.info(
-        '레벨 전환: $currentAuthLevel -> $nextVerificationLevel',
-        'AUTH',
-      );
 
       String verificationResult = dataMap['token'];
 
@@ -671,42 +656,6 @@ extension AuthServiceExtension on AuthService {
     } catch (e) {
       AppLogger.error('OmniOne 결과 처리 오류', e, null, 'AUTH');
       return ApiResult.failure('인증 결과 처리 중 오류가 발생했습니다: $e');
-    }
-  }
-
-  /// 사용자 약관 동의 API
-  Future<ApiResult<void>> submitUserAgreement({
-    required int userId,
-    required String termType,
-  }) async {
-    try {
-      AppLogger.info('사용자 약관 동의 요청 시작 (사용자ID: $userId, 약관타입: $termType)', 'AUTH');
-
-      final requestData = {
-        'user_id': userId,
-        'term_type': termType,
-        'agreed_at': DateTime.now().toIso8601String(),
-      };
-
-      final response = await _dioClient.post(
-        '/users/vc-agreement/',
-        data: requestData,
-      );
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        AppLogger.success('사용자 약관 동의 완료', 'AUTH');
-        return ApiResult.success(null);
-      } else {
-        return ApiResult.failure(
-          '약관 동의 처리 실패: ${response.statusCode}',
-          statusCode: response.statusCode,
-        );
-      }
-    } on DioException catch (e) {
-      return _handleDioError(e, '약관 동의');
-    } catch (e) {
-      AppLogger.error('약관 동의 처리 오류', e, null, 'AUTH');
-      return ApiResult.failure('약관 동의 처리 중 오류가 발생했습니다');
     }
   }
 }

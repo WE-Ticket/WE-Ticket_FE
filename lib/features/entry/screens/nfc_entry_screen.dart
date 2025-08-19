@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:we_ticket/features/auth/presentation/providers/auth_provider.dart';
+import 'package:we_ticket/features/entry/screens/manual_entry_screen.dart';
 import 'package:we_ticket/shared/presentation/providers/api_provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import 'package:flutter_nfc_kit/flutter_nfc_kit.dart';
@@ -651,14 +652,40 @@ class _NFCEntryScreenState extends State<NFCEntryScreen>
               ),
             ),
 
-            // FIXME
-            TextButton(
-              onPressed: () {
-                final authProvider = context.read<AuthProvider>();
-                final userId = authProvider.currentUserId; // 현재 로그인한 사용자 ID
-                _entryAccess(userId!, widget.ticketId, "C");
-              },
-              child: Text("디버깅용 입장 버튼"),
+            SizedBox(height: 20),
+            
+            // 수동 검표 버튼
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ManualEntryScreen(
+                        ticketId: widget.ticketId,
+                        ticketData: widget.ticketData,
+                      ),
+                    ),
+                  );
+                },
+                icon: Icon(Icons.person_pin, size: 20),
+                label: Text(
+                  '수동 검표',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: BorderSide(color: AppColors.primary),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
             ),
 
             // 안내 정보

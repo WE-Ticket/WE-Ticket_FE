@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 /// DID 관련 도메인 엔티티들
 class DidCreationResult {
   final String did;
@@ -20,12 +22,24 @@ class DidCreationResult {
 
   factory DidCreationResult.fromPlatformResponse(Map<String, dynamic> response) {
     try {
+      // 여러 가능한 DID document 키 이름들 확인
+      Map<String, dynamic> didDoc = _safeMapConversion(response['didDocument']);
+      if (didDoc.isEmpty) {
+        didDoc = _safeMapConversion(response['did_document']);
+      }
+      if (didDoc.isEmpty) {
+        didDoc = _safeMapConversion(response['ownerDidDoc']);
+      }
+      if (didDoc.isEmpty) {
+        didDoc = _safeMapConversion(response['owner_did_doc']);
+      }
+      
       return DidCreationResult(
         did: _safeStringConversion(response['did']),
         keyId: _safeStringConversion(response['keyId']),
         publicKey: _safeStringConversion(response['publicKey']),
         keyAttestation: KeyAttestation.fromJson(_safeMapConversion(response['keyAttestation'])),
-        didDocument: _safeMapConversion(response['didDocument']),
+        didDocument: didDoc,
         success: response['success'] ?? false,
         error: _safeStringConversion(response['error']),
       );
@@ -34,6 +48,11 @@ class DidCreationResult {
       print('❌ DidCreationResult 파싱 오류: $e');
       print('📋 Response keys: ${response.keys.toList()}');
       print('📋 Response types: ${response.map((k, v) => MapEntry(k, v.runtimeType))}');
+      print('📋 didDocument candidates:');
+      print('   - didDocument: ${response['didDocument']}');
+      print('   - did_document: ${response['did_document']}');
+      print('   - ownerDidDoc: ${response['ownerDidDoc']}');
+      print('   - owner_did_doc: ${response['owner_did_doc']}');
       
       return DidCreationResult.failure('DID 응답 파싱 오류: $e');
     }
@@ -53,6 +72,23 @@ class DidCreationResult {
       return Map<String, dynamic>.from(
         input.map((key, value) => MapEntry(key.toString(), value)),
       );
+    }
+    if (input is String && input.isNotEmpty) {
+      try {
+        // JSON 문자열을 Map으로 파싱 시도
+        final decoded = jsonDecode(input);
+        if (decoded is Map<String, dynamic>) {
+          return decoded;
+        }
+        if (decoded is Map) {
+          return Map<String, dynamic>.from(
+            decoded.map((key, value) => MapEntry(key.toString(), value)),
+          );
+        }
+      } catch (e) {
+        print('❌ JSON 파싱 실패: $e');
+        print('📋 입력 문자열: ${input.length > 200 ? input.substring(0, 200) + "..." : input}');
+      }
     }
     return <String, dynamic>{};
   }

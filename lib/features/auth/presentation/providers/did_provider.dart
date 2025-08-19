@@ -30,10 +30,12 @@ class DidProvider extends ChangeNotifier {
   /// DID 생성 및 등록 실행
   Future<bool> createAndRegisterDid({required int userId}) async {
     _clearError();
-    
+
     try {
-      final result = await _manageDidUseCase.createAndRegisterDid(userId: userId);
-      
+      final result = await _manageDidUseCase.createAndRegisterDid(
+        userId: userId,
+      );
+
       return result.fold(
         (failure) {
           _setError(failure.message);
@@ -56,10 +58,10 @@ class DidProvider extends ChangeNotifier {
   /// DID 삭제
   Future<bool> deleteDid() async {
     _clearError();
-    
+
     try {
       final result = await _manageDidUseCase.deleteDid();
-      
+
       return result.fold(
         (failure) {
           _setError(failure.message);
@@ -83,14 +85,14 @@ class DidProvider extends ChangeNotifier {
     _progressSubscription = _manageDidUseCase
         .getCreationProgressStream()
         .listen((progress) {
-      _progress = progress;
-      
-      if (progress.isFailed && progress.error != null) {
-        _setError(progress.error!);
-      }
-      
-      notifyListeners();
-    });
+          _progress = progress;
+
+          if (progress.isFailed && progress.error != null) {
+            _setError(progress.error!);
+          }
+
+          notifyListeners();
+        });
   }
 
   /// 에러 메시지 설정
@@ -121,7 +123,7 @@ class DidProvider extends ChangeNotifier {
   /// DID 정보 포맷팅
   Map<String, String> getDidInfo() {
     if (_didResult == null) return {};
-    
+
     return {
       'DID': _didResult!.did,
       'Key ID': _didResult!.keyId,

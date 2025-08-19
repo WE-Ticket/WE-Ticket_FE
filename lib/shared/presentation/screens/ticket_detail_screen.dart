@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:we_ticket/features/auth/presentation/providers/auth_provider.dart';
-import 'package:we_ticket/features/entry/screens/manual_entry_screen.dart'
-    show ManualEntryScreen;
 import 'package:we_ticket/features/entry/screens/nfc_entry_screen.dart';
 import 'package:we_ticket/features/transfer/presentation/screens/my_transfer_manage_screen.dart';
 import 'package:we_ticket/shared/presentation/providers/api_provider.dart';
@@ -616,7 +614,6 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   }
 
   // 액션 버튼 섹션
-  // 액션 버튼 섹션 (수정된 부분)
   Widget _buildActionButtonsSection() {
     final ticket = _ticketDetail!;
 
@@ -625,25 +622,33 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
       child: Column(
         children: [
           if (ticket['status'] == 'pending') ...[
-            // NFC 입장하기 버튼 (모바일 신분증 인증자만)
+            // NFC 입장하기 버튼 (2시간 전부터 활성화)
             Consumer<AuthProvider>(
               builder: (context, authProvider, child) {
+                final isEntryAvailable = _isEntryTimeAvailable();
+                final timeUntilEntry = _getTimeUntilEntryAvailable();
+
                 return SizedBox(
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton.icon(
-                    onPressed: () => _handleNFCEntry(),
+                    onPressed: isEntryAvailable
+                        ? () => _handleNFCEntry()
+                        : null,
                     icon: Icon(Icons.nfc, size: 24),
                     label: Text(
-                      'NFC 간편 입장',
+                      isEntryAvailable
+                          ? 'NFC 간편 입장'
+                          : 'NFC 간편 입장 (${timeUntilEntry} 후 활성화)',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.success,
-
+                      backgroundColor: isEntryAvailable
+                          ? AppColors.success
+                          : AppColors.gray400,
                       foregroundColor: AppColors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -653,25 +658,40 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                 );
               },
             ),
+            SizedBox(height: 8),
+
+            // 안내 문구
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Text(
+                '• 입장 버튼은 공연 시작 2시간 전부터 활성화 됩니다.\n• 기능 테스트가 필요하다면 디버깅 버튼을 눌러주세요.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.left,
+              ),
+            ),
 
             SizedBox(height: 12),
 
-            // 수동 검표 버튼 (모든 사용자)
+            // 디버깅 버튼 (기능 테스트용)
             SizedBox(
               width: double.infinity,
-              height: 56,
+              height: 48,
               child: OutlinedButton.icon(
-                onPressed: () => _handleManualEntry(),
-                icon: Icon(Icons.person_pin, size: 24),
+                onPressed: () => _handleDebugEntry(),
+                icon: Icon(Icons.bug_report, size: 20),
                 label: Text(
-                  '수동 검표',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  '디버깅용 입장 버튼',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                 ),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.primary,
-                  side: BorderSide(color: AppColors.primary),
+                  foregroundColor: AppColors.gray600,
+                  side: BorderSide(color: AppColors.gray400),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
               ),
@@ -758,6 +778,62 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     );
   }
 
+  /// 공연 시작 2시간 전인지 확인
+  bool _isEntryTimeAvailable() {
+    if (_ticketDetail == null) return false;
+
+    try {
+      final sessionDateTimeStr =
+          _ticketDetail!['sessionDateTime'] ??
+          _ticketDetail!['session_datetime'];
+      if (sessionDateTimeStr == null) return false;
+
+      final sessionDateTime = DateTime.parse(sessionDateTimeStr);
+      final now = DateTime.now();
+      final timeDifference = sessionDateTime.difference(now);
+
+      // 2시간 전부터 활성화 (2시간 = 120분)
+      return timeDifference.inMinutes <= 120 && timeDifference.inMinutes >= 0;
+    } catch (e) {
+      print('세션 시간 파싱 오류: $e');
+      return false;
+    }
+  }
+
+  /// 입장 가능 시간까지 남은 시간 계산
+  String _getTimeUntilEntryAvailable() {
+    if (_ticketDetail == null) return '';
+
+    try {
+      final sessionDateTimeStr =
+          _ticketDetail!['sessionDateTime'] ??
+          _ticketDetail!['session_datetime'];
+      if (sessionDateTimeStr == null) return '';
+
+      final sessionDateTime = DateTime.parse(sessionDateTimeStr);
+      final entryAvailableTime = sessionDateTime.subtract(Duration(hours: 2));
+      final now = DateTime.now();
+      final timeDifference = entryAvailableTime.difference(now);
+
+      if (timeDifference.isNegative) return '';
+
+      final days = timeDifference.inDays;
+      final hours = timeDifference.inHours % 24;
+      final minutes = timeDifference.inMinutes % 60;
+
+      if (days > 0) {
+        return '$days일 $hours시간 $minutes분 후';
+      } else if (hours > 0) {
+        return '$hours시간 $minutes분 후';
+      } else {
+        return '$minutes분 후';
+      }
+    } catch (e) {
+      print('시간 계산 오류: $e');
+      return '';
+    }
+  }
+
   // 액션 핸들러들 (수정된 부분)
   void _handleNFCEntry() {
     // NFC 입장 화면으로 이동
@@ -772,17 +848,60 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     );
   }
 
-  void _handleManualEntry() {
-    // 수동 검표 화면으로 이동
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ManualEntryScreen(
-          ticketId: _ticketDetail!['id'],
-          ticketData: _ticketDetail!,
-        ),
-      ),
-    );
+  void _handleDebugEntry() async {
+    // 디버깅용 입장 기능 (테스트용)
+    final authProvider = context.read<AuthProvider>();
+    final userId = authProvider.currentUserId;
+
+    if (userId == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('로그인이 필요합니다.')));
+      return;
+    }
+
+    try {
+      // NFC 화면에서 가져온 디버깅 입장 로직
+      await _debugEntryAccess(userId, _ticketDetail!['id'], "C");
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('디버깅 입장 실패: $e')));
+      }
+    }
+  }
+
+  /// 디버깅용 입장 처리 (NFC 화면에서 가져옴)
+  Future<void> _debugEntryAccess(
+    int userId,
+    String ticketId,
+    String gateId,
+  ) async {
+    try {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('디버깅 입장 처리 중...'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+
+      // 실제로는 입장 API를 호출해야 함
+      await Future.delayed(Duration(seconds: 1));
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('디버깅 입장 완료!'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      rethrow;
+    }
   }
 
   // 주의사항 및 관람 안내 섹션

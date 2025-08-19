@@ -32,9 +32,22 @@ class DidRepositoryImpl implements DidRepository {
       final response = await platform.invokeMethod('createDid');
       final result = _safeMapConversion(response);
 
+      // 디버깅을 위한 상세 로그 추가
+      AppLogger.debug('플랫폼 응답: $result', 'DID');
+      AppLogger.debug('응답 키들: ${result.keys.toList()}', 'DID');
+      AppLogger.debug('didDocument 값: ${result['didDocument']}', 'DID');
+
       if (result['success'] == true) {
         AppLogger.success('DID 생성 성공', 'DID');
         final didResult = DidCreationResult.fromPlatformResponse(result);
+        
+        // DID document 검증
+        if (didResult.didDocument.isEmpty) {
+          AppLogger.error('DID document가 비어있습니다', null, null, 'DID');
+          _progressController.add(DidCreationProgress.failed('DID document 생성 실패'));
+          return Left(TechnicalFailure(message: 'DID document가 생성되지 않았습니다'));
+        }
+        
         return Right(didResult);
       } else {
         final error = result['error'] ?? 'DID 생성 실패';
@@ -71,7 +84,7 @@ class DidRepositoryImpl implements DidRepository {
       );
 
       final response = await _dioClient.post(
-        '/users/did-register/',
+        '/users/did/register/',
         data: request.toJson(),
       );
 

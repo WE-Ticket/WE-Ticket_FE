@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:we_ticket/core/network/api_result.dart';
 import 'package:we_ticket/features/auth/presentation/providers/auth_provider.dart';
 import 'package:we_ticket/features/mypage/data/payment_history_model.dart';
 import 'package:we_ticket/shared/presentation/screens/ticket_detail_screen.dart';
@@ -73,24 +74,27 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen>
 
       final selectedFilter = _filterOptions[tabIndex];
       // API에서 결제 이력 가져오기
-      final histories = await apiProvider.apiService.myTicket
+      final historiesResult = await apiProvider.apiService.myTicket
           .getFilteredPaymentHistory(userId, selectedFilter);
 
-      setState(() {
-        _paymentHistories = histories;
-        _isLoading = false;
-      });
-
-      print('✅ 결제 이력 로드 완료: ${histories.length}개');
+      if (historiesResult.isSuccess) {
+        setState(() {
+          _paymentHistories = historiesResult.data!;
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = historiesResult.errorMessage ?? '결제 이력을 불러올 수 없습니다';
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       setState(() {
         _errorMessage = '결제 이력을 불러올 수 없습니다: $e';
         _isLoading = false;
       });
-      print('❌ 결제 이력 로드 실패: $e');
     }
   }
-
 
   /// 새로고침
   Future<void> _refreshData() async {
@@ -207,12 +211,12 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen>
       color: AppColors.surface,
       child: TabBar(
         controller: _tabController,
-        tabs: _filterOptions.map((filter) => Tab(
-          child: Text(
-            filter,
-            style: TextStyle(fontSize: 14),
-          ),
-        )).toList(),
+        tabs: _filterOptions
+            .map(
+              (filter) =>
+                  Tab(child: Text(filter, style: TextStyle(fontSize: 14))),
+            )
+            .toList(),
         labelColor: AppColors.primary,
         unselectedLabelColor: AppColors.textSecondary,
         indicatorColor: AppColors.primary,

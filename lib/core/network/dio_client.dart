@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/api_constants.dart';
 import 'api_result.dart';
 import '../utils/app_logger.dart';
+import '../utils/error_message_parser.dart';
 
 class DioClient {
   late Dio _dio;
@@ -366,8 +367,11 @@ class DioClient {
     }
   }
 
-  /// Convert DioException to ApiResult
+  /// Convert DioException to ApiResult (개선된 버전)
   ApiResult<T> _handleDioException<T>(DioException error) {
+    AppLogger.error('DioException occurred', error, null, 'API');
+    AppLogger.error('Error Response Data', error.response?.data, null, 'API');
+
     switch (error.type) {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
@@ -376,30 +380,94 @@ class DioClient {
           '연결 시간이 초과되었습니다.',
           errorType: ApiErrorType.timeout,
         );
+      
       case DioExceptionType.badResponse:
         final statusCode = error.response?.statusCode;
-        if (statusCode == 401) {
-          return ApiResult.authError();
-        } else if (statusCode == 400) {
-          return ApiResult.validationError('입력 정보를 확인해주세요.');
-        } else if (statusCode == 404) {
-          return ApiResult.failure(
-            '요청한 데이터를 찾을 수 없습니다.',
-            statusCode: statusCode,
-          );
-        } else if (statusCode != null && statusCode >= 500) {
-          return ApiResult.serverError();
-        }
-        return ApiResult.failure(
-          '서버 오류: $statusCode',
-          statusCode: statusCode,
+        final errorData = error.response?.data;
+        
+        // 서버에서 온 에러 메시지 파싱
+        final errorMessage = ErrorMessageParser.parseErrorMessage(
+          errorData,
+          _getDefaultErrorMessageForStatusCode(statusCode),
         );
+
+        // 409 Conflict 특별 처리 (duplicated_ci 에러)
+        if (statusCode == 409 && errorData is Map<String, dynamic>) {
+          final errorCode = errorData['error_code'];
+          final existingLoginId = errorData['existing_login_id'];
+
+          if (errorCode == 'duplicated_ci' && existingLoginId != null) {
+            AppLogger.error('본인인증 중복 오류', errorData, null, 'API');
+            return ApiResult.failure(
+              'WE-Ticket은 하나의 계정에서만 본인인증이 가능합니다.\n\n'
+              '다음 계정에서 본인인증이 되어있음이 확인되었습니다:\n'
+              '- 계정 아이디: $existingLoginId\n\n'
+              '해당 계정으로 다시 재로그인 후 본인인증 및 서비스를 이용해주세요.\n'
+              '기타 문의사항은 고객센터로 연락해주시기 바랍니다.',
+              statusCode: 409,
+            );
+          }
+        }
+
+        // 상태 코드별 처리
+        switch (statusCode) {
+          case 401:
+            return ApiResult.authError(errorMessage);
+          case 400:
+          case 422:
+            return ApiResult.validationError(errorMessage);
+          case 403:
+            return ApiResult.failure(errorMessage, statusCode: statusCode);
+          case 404:
+            return ApiResult.failure(errorMessage, statusCode: statusCode);
+          case 409:
+            return ApiResult.failure(errorMessage, statusCode: statusCode);
+          case 500:
+          case 502:
+          case 503:
+          case 504:
+            return ApiResult.serverError(errorMessage);
+          default:
+            return ApiResult.failure(errorMessage, statusCode: statusCode);
+        }
+        
       case DioExceptionType.cancel:
         return ApiResult.failure('요청이 취소되었습니다.');
+        
+      case DioExceptionType.connectionError:
+        return ApiResult.networkError('네트워크 연결을 확인해주세요.');
+        
       case DioExceptionType.unknown:
-        return ApiResult.networkError();
+        return ApiResult.networkError('네트워크 오류가 발생했습니다.');
+        
       default:
         return ApiResult.failure('알 수 없는 오류가 발생했습니다.');
+    }
+  }
+
+  /// 상태 코드에 따른 기본 에러 메시지
+  String _getDefaultErrorMessageForStatusCode(int? statusCode) {
+    switch (statusCode) {
+      case 400:
+        return '입력 정보를 확인해주세요.';
+      case 401:
+        return '인증이 필요합니다.';
+      case 403:
+        return '접근 권한이 없습니다.';
+      case 404:
+        return '요청한 데이터를 찾을 수 없습니다.';
+      case 409:
+        return '이미 사용 중인 정보입니다.';
+      case 422:
+        return '입력 정보를 다시 확인해주세요.';
+      case 500:
+        return '서버 오류가 발생했습니다.';
+      case 502:
+      case 503:
+      case 504:
+        return '서버에 연결할 수 없습니다.';
+      default:
+        return '서버 오류가 발생했습니다. (상태코드: $statusCode)';
     }
   }
 }

@@ -36,26 +36,20 @@ class _AdditionalAuthExplanationDialogState extends State<AdditionalAuthExplanat
         return;
       }
 
-      // 직접 API 호출
-      final requestData = {
-        'user_id': userId,
-        'term_type': '개인정보_추가수집_동의',
-        'agreed_at': DateTime.now().toIso8601String(),
-      };
-
-      final response = await apiProvider.apiService.auth.dioClient.post(
-        '/users/vc-agreement/',
-        data: requestData,
+      // AuthService의 메서드 사용
+      final result = await apiProvider.apiService.auth.submitUserAgreement(
+        userId: userId,
+        termType: '개인정보_추가수집_동의',
       );
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
+      if (result.isSuccess) {
         if (mounted) {
           AppSnackBar.showSuccess(context, '개인정보 수집에 동의하였습니다.');
           Navigator.pop(context, true);
         }
       } else {
         if (mounted) {
-          AppSnackBar.showError(context, '약관 동의 처리에 실패했습니다.');
+          AppSnackBar.showError(context, result.errorMessage ?? '약관 동의 처리에 실패했습니다.');
         }
       }
     } catch (e) {

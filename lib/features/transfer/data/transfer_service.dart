@@ -1,14 +1,16 @@
 import 'package:dartz/dartz.dart';
+import 'package:dio/dio.dart';
 
 import '../../../core/network/dio_client.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/network/api_result.dart';
 import '../../../core/errors/failures.dart';
 import '../../../core/utils/app_logger.dart';
+import '../../../core/mixins/api_error_handler_mixin.dart';
 import 'transfer_models.dart';
 
 /// 양도 마켓 관련 API 서비스
-class TransferService {
+class TransferService with ApiErrorHandlerMixin {
   final DioClient _dioClient;
 
   TransferService(this._dioClient);

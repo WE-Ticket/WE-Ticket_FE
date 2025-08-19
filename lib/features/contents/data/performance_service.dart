@@ -2,9 +2,10 @@ import '../../../core/network/dio_client.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/network/api_result.dart';
 import '../../../core/utils/app_logger.dart';
+import '../../../core/mixins/api_error_handler_mixin.dart';
 import 'performance_models.dart';
 
-class PerformanceService {
+class PerformanceService with ApiErrorHandlerMixin {
   final DioClient _dioClient;
 
   PerformanceService(this._dioClient);

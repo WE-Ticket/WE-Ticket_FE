@@ -45,7 +45,7 @@ class ApiService {
 
       // 가장 가벼운 API 호출로 연결 상태 확인
       final result = await performance.getHotPerformances();
-      
+
       if (!result.isSuccess) {
         throw Exception(result.errorMessage ?? '네트워크 연결 실패');
       }
@@ -66,7 +66,7 @@ class ApiService {
         performance.getHotPerformances(),
         performance.getAvailablePerformances(),
       ]);
-      
+
       // ApiResult 체크
       if (!results[0].isSuccess || !results[1].isSuccess) {
         throw Exception('대시보드 데이터 로딩 실패');
@@ -78,7 +78,7 @@ class ApiService {
         'loadedAt': DateTime.now(),
       };
 
-      print('✅ 대시보드 데이터 로딩 완룼');
+      print('✅ 대시보드 데이터 로딩 완료');
       return dashboardData;
     } catch (e) {
       print('❌ 대시보드 데이터 로딩 실패: $e');
@@ -92,11 +92,11 @@ class ApiService {
     try {
       // 양도 가능한 티켓 리스트 조회
       final result = await transfer.getTransferTicketList();
-      
+
       if (!result.isSuccess) {
         throw Exception(result.errorMessage ?? '양도 마켓 데이터 로딩 실패');
       }
-      
+
       final transferList = result.data!;
 
       final transferMarketData = {
@@ -125,7 +125,7 @@ class ApiService {
         transfer.getMyRegisteredTickets(userId: userId),
         transfer.getMyTransferableTickets(userId: userId),
       ]);
-      
+
       // ApiResult 체크
       if (!results[0].isSuccess || !results[1].isSuccess) {
         throw Exception('양도 데이터 로딩 실패');
@@ -244,20 +244,22 @@ class ApiService {
       final performanceDetailResult = await performance.getPerformanceDetail(
         performanceId,
       );
-      
+
       if (!performanceDetailResult.isSuccess) {
-        throw Exception(performanceDetailResult.errorMessage ?? '공연 상세 정보 로딩 실패');
+        throw Exception(
+          performanceDetailResult.errorMessage ?? '공연 상세 정보 로딩 실패',
+        );
       }
-      
+
       final performanceDetail = performanceDetailResult.data!;
 
       // 2. 공연 스케줄
       final scheduleResult = await ticket.getPerformanceSchedule(performanceId);
-      
+
       if (!scheduleResult.isSuccess) {
         throw Exception(scheduleResult.errorMessage ?? '공연 스케줄 로딩 실패');
       }
-      
+
       final schedule = scheduleResult.data!;
 
       // 3. 첫 번째 세션의 좌석 정보 (미리 로드)
@@ -270,9 +272,12 @@ class ApiService {
           performanceId,
           firstSession.performanceSessionId,
         );
-        
+
         if (seatInfoResult.isSuccess) {
-          firstSessionData = {'session': firstSession, 'seatInfo': seatInfoResult.data!};
+          firstSessionData = {
+            'session': firstSession,
+            'seatInfo': seatInfoResult.data!,
+          };
         }
       }
 
@@ -344,11 +349,11 @@ class ApiService {
         'userId': userId,
         'filter': filter ?? '전체 거래',
         'paymentHistories': paymentHistories,
-        'totalCount': paymentHistories.length,
+        // 'totalCount': paymentHistories.length,
         'loadedAt': DateTime.now(),
       };
 
-      print('✅ 사용자 결제 데이터 로딩 완료 (${paymentHistories.length}개)');
+      // print('✅ 사용자 결제 데이터 로딩 완료 (${paymentHistories.length}개)');
       return paymentData;
     } catch (e) {
       print('❌ 사용자 결제 데이터 로딩 실패: $e');
