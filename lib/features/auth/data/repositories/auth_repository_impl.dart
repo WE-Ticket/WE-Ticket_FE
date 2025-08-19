@@ -121,8 +121,46 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<Either<Failure, AuthTokens>> refreshTokens() async {
-    // TODO: 토큰 갱신 로직 구현
-    return Left(TechnicalFailure(message: '토큰 갱신 기능이 구현되지 않았습니다'));
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final refreshToken = prefs.getString('refresh_token');
+      
+      if (refreshToken == null || refreshToken.isEmpty) {
+        return Left(AuthenticationFailure(message: 'Refresh 토큰이 없습니다'));
+      }
+
+      // DioClient를 통해 토큰 갱신 (DioClient에서 자동으로 처리됨)
+      final response = await _authService.dioClient.post(
+        '/users/token/refresh/',
+        data: {'refresh': refreshToken},
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = response.data as Map<String, dynamic>;
+        final newAccessToken = responseData['access_token'] ?? responseData['access'];
+        final newRefreshToken = responseData['refresh_token'] ?? responseData['refresh'];
+        
+        if (newAccessToken != null) {
+          // 새 토큰들 저장
+          await prefs.setString('access_token', newAccessToken);
+          if (newRefreshToken != null) {
+            await prefs.setString('refresh_token', newRefreshToken);
+          }
+          
+          final tokens = AuthTokens(
+            accessToken: newAccessToken,
+            refreshToken: newRefreshToken ?? refreshToken,
+          );
+          
+          return Right(tokens);
+        }
+      }
+      
+      return Left(AuthenticationFailure(message: '토큰 갱신에 실패했습니다'));
+    } catch (e) {
+      AppLogger.error('토큰 갱신 오류', e, null, 'AUTH');
+      return Left(TechnicalFailure(message: '토큰 갱신 중 오류가 발생했습니다'));
+    }
   }
 
   @override
@@ -178,6 +216,7 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
+  @override
   Future<Either<Failure, Map<String, dynamic>>> loadUserAuthLevel(int userId) async {
     try {
       final result = await _authService.loadUserAuthLevel(userId);

@@ -282,3 +282,222 @@ class IdentityVerificationResponse {
     return 'IdentityVerificationResponse(message: $message, newLevel: $newVerificationLevel)';
   }
 }
+
+
+/// 아이디 찾기 요청 모델
+class FindIdRequest {
+  final String phoneNumber;
+
+  FindIdRequest({required this.phoneNumber});
+
+  Map<String, dynamic> toJson() {
+    return {'phone_number': phoneNumber};
+  }
+}
+
+/// 아이디 찾기 응답 모델
+class FindIdResponse {
+  final String message;
+  final String phoneNumber;
+  final String? verificationCode;
+
+  FindIdResponse({
+    required this.message,
+    required this.phoneNumber,
+    this.verificationCode,
+  });
+
+  factory FindIdResponse.fromJson(Map<String, dynamic> json) {
+    return FindIdResponse(
+      message: JsonParserUtils.parseString(json['message']),
+      phoneNumber: JsonParserUtils.parseString(json['phone_number']),
+      verificationCode: json['verification_code'],
+    );
+  }
+}
+
+/// 아이디 확인 요청 모델
+class VerifyIdRequest {
+  final String phoneNumber;
+  final String code;
+
+  VerifyIdRequest({
+    required this.phoneNumber,
+    required this.code,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'phone_number': phoneNumber,
+      'code': code,
+    };
+  }
+}
+
+/// 아이디 확인 응답 모델
+class VerifyIdResponse {
+  final String message;
+  final String? loginId;
+
+  VerifyIdResponse({
+    required this.message,
+    this.loginId,
+  });
+
+  factory VerifyIdResponse.fromJson(Map<String, dynamic> json) {
+    return VerifyIdResponse(
+      message: JsonParserUtils.parseString(json['message']),
+      loginId: json['login_id'],
+    );
+  }
+
+  bool get isSuccess => message.contains('성공');
+}
+
+/// 비밀번호 찾기 요청 모델
+class FindPasswordRequest {
+  final String phoneNumber;
+  final String loginId;
+
+  FindPasswordRequest({
+    required this.phoneNumber,
+    required this.loginId,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'phone_number': phoneNumber,
+      'login_id': loginId,
+    };
+  }
+}
+
+/// 비밀번호 찾기 응답 모델
+class FindPasswordResponse {
+  final String message;
+  final String loginId;
+  final String phoneNumber;
+  final String? verificationCode;
+
+  FindPasswordResponse({
+    required this.message,
+    required this.loginId,
+    required this.phoneNumber,
+    this.verificationCode,
+  });
+
+  factory FindPasswordResponse.fromJson(Map<String, dynamic> json) {
+    return FindPasswordResponse(
+      message: JsonParserUtils.parseString(json['message']),
+      loginId: JsonParserUtils.parseString(json['login_id']),
+      phoneNumber: JsonParserUtils.parseString(json['phone_number']),
+      verificationCode: json['verification_code'],
+    );
+  }
+}
+
+/// 비밀번호 재설정 인증 요청 모델
+class VerifyPasswordRequest {
+  final String phoneNumber;
+  final String loginId;
+  final String code;
+
+  VerifyPasswordRequest({
+    required this.phoneNumber,
+    required this.loginId,
+    required this.code,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'phone_number': phoneNumber,
+      'login_id': loginId,
+      'code': code,
+    };
+  }
+}
+
+/// 비밀번호 재설정 인증 응답 모델
+class VerifyPasswordResponse {
+  final String message;
+  final String loginId;
+  final bool canResetPassword;
+
+  VerifyPasswordResponse({
+    required this.message,
+    required this.loginId,
+    required this.canResetPassword,
+  });
+
+  factory VerifyPasswordResponse.fromJson(Map<String, dynamic> json) {
+    return VerifyPasswordResponse(
+      message: JsonParserUtils.parseString(json['message']),
+      loginId: JsonParserUtils.parseString(json['login_id']),
+      canResetPassword: JsonParserUtils.parseBool(json['can_reset_password']),
+    );
+  }
+
+  bool get isSuccess => message.contains('성공');
+}
+
+/// 비밀번호 재설정 요청 모델
+class ResetPasswordRequest {
+  final String phoneNumber;
+  final String loginId;
+  final String newPassword;
+
+  ResetPasswordRequest({
+    required this.phoneNumber,
+    required this.loginId,
+    required this.newPassword,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'phone_number': phoneNumber,
+      'login_id': loginId,
+      'new_password': newPassword,
+    };
+  }
+}
+
+/// 비밀번호 재설정 응답 모델
+class ResetPasswordResponse {
+  final String message;
+
+  ResetPasswordResponse({required this.message});
+
+  factory ResetPasswordResponse.fromJson(Map<String, dynamic> json) {
+    return ResetPasswordResponse(
+      message: JsonParserUtils.parseString(json['message']),
+    );
+  }
+
+  bool get isSuccess => message.contains('성공');
+}
+
+/// 전화번호 중복 확인 응답 모델
+class PhoneNumberCheckResponse {
+  final bool isDuplicate;
+
+  PhoneNumberCheckResponse({required this.isDuplicate});
+
+  factory PhoneNumberCheckResponse.fromJson(Map<String, dynamic> json) {
+    return PhoneNumberCheckResponse(
+      isDuplicate: JsonParserUtils.parseBool(json['is_duplicate']),
+    );
+  }
+}
+
+/// 로그인 아이디 중복 확인 응답 모델
+class LoginIdCheckResponse {
+  final bool isDuplicate;
+
+  LoginIdCheckResponse({required this.isDuplicate});
+
+  factory LoginIdCheckResponse.fromJson(Map<String, dynamic> json) {
+    return LoginIdCheckResponse(
+      isDuplicate: JsonParserUtils.parseBool(json['is_duplicate']),
+    );
+  }
+}

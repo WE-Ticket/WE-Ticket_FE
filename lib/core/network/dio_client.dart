@@ -43,14 +43,50 @@ class DioClient {
           return handler.next(options);
         },
         onError: (error, handler) async {
-          // ⚠️ 임시: Refresh API가 없으므로 401 오류 시 바로 토큰 삭제
+          // 401 인증 오류 처리
           if (error.response?.statusCode == 401) {
-            AppLogger.warning('토큰 만료 감지 - Refresh API 없음으로 토큰 삭제', 'AUTH');
+            final errorData = error.response?.data;
+            final isSessionExpired = errorData != null && 
+                errorData is Map<String, dynamic> &&
+                errorData['error']?.toString().contains('세션이 만료') == true;
 
-            // 토큰 완전 삭제
-            await clearTokens();
+            if (isSessionExpired) {
+              AppLogger.warning('동시접속 감지 - 세션 만료', 'AUTH');
+              
+              // 동시접속으로 인한 자동 로그아웃 처리
+              await _handleConcurrentLoginLogout();
+              return handler.next(error);
+            }
 
-            AppLogger.error('인증 만료 - 재로그인 필요', null, null, 'AUTH');
+            // 일반적인 토큰 만료 - refresh 토큰으로 갱신 시도
+            AppLogger.warning('토큰 만료 감지 - 갱신 시도', 'AUTH');
+            
+            final refreshSuccess = await _refreshAccessToken();
+            
+            if (refreshSuccess) {
+              // 토큰 갱신 성공 - 원래 요청 재시도
+              AppLogger.success('토큰 갱신 성공 - 원래 요청 재시도', 'AUTH');
+              
+              // 새 토큰으로 헤더 업데이트
+              final prefs = await SharedPreferences.getInstance();
+              final newAccessToken = prefs.getString('access_token');
+              if (newAccessToken != null) {
+                error.requestOptions.headers['Authorization'] = 'Bearer $newAccessToken';
+                
+                // 원래 요청 재시도
+                try {
+                  final response = await _dio.fetch(error.requestOptions);
+                  return handler.resolve(response);
+                } catch (e) {
+                  AppLogger.error('재시도 요청 실패', e, null, 'AUTH');
+                  return handler.next(error);
+                }
+              }
+            } else {
+              // 토큰 갱신 실패 - 로그아웃 처리
+              AppLogger.error('토큰 갱신 실패 - 로그아웃 처리', null, null, 'AUTH');
+              await clearTokens();
+            }
           }
 
           return handler.next(error);
@@ -103,11 +139,15 @@ class DioClient {
     AppLogger.auth('모든 토큰 삭제 완료');
   }
 
-  /// ⚠️ 임시 비활성화: access_token 갱신 (백엔드 API 대기 중)
+  /// ✅ Access Token 갱신
   Future<bool> _refreshAccessToken() async {
     try {
-      AppLogger.warning('Refresh API 미구현 - 토큰 갱신 불가', 'AUTH');
+      if (_isRefreshing) {
+        AppLogger.warning('토큰 갱신 이미 진행 중', 'AUTH');
+        return false;
+      }
 
+      _isRefreshing = true;
       AppLogger.auth('토큰 갱신 시작');
 
       // SharedPreferences에서 최신 refresh 토큰 로드
@@ -132,26 +172,33 @@ class DioClient {
       );
 
       if (response.statusCode == 200) {
-        final newAccessToken = response.data['access'];
-        await setAccessToken(newAccessToken);
+        final responseData = response.data as Map<String, dynamic>;
+        final newAccessToken = responseData['access_token'] ?? responseData['access'];
+        
+        if (newAccessToken != null) {
+          await setAccessToken(newAccessToken);
+          
+          // refresh 토큰도 새로 발급된 경우
+          final newRefreshToken = responseData['refresh_token'] ?? responseData['refresh'];
+          if (newRefreshToken != null) {
+            await setRefreshToken(newRefreshToken);
+          }
 
-        // refresh 토큰도 새로 발급된 경우
-        final newRefreshToken = response.data['refresh'];
-        if (newRefreshToken != null) {
-          await setRefreshToken(newRefreshToken);
+          AppLogger.success('토큰 갱신 성공', 'AUTH');
+          return true;
+        } else {
+          AppLogger.error('응답에서 access_token을 찾을 수 없음', null, null, 'AUTH');
+          return false;
         }
-
-        AppLogger.success('토큰 갱신 성공', 'AUTH');
-        return true;
       } else {
         AppLogger.error('토큰 갱신 응답 오류: ${response.statusCode}', null, null, 'AUTH');
         return false;
       }
-
-      return false;
     } catch (e) {
       AppLogger.error('토큰 갱신 예외', e, null, 'AUTH');
       return false;
+    } finally {
+      _isRefreshing = false;
     }
   }
 
@@ -165,6 +212,34 @@ class DioClient {
         accessToken.isNotEmpty &&
         refreshToken != null &&
         refreshToken.isNotEmpty;
+  }
+
+  /// 동시접속으로 인한 자동 로그아웃 처리
+  Future<void> _handleConcurrentLoginLogout() async {
+    try {
+      AppLogger.warning('동시접속 감지 - 자동 로그아웃 처리 시작', 'AUTH');
+      
+      // 1. 토큰 완전 삭제
+      await clearTokens();
+      
+      // 2. SharedPreferences 완전 정리
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+      
+      // 3. 사용자에게 알림 (글로벌 이벤트 발생)
+      _notifyConcurrentLoginDetected();
+      
+      AppLogger.info('동시접속으로 인한 자동 로그아웃 완료', 'AUTH');
+    } catch (e) {
+      AppLogger.error('동시접속 처리 중 오류', e, null, 'AUTH');
+    }
+  }
+  
+  /// 동시접속 감지 알림
+  void _notifyConcurrentLoginDetected() {
+    // TODO: GlobalEventBus나 Provider를 통해 앱 전체에 동시접속 감지 알림
+    // 현재는 로그만 출력
+    AppLogger.warning('동시접속 감지: 다른 기기에서 로그인하여 자동 로그아웃됨', 'AUTH');
   }
 
   /// ✅ 현재 토큰 정보 출력 (디버깅용)

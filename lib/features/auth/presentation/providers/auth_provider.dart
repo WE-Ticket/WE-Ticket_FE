@@ -131,7 +131,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// 회원가입
+  /// 회원가입 (전화번호 중복 확인 포함)
   Future<bool> signup({
     required String fullName,
     required String loginId,
@@ -145,6 +145,32 @@ class AuthProvider extends ChangeNotifier {
     _clearError();
 
     try {
+      // 1. 전화번호 중복 확인
+      print('📞 전화번호 중복 확인 시작: $phoneNumber');
+      final phoneCheckResult = await authService.checkPhoneNumber(
+        phoneNumber: phoneNumber,
+      );
+
+      if (phoneCheckResult.isSuccess && phoneCheckResult.data!.isDuplicate) {
+        _setError('이미 사용 중인 전화번호입니다');
+        print('❌ 전화번호 중복: $phoneNumber');
+        return false;
+      }
+
+      // 2. 로그인 아이디 중복 확인
+      print('🆔 로그인 아이디 중복 확인 시작: $loginId');
+      final idCheckResult = await authService.checkLoginId(
+        loginId: loginId,
+      );
+
+      if (idCheckResult.isSuccess && idCheckResult.data!.isDuplicate) {
+        _setError('이미 사용 중인 아이디입니다');
+        print('❌ 아이디 중복: $loginId');
+        return false;
+      }
+
+      // 3. 회원가입 진행
+      print('📝 회원가입 진행');
       final result = await authService.signup(
         fullName: fullName,
         loginId: loginId,
@@ -168,6 +194,52 @@ class AuthProvider extends ChangeNotifier {
       return false;
     } finally {
       _setLoading(false);
+    }
+  }
+
+  /// 전화번호 중복 확인
+  Future<bool> checkPhoneNumberDuplication({
+    required String phoneNumber,
+    required AuthService authService,
+  }) async {
+    try {
+      final result = await authService.checkPhoneNumber(
+        phoneNumber: phoneNumber,
+      );
+
+      if (result.isSuccess) {
+        return result.data!.isDuplicate;
+      } else {
+        _setError(result.errorMessage!);
+        return false;
+      }
+    } catch (e) {
+      print('❌ 전화번호 중복 확인 오류: $e');
+      _setError('전화번호 중복 확인 중 오류가 발생했습니다');
+      return false;
+    }
+  }
+
+  /// 로그인 아이디 중복 확인
+  Future<bool> checkLoginIdDuplication({
+    required String loginId,
+    required AuthService authService,
+  }) async {
+    try {
+      final result = await authService.checkLoginId(
+        loginId: loginId,
+      );
+
+      if (result.isSuccess) {
+        return result.data!.isDuplicate;
+      } else {
+        _setError(result.errorMessage!);
+        return false;
+      }
+    } catch (e) {
+      print('❌ 로그인 아이디 중복 확인 오류: $e');
+      _setError('아이디 중복 확인 중 오류가 발생했습니다');
+      return false;
     }
   }
 

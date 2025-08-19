@@ -14,6 +14,9 @@ class AuthService {
   final DioClient _dioClient;
 
   AuthService(this._dioClient);
+  
+  // DioClient getter 추가 (AuthRepositoryImpl에서 사용)
+  DioClient get dioClient => _dioClient;
 
   /// 로그인
   Future<ApiResult<LoginResponse>> login({
@@ -211,14 +214,304 @@ class AuthService {
         return ApiResult.validationError('입력 정보를 확인해주세요');
       }
     } else if (e.response?.statusCode == 409) {
+      // 409 응답 데이터 파싱
+      final errorData = e.response?.data;
+      if (errorData != null && errorData is Map<String, dynamic>) {
+        final errorCode = errorData['error_code'];
+        final message = errorData['message'];
+        final existingLoginId = errorData['existing_login_id'];
+        
+        // 본인인증 중복 오류인 경우
+        if (errorCode == 'duplicated_ci' && existingLoginId != null) {
+          return ApiResult.failure(
+            'WE-Ticket은 하나의 계정에서만 본인인증이 가능합니다.\n\n'
+            '다음 계정에서 본인인증이 되어있음이 확인되었습니다:\n'
+            '- 계정 아이디: $existingLoginId\n\n'
+            '해당 계정으로 다시 재로그인 후 본인인증 및 서비스를 이용해주세요.\n'
+            '기타 문의사항은 고객센터로 연락해주시기 바랍니다.',
+            statusCode: 409,
+          );
+        }
+        
+        // 기타 409 오류
+        if (message != null) {
+          return ApiResult.failure(message.toString(), statusCode: 409);
+        }
+      }
+      
+      // 기본 409 메시지
       return ApiResult.failure('이미 사용 중인 아이디이거나 휴대폰 번호입니다', statusCode: 409);
     } else {
       return ApiResult.networkError('네트워크 오류가 발생했습니다');
     }
   }
+  /// 아이디 찾기 - 전화번호로 인증코드 요청
+  Future<ApiResult<FindIdResponse>> findId({
+    required String phoneNumber,
+  }) async {
+    try {
+      AppLogger.auth('아이디 찾기 시작 (전화번호: $phoneNumber)');
+
+      final request = FindIdRequest(phoneNumber: phoneNumber);
+
+      final response = await _dioClient.post(
+        '/users/find-id/',
+        data: request.toJson(),
+      );
+
+      if (response.statusCode == 200) {
+        final findIdResponse = FindIdResponse.fromJson(response.data);
+        AppLogger.success('아이디 찾기 인증코드 발송 완료', 'AUTH');
+        return ApiResult.success(findIdResponse);
+      } else if (response.statusCode == 404) {
+        return ApiResult.failure('해당 전화번호의 회원이 없습니다.');
+      } else {
+        return ApiResult.failure(
+          '아이디 찾기 요청 실패: ${response.statusCode}',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      return _handleDioError(e, '아이디 찾기');
+    } catch (e) {
+      AppLogger.error('아이디 찾기 오류', e, null, 'AUTH');
+      return ApiResult.failure('알 수 없는 오류가 발생했습니다');
+    }
+  }
+
+  /// 아이디 인증 - 인증코드 확인 후 아이디 반환
+  Future<ApiResult<VerifyIdResponse>> verifyId({
+    required String phoneNumber,
+    required String code,
+  }) async {
+    try {
+      AppLogger.auth('아이디 인증 시작');
+
+      final request = VerifyIdRequest(
+        phoneNumber: phoneNumber,
+        code: code,
+      );
+
+      final response = await _dioClient.post(
+        '/users/verify-id/',
+        data: request.toJson(),
+      );
+
+      if (response.statusCode == 200) {
+        final verifyIdResponse = VerifyIdResponse.fromJson(response.data);
+        AppLogger.success('아이디 인증 성공: ${verifyIdResponse.loginId}', 'AUTH');
+        return ApiResult.success(verifyIdResponse);
+      } else if (response.statusCode == 404) {
+        return ApiResult.failure('사용자를 찾을 수 없습니다.');
+      } else if (response.statusCode == 400) {
+        return ApiResult.failure('인증코드가 올바르지 않거나 만료되었습니다.');
+      } else {
+        return ApiResult.failure(
+          '아이디 인증 실패: ${response.statusCode}',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      return _handleDioError(e, '아이디 인증');
+    } catch (e) {
+      AppLogger.error('아이디 인증 오류', e, null, 'AUTH');
+      return ApiResult.failure('알 수 없는 오류가 발생했습니다');
+    }
+  }
+
+  /// 비밀번호 찾기 - 전화번호와 아이디로 인증코드 요청
+  Future<ApiResult<FindPasswordResponse>> findPassword({
+    required String phoneNumber,
+    required String loginId,
+  }) async {
+    try {
+      AppLogger.auth('비밀번호 찾기 시작 (아이디: $loginId)');
+
+      final request = FindPasswordRequest(
+        phoneNumber: phoneNumber,
+        loginId: loginId,
+      );
+
+      final response = await _dioClient.post(
+        '/users/find-password/',
+        data: request.toJson(),
+      );
+
+      if (response.statusCode == 200) {
+        final findPasswordResponse = FindPasswordResponse.fromJson(response.data);
+        AppLogger.success('비밀번호 찾기 인증코드 발송 완료', 'AUTH');
+        return ApiResult.success(findPasswordResponse);
+      } else if (response.statusCode == 404) {
+        return ApiResult.failure('사용자를 찾을 수 없습니다.');
+      } else {
+        return ApiResult.failure(
+          '비밀번호 찾기 요청 실패: ${response.statusCode}',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      return _handleDioError(e, '비밀번호 찾기');
+    } catch (e) {
+      AppLogger.error('비밀번호 찾기 오류', e, null, 'AUTH');
+      return ApiResult.failure('알 수 없는 오류가 발생했습니다');
+    }
+  }
+
+  /// 비밀번호 재설정 인증 - 인증코드 확인
+  Future<ApiResult<VerifyPasswordResponse>> verifyPassword({
+    required String phoneNumber,
+    required String loginId,
+    required String code,
+  }) async {
+    try {
+      AppLogger.auth('비밀번호 재설정 인증 시작');
+
+      final request = VerifyPasswordRequest(
+        phoneNumber: phoneNumber,
+        loginId: loginId,
+        code: code,
+      );
+
+      final response = await _dioClient.post(
+        '/auth/verify-password/',
+        data: request.toJson(),
+      );
+
+      if (response.statusCode == 200) {
+        final verifyPasswordResponse = VerifyPasswordResponse.fromJson(response.data);
+        AppLogger.success('비밀번호 재설정 인증 성공', 'AUTH');
+        return ApiResult.success(verifyPasswordResponse);
+      } else if (response.statusCode == 404) {
+        return ApiResult.failure('사용자를 찾을 수 없습니다.');
+      } else if (response.statusCode == 400) {
+        return ApiResult.failure('인증코드가 올바르지 않거나 만료되었습니다.');
+      } else {
+        return ApiResult.failure(
+          '비밀번호 재설정 인증 실패: ${response.statusCode}',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      return _handleDioError(e, '비밀번호 재설정 인증');
+    } catch (e) {
+      AppLogger.error('비밀번호 재설정 인증 오류', e, null, 'AUTH');
+      return ApiResult.failure('알 수 없는 오류가 발생했습니다');
+    }
+  }
+
+  /// 비밀번호 재설정 - 새 비밀번호로 변경
+  Future<ApiResult<ResetPasswordResponse>> resetPassword({
+    required String phoneNumber,
+    required String loginId,
+    required String newPassword,
+  }) async {
+    try {
+      AppLogger.auth('비밀번호 재설정 시작');
+
+      final request = ResetPasswordRequest(
+        phoneNumber: phoneNumber,
+        loginId: loginId,
+        newPassword: newPassword,
+      );
+
+      final response = await _dioClient.post(
+        '/user/reset-password/',
+        data: request.toJson(),
+      );
+
+      if (response.statusCode == 200) {
+        final resetPasswordResponse = ResetPasswordResponse.fromJson(response.data);
+        AppLogger.success('비밀번호 재설정 완료', 'AUTH');
+        return ApiResult.success(resetPasswordResponse);
+      } else if (response.statusCode == 404) {
+        return ApiResult.failure('사용자를 찾을 수 없습니다.');
+      } else if (response.statusCode == 400) {
+        return ApiResult.failure('인증이 완료되지 않았습니다.');
+      } else {
+        return ApiResult.failure(
+          '비밀번호 재설정 실패: ${response.statusCode}',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      return _handleDioError(e, '비밀번호 재설정');
+    } catch (e) {
+      AppLogger.error('비밀번호 재설정 오류', e, null, 'AUTH');
+      return ApiResult.failure('알 수 없는 오류가 발생했습니다');
+    }
+  }
+
+  /// 로그인 아이디 중복 확인
+  Future<ApiResult<LoginIdCheckResponse>> checkLoginId({
+    required String loginId,
+  }) async {
+    try {
+      AppLogger.auth('로그인 아이디 중복 확인: $loginId');
+
+      final response = await _dioClient.get(
+        '/users/check-login-id/',
+        queryParameters: {'login_id': loginId},
+      );
+
+      if (response.statusCode == 200) {
+        final checkResponse = LoginIdCheckResponse.fromJson(response.data);
+        AppLogger.success(
+          '아이디 중복 확인 완료: ${checkResponse.isDuplicate ? '중복됨' : '사용가능'}',
+          'AUTH',
+        );
+        return ApiResult.success(checkResponse);
+      } else {
+        return ApiResult.failure(
+          '아이디 중복 확인 실패: ${response.statusCode}',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      return _handleDioError(e, '아이디 중복 확인');
+    } catch (e) {
+      AppLogger.error('아이디 중복 확인 오류', e, null, 'AUTH');
+      return ApiResult.failure('알 수 없는 오류가 발생했습니다');
+    }
+  }
+
+  /// 전화번호 중복 확인
+  Future<ApiResult<PhoneNumberCheckResponse>> checkPhoneNumber({
+    required String phoneNumber,
+  }) async {
+    try {
+      AppLogger.auth('전화번호 중복 확인: $phoneNumber');
+
+      final response = await _dioClient.get(
+        '/users/check-phone-number/',
+        queryParameters: {'phone_number': phoneNumber},
+      );
+
+      if (response.statusCode == 200) {
+        final checkResponse = PhoneNumberCheckResponse.fromJson(response.data);
+        AppLogger.success(
+          '전화번호 중복 확인 완료: ${checkResponse.isDuplicate ? '중복됨' : '사용가능'}',
+          'AUTH',
+        );
+        return ApiResult.success(checkResponse);
+      } else {
+        return ApiResult.failure(
+          '전화번호 중복 확인 실패: ${response.statusCode}',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      return _handleDioError(e, '전화번호 중복 확인');
+    } catch (e) {
+      AppLogger.error('전화번호 중복 확인 오류', e, null, 'AUTH');
+      return ApiResult.failure('알 수 없는 오류가 발생했습니다');
+    }
+  }
 }
 
-//FIXME
+//FIXME: 백엔드 API 추가 요청 필요
+// 1. ✅ /users/token/refresh/ - 토큰 갱신 API (완료)
+// 2. ✅ 본인인증 중복 확인 - identity-verification-record API의 409 응답으로 처리 (완료)
+
 /// AuthService Extension - OmniOne 인증 처리
 extension AuthServiceExtension on AuthService {
   /// 본인인증 결과 기록
@@ -268,6 +561,27 @@ extension AuthServiceExtension on AuthService {
     }
   }
 
+
+  /// 동시접속 감지시 세션 만료 처리
+  Future<ApiResult<void>> handleConcurrentLoginDetected() async {
+    try {
+      AppLogger.warning('동시접속 감지 - 세션 만료 처리', 'AUTH');
+      
+      // 1. DioClient 토큰 완전 삭제
+      await _dioClient.clearTokens();
+      
+      // 2. SharedPreferences 정리
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+      
+      AppLogger.info('동시접속으로 인한 자동 로그아웃 완료', 'AUTH');
+      return ApiResult.success(null);
+    } catch (e) {
+      AppLogger.error('동시접속 처리 오류', e, null, 'AUTH');
+      return ApiResult.failure('세션 정리 중 오류가 발생했습니다');
+    }
+  }
+
   /// OmniOne CX 인증 결과 처리
   Future<ApiResult<IdentityVerificationResponse>> processOmniOneResult({
     required int userId,
@@ -285,21 +599,6 @@ extension AuthServiceExtension on AuthService {
       if (!success) {
         return ApiResult.failure('인증이 실패했습니다.');
       }
-      // 현재 레벨을 기준으로 다음 레벨 결정
-      final String nextVerificationLevel;
-      switch (currentAuthLevel) {
-        case 0: // none -> general
-          nextVerificationLevel = "general";
-          break;
-        case 1: // general -> mobile_id  
-          nextVerificationLevel = 'mobile_id';
-          break;
-        default:
-          // 이미 최고 레벨이거나 예상치 못한 레벨
-          nextVerificationLevel = 'mobile_id';
-      }
-      
-      AppLogger.info('레벨 전환: $currentAuthLevel -> $nextVerificationLevel', 'AUTH');
 
       // rawData가 String인 경우 JSON 파싱
       Map<String, dynamic> dataMap;
@@ -315,6 +614,22 @@ extension AuthServiceExtension on AuthService {
       } else {
         return ApiResult.validationError('잘못된 인증 데이터 형식입니다.');
       }
+      
+      // 현재 레벨을 기준으로 다음 레벨 결정
+      final String nextVerificationLevel;
+      switch (currentAuthLevel) {
+        case 0: // none -> general
+          nextVerificationLevel = "general";
+          break;
+        case 1: // general -> mobile_id  
+          nextVerificationLevel = 'mobile_id';
+          break;
+        default:
+          // 이미 최고 레벨이거나 예상치 못한 레벨
+          nextVerificationLevel = 'mobile_id';
+      }
+      
+      AppLogger.info('레벨 전환: $currentAuthLevel -> $nextVerificationLevel', 'AUTH');
 
       String verificationResult = dataMap['token'];
 
