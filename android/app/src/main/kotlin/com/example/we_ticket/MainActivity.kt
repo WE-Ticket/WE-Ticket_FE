@@ -4,7 +4,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.view.WindowManager
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import org.omnione.did.sdk.core.api.KeyManager
@@ -29,7 +29,7 @@ import com.google.gson.JsonParser
 
 import java.nio.charset.StandardCharsets
 
-class MainActivity : FlutterActivity() {
+class MainActivity : FlutterFragmentActivity() {
     private val CHANNEL = "did_sdk"
     private val TAG = "MainActivity"
 

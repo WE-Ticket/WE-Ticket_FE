@@ -10,6 +10,7 @@ import 'package:we_ticket/features/entry/screens/manual_entry_screen.dart';
 import 'package:we_ticket/shared/presentation/providers/api_provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/debug_log_dialog.dart';
+import '../../../../core/services/biometric_service.dart';
 import 'package:flutter_nfc_kit/flutter_nfc_kit.dart';
 
 class NFCEntryScreen extends StatefulWidget {
@@ -246,6 +247,21 @@ class _NFCEntryScreenState extends State<NFCEntryScreen>
 
       print('[입장시스템] nonce로 auth DID 생성');
       DebugLogManager.instance.info('[입장시스템] nonce로 auth DID 생성');
+      
+      // 생체 인증 실행
+      print('[입장시스템] 생체 인증 시작');
+      DebugLogManager.instance.info('[입장시스템] 생체 인증 시작');
+      final biometricAuth = await BiometricService.authenticateWithBiometrics();
+      
+      if (!biometricAuth) {
+        print('[입장시스템] 생체 인증 실패');
+        DebugLogManager.instance.error('[입장시스템] 생체 인증 실패');
+        throw Exception('생체 인증이 필요합니다');
+      }
+      
+      print('[입장시스템] 생체 인증 성공');
+      DebugLogManager.instance.success('[입장시스템] 생체 인증 성공');
+      
       final response = await platform.invokeMethod('didAuth', {'nonce': nonce});
       final result = _safeMapConversion(response);
 
