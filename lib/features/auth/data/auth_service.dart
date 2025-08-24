@@ -504,19 +504,18 @@ class AuthService with ApiErrorHandlerMixin {
 
   /// 사용자 약관 동의 API
   Future<ApiResult<void>> submitUserAgreement({
-    required int userId,
     required String termType,
   }) async {
     AppLogger.info(
-      '사용자 약관 동의 요청 시작 (사용자ID: $userId, 약관타입: $termType)',
+      '사용자 약관 동의 요청 시작 (약관타입: $termType)',
       'AUTH',
     );
 
     final now = DateTime.now();
     final requestData = {
-      'user_id': userId,
-      'term_type': '개인정보 추가수집 동의',
-      'agreed_at': '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}', // YYYY-MM-DD 형식
+      'term_type': termType,
+      'agreed': true,
+      'agreed_at': '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}',
     };
 
     final result = await _dioClient.postResult<void>(
