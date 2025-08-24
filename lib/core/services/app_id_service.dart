@@ -13,11 +13,13 @@ class AppIdService {
       
       if (result['success'] == true) {
         print('[AppIdService] 앱 ID 조회 성공');
-        print('[AppIdService] 앱 ID: ${result['appId']}');
+        print('[AppIdService] 기본 앱 ID: ${result['appId']}');
+        print('[AppIdService] OmniOne SDK 앱 ID: ${result['omnioneSdkAppId']}');
         print('[AppIdService] 서명 해시: ${result['signatureHash']}');
         print('[AppIdService] 설치 시간: ${result['installTime']}');
         print('[AppIdService] 업데이트 시간: ${result['lastUpdateTime']}');
         print('[AppIdService] 새로 설치된 앱인가?: ${result['isNewInstall']}');
+        print('[AppIdService] WalletTokenSeed 메서드들: ${result['walletTokenSeedMethods']}');
         
         return result;
       } else {
@@ -53,11 +55,13 @@ class AppIdService {
     
     if (appIdInfo != null) {
       print('📱 앱 정보:');
-      print('   - 앱 ID: ${appIdInfo['appId']}');
+      print('   - 기본 앱 ID: ${appIdInfo['appId']}');
+      print('   - OmniOne SDK 앱 ID: ${appIdInfo['omnioneSdkAppId']}');
       print('   - 서명 해시: ${appIdInfo['signatureHash']}');
       print('   - 설치 시간: ${DateTime.fromMillisecondsSinceEpoch(appIdInfo['installTime'])}');
       print('   - 마지막 업데이트: ${DateTime.fromMillisecondsSinceEpoch(appIdInfo['lastUpdateTime'])}');
       print('   - 새로 설치된 앱: ${appIdInfo['isNewInstall'] ? '예' : '아니오'}');
+      print('   - 발견된 TokenSeed 메서드들: ${appIdInfo['walletTokenSeedMethods']}');
       
       if (appIdInfo['isNewInstall'] == true) {
         print('🆕 이 앱은 새로 설치되었습니다!');
