@@ -94,6 +94,8 @@
 	<string>신분증 인증을 위해 카메라 접근이 필요합니다.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>생체인증으로 지갑 키를 보호하고 서명에 사용합니다.</string>
+	<key>NSFingerTouchIDUsageDescription</key>
+	<string>생체인증으로 지갑 키를 보호하고 서명에 사용합니다.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
