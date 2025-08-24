@@ -59,4 +59,8 @@ dependencies {
     implementation(project(":didclientsdk"))
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("androidx.multidex:multidex:2.0.1")
+    
+    // 생체인증 관련 라이브러리
+    implementation("androidx.biometric:biometric:1.1.0")
+    implementation("androidx.fragment:fragment-ktx:1.6.2")
 }
