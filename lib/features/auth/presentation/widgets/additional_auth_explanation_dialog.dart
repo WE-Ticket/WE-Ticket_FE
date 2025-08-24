@@ -38,7 +38,6 @@ class _AdditionalAuthExplanationDialogState extends State<AdditionalAuthExplanat
 
       // AuthService의 메서드 사용
       final result = await apiProvider.apiService.auth.submitUserAgreement(
-        userId: userId,
         termType: '개인정보_추가수집_동의',
       );
 
