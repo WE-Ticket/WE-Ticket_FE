@@ -1,9 +1,6 @@
 import UIKit
 import Flutter
 import DIDWalletSDK
-import CryptoKit
-import Foundation
-import CommonCrypto
 
 @UIApplicationMain
 class AppDelegate: FlutterAppDelegate {
@@ -22,9 +19,6 @@ class AppDelegate: FlutterAppDelegate {
       guard let self = self else { return }
 
       switch call.method {
-      case "getAppId":
-        self.handleGetAppId(result: result)
-        
       case "createDid":
         self.handleCreateDid(result: result)
 
@@ -48,73 +42,6 @@ class AppDelegate: FlutterAppDelegate {
 }
 
 extension AppDelegate {
-
-  func handleGetAppId(result: @escaping FlutterResult) {
-    DispatchQueue.global(qos: .userInitiated).async {
-      do {
-        print("[ios] 앱 ID 조회 시작")
-        
-        // 앱의 Bundle Identifier를 앱 ID로 사용
-        guard let bundleId = Bundle.main.bundleIdentifier else {
-          throw NSError(domain: "AppIdError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Bundle Identifier를 찾을 수 없습니다"])
-        }
-        print("[ios] Bundle ID (앱 ID): \(bundleId)")
-        
-        // 앱 버전 정보
-        let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown"
-        let buildNumber = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "unknown"
-        print("[ios] 앱 버전: \(appVersion), 빌드 번호: \(buildNumber)")
-        
-        // iOS에서는 앱 설치 시간을 직접 가져올 수 없으므로
-        // 앱 Documents 디렉토리의 생성 시간을 사용
-        let documentsPath = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).first!
-        let documentsURL = URL(fileURLWithPath: documentsPath)
-        let attributes = try FileManager.default.attributesOfItem(atPath: documentsPath)
-        let creationDate = attributes[.creationDate] as? Date ?? Date()
-        let installTime = Int64(creationDate.timeIntervalSince1970 * 1000)
-        
-        print("[ios] 앱 설치 추정 시간: \(creationDate)")
-        
-        // UserDefaults를 사용하여 첫 실행 여부 확인
-        let isFirstLaunch = !UserDefaults.standard.bool(forKey: "hasLaunchedBefore")
-        if isFirstLaunch {
-          UserDefaults.standard.set(true, forKey: "hasLaunchedBefore")
-          UserDefaults.standard.synchronize()
-        }
-        
-        // 앱의 실행 파일 경로 해시 (고유성을 위해)
-        let executablePath = Bundle.main.executablePath ?? ""
-        let pathHash = executablePath.data(using: .utf8)?.sha256 ?? "no_hash"
-        
-        print("[ios] 실행 파일 경로 해시: \(pathHash)")
-        
-        let payload: [String: Any] = [
-          "success": true,
-          "appId": bundleId,
-          "signatureHash": pathHash, // iOS에서는 실행 파일 경로 해시 사용
-          "installTime": installTime,
-          "lastUpdateTime": installTime, // iOS에서는 구분이 어려움
-          "isNewInstall": isFirstLaunch,
-          "appVersion": appVersion,
-          "buildNumber": buildNumber,
-          "timestamp": Int64(Date().timeIntervalSince1970 * 1000)
-        ]
-        
-        print("[ios] 앱 ID 조회 완료: \(payload)")
-        DispatchQueue.main.async { result(payload) }
-        
-      } catch {
-        print("❌ [ios] 앱 ID 조회 실패: \(error)")
-        DispatchQueue.main.async {
-          result([
-            "success": false,
-            "error": "\(error)",
-            "timestamp": Int64(Date().timeIntervalSince1970 * 1000)
-          ])
-        }
-      }
-    }
-  }
 
   func handleCreateDid(result: @escaping FlutterResult) {
     DispatchQueue.global(qos: .userInitiated).async {
@@ -333,21 +260,4 @@ func nowISO8601() -> String {
   f.timeZone = TimeZone(secondsFromGMT: 0)
   f.formatOptions = [.withInternetDateTime]
   return f.string(from: Date())
-}
-
-// Data extension for SHA256 hash
-extension Data {
-  var sha256: String {
-    if #available(iOS 13.0, *) {
-      let hashed = SHA256.hash(data: self)
-      return hashed.compactMap { String(format: "%02x", $0) }.joined()
-    } else {
-      // iOS 13 이하에서는 CommonCrypto 사용
-      var hash = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
-      self.withUnsafeBytes {
-        _ = CC_SHA256($0.baseAddress, CC_LONG(self.count), &hash)
-      }
-      return hash.compactMap { String(format: "%02x", $0) }.joined()
-    }
-  }
 }
