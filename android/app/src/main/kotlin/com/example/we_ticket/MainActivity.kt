@@ -56,6 +56,61 @@ class MainActivity : FlutterFragmentActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
+                    "getAppId" -> {
+                        try {
+                            Log.d(TAG, "앱 ID 조회 시작")
+                            
+                            // 앱의 Package Name을 앱 ID로 사용
+                            val packageName = applicationContext.packageName
+                            Log.i(TAG, "Package Name (앱 ID): $packageName")
+                            
+                            // 앱의 서명 정보 가져오기 (더 고유한 식별을 위해)
+                            val packageManager = applicationContext.packageManager
+                            val packageInfo = packageManager.getPackageInfo(packageName, android.content.pm.PackageManager.GET_SIGNATURES)
+                            val signatures = packageInfo.signatures
+                            val signatureHash = if (signatures != null && signatures.isNotEmpty()) {
+                                val signature = signatures[0].toCharsString()
+                                java.security.MessageDigest.getInstance("SHA-256")
+                                    .digest(signature.toByteArray())
+                                    .joinToString("") { "%02x".format(it) }
+                            } else {
+                                "no_signature"
+                            }
+                            
+                            Log.i(TAG, "앱 서명 해시: $signatureHash")
+                            
+                            // 앱 설치 시간 가져오기 (새로 설치된 앱인지 판별용)
+                            val installTime = packageInfo.firstInstallTime
+                            val lastUpdateTime = packageInfo.lastUpdateTime
+                            
+                            Log.i(TAG, "앱 최초 설치 시간: $installTime")
+                            Log.i(TAG, "앱 마지막 업데이트 시간: $lastUpdateTime")
+                            
+                            // 결과 반환
+                            val appIdResult = mapOf(
+                                "success" to true,
+                                "appId" to packageName,
+                                "signatureHash" to signatureHash,
+                                "installTime" to installTime,
+                                "lastUpdateTime" to lastUpdateTime,
+                                "isNewInstall" to (installTime == lastUpdateTime),
+                                "timestamp" to System.currentTimeMillis()
+                            )
+                            
+                            Log.i(TAG, "앱 ID 조회 완료: $appIdResult")
+                            result.success(appIdResult)
+                            
+                        } catch (e: Exception) {
+                            Log.e(TAG, "❌ 앱 ID 조회 실패: ${e.message}", e)
+                            val errorResult = mapOf(
+                                "success" to false,
+                                "error" to e.message,
+                                "timestamp" to System.currentTimeMillis()
+                            )
+                            result.success(errorResult)
+                        }
+                    }
+                    
                     "createDid" -> {
                         try {
                             Log.d(TAG, "WE-Ticket DID 생성 시작")
