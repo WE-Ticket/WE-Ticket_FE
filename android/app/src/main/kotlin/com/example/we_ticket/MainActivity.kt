@@ -58,15 +58,14 @@ class MainActivity : FlutterFragmentActivity() {
                 when (call.method) {
                     "getAppId" -> {
                         try {
-                            Log.d(TAG, "앱 ID 조회 시작")
+                            Log.d(TAG, "고유 앱 ID 생성 시작")
                             
-                            // 앱의 Package Name을 앱 ID로 사용
+                            // 1. 기본 앱 정보 수집
                             val packageName = applicationContext.packageName
-                            Log.i(TAG, "Package Name (앱 ID): $packageName")
-                            
-                            // 앱의 서명 정보 가져오기 (더 고유한 식별을 위해)
                             val packageManager = applicationContext.packageManager
                             val packageInfo = packageManager.getPackageInfo(packageName, android.content.pm.PackageManager.GET_SIGNATURES)
+                            
+                            // 2. 앱 서명 해시 생성
                             val signatures = packageInfo.signatures
                             val signatureHash = if (signatures != null && signatures.isNotEmpty()) {
                                 val signature = signatures[0].toCharsString()
@@ -77,23 +76,26 @@ class MainActivity : FlutterFragmentActivity() {
                                 "no_signature"
                             }
                             
-                            Log.i(TAG, "앱 서명 해시: $signatureHash")
-                            
-                            // 앱 설치 시간 가져오기 (새로 설치된 앱인지 판별용)
+                            // 3. 설치 시간 정보
                             val installTime = packageInfo.firstInstallTime
                             val lastUpdateTime = packageInfo.lastUpdateTime
+                            val isNewInstall = (installTime == lastUpdateTime)
                             
-                            Log.i(TAG, "앱 최초 설치 시간: $installTime")
-                            Log.i(TAG, "앱 마지막 업데이트 시간: $lastUpdateTime")
+                            // 4. 고유 앱 ID 생성 (패키지명_설치시간_서명해시앞8자리)
+                            val appId = "${packageName}_${installTime}_${signatureHash.take(8)}"
                             
-                            // 결과 반환
+                            Log.i(TAG, "생성된 고유 앱 ID: $appId")
+                            Log.i(TAG, "새로 설치된 앱: $isNewInstall")
+                            
+                            // 5. 결과 반환
                             val appIdResult = mapOf(
                                 "success" to true,
-                                "appId" to packageName,
-                                "signatureHash" to signatureHash,
+                                "appId" to appId,
+                                "packageName" to packageName,
                                 "installTime" to installTime,
                                 "lastUpdateTime" to lastUpdateTime,
-                                "isNewInstall" to (installTime == lastUpdateTime),
+                                "isNewInstall" to isNewInstall,
+                                "signatureHash" to signatureHash,
                                 "timestamp" to System.currentTimeMillis()
                             )
                             

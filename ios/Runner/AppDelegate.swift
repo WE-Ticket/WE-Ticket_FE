@@ -52,51 +52,45 @@ extension AppDelegate {
   func handleGetAppId(result: @escaping FlutterResult) {
     DispatchQueue.global(qos: .userInitiated).async {
       do {
-        print("[ios] 앱 ID 조회 시작")
+        print("[ios] 고유 앱 ID 생성 시작")
         
-        // 앱의 Bundle Identifier를 앱 ID로 사용
+        // 1. 기본 앱 정보 수집
         guard let bundleId = Bundle.main.bundleIdentifier else {
           throw NSError(domain: "AppIdError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Bundle Identifier를 찾을 수 없습니다"])
         }
-        print("[ios] Bundle ID (앱 ID): \(bundleId)")
         
-        // 앱 버전 정보
-        let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown"
-        let buildNumber = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "unknown"
-        print("[ios] 앱 버전: \(appVersion), 빌드 번호: \(buildNumber)")
+        // 2. 앱 실행 파일 해시 생성 (Android의 서명 해시와 유사한 역할)
+        let executablePath = Bundle.main.executablePath ?? ""
+        let pathHash = executablePath.data(using: .utf8)?.sha256 ?? "no_hash"
         
-        // iOS에서는 앱 설치 시간을 직접 가져올 수 없으므로
-        // 앱 Documents 디렉토리의 생성 시간을 사용
+        // 3. 설치 시간 정보 (Documents 디렉토리 생성 시간으로 추정)
         let documentsPath = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).first!
-        let documentsURL = URL(fileURLWithPath: documentsPath)
         let attributes = try FileManager.default.attributesOfItem(atPath: documentsPath)
         let creationDate = attributes[.creationDate] as? Date ?? Date()
         let installTime = Int64(creationDate.timeIntervalSince1970 * 1000)
         
-        print("[ios] 앱 설치 추정 시간: \(creationDate)")
-        
-        // UserDefaults를 사용하여 첫 실행 여부 확인
+        // UserDefaults로 첫 실행 여부 확인
         let isFirstLaunch = !UserDefaults.standard.bool(forKey: "hasLaunchedBefore")
         if isFirstLaunch {
           UserDefaults.standard.set(true, forKey: "hasLaunchedBefore")
           UserDefaults.standard.synchronize()
         }
         
-        // 앱의 실행 파일 경로 해시 (고유성을 위해)
-        let executablePath = Bundle.main.executablePath ?? ""
-        let pathHash = executablePath.data(using: .utf8)?.sha256 ?? "no_hash"
+        // 4. 고유 앱 ID 생성 (번들ID_설치시간_해시앞8자리)
+        let appId = "\(bundleId)_\(installTime)_\(String(pathHash.prefix(8)))"
         
-        print("[ios] 실행 파일 경로 해시: \(pathHash)")
+        print("[ios] 생성된 고유 앱 ID: \(appId)")
+        print("[ios] 새로 설치된 앱: \(isFirstLaunch)")
         
+        // 5. 결과 반환
         let payload: [String: Any] = [
           "success": true,
-          "appId": bundleId,
-          "signatureHash": pathHash, // iOS에서는 실행 파일 경로 해시 사용
+          "appId": appId,
+          "packageName": bundleId,
           "installTime": installTime,
-          "lastUpdateTime": installTime, // iOS에서는 구분이 어려움
+          "lastUpdateTime": installTime, // iOS에서는 구분 어려움
           "isNewInstall": isFirstLaunch,
-          "appVersion": appVersion,
-          "buildNumber": buildNumber,
+          "signatureHash": pathHash,
           "timestamp": Int64(Date().timeIntervalSince1970 * 1000)
         ]
         
