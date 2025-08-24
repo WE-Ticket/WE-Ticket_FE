@@ -5,7 +5,6 @@ import 'package:we_ticket/features/auth/data/auth_service.dart';
 import '../providers/auth_provider.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/services/app_id_service.dart';
 import '../../../../shared/presentation/widgets/app_snackbar.dart';
 import 'signup_screen.dart';
 import 'find_id_screen.dart';
@@ -454,9 +453,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
         // 성공 메시지
         AppSnackBar.showSuccess(context, '로그인 성공!');
-
-        // 🆔 로그인 성공 후 앱 ID 정보 출력
-        await AppIdService.printAppIdOnLogin();
 
         // 콜백 실행
         if (widget.onLoginSuccess != null) {
