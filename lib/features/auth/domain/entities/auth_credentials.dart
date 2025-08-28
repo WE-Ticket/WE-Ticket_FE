@@ -4,17 +4,21 @@ import 'package:equatable/equatable.dart';
 class AuthCredentials extends Equatable {
   final String loginId;
   final String password;
+  final String appId;
+  final bool isNewInstall;
 
   const AuthCredentials({
     required this.loginId,
     required this.password,
+    required this.appId,
+    required this.isNewInstall,
   });
 
   @override
-  List<Object?> get props => [loginId, password];
+  List<Object?> get props => [loginId, password, appId, isNewInstall];
 
   @override
-  String toString() => 'AuthCredentials(loginId: $loginId)';
+  String toString() => 'AuthCredentials(loginId: $loginId, appId: $appId, isNewInstall: $isNewInstall)';
 }
 
 /// Domain entity representing signup data

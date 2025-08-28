@@ -10,6 +10,7 @@ import 'package:we_ticket/core/utils/app_logger.dart';
 import 'package:we_ticket/core/mixins/api_error_handler_mixin.dart';
 import 'package:we_ticket/features/auth/data/auth_validators.dart';
 import 'package:we_ticket/features/auth/data/user_models.dart';
+import 'package:we_ticket/core/services/app_id_service.dart';
 
 class AuthService with ApiErrorHandlerMixin {
   final DioClient _dioClient;
@@ -36,9 +37,22 @@ class AuthService with ApiErrorHandlerMixin {
       return ApiResult.validationError(validation.firstError!);
     }
 
+    // 앱 ID 정보 가져오기
+    final appIdInfo = await AppIdService.getAppId();
+    if (appIdInfo == null) {
+      return ApiResult.failure('앱 정보를 가져올 수 없습니다');
+    }
+
+    final String appId = appIdInfo['appId'] ?? '';
+    final bool isNewInstall = appIdInfo['isNewInstall'] ?? false;
+
+    AppLogger.auth('앱 ID: $appId, 새로 설치: $isNewInstall');
+
     final request = LoginRequest(
       loginId: loginId.trim(),
       loginPassword: password,
+      appId: appId,
+      isNewInstall: isNewInstall,
     );
 
     final result = await _dioClient.postResult<LoginResponse>(

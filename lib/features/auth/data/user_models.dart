@@ -42,11 +42,23 @@ class UserModel {
 class LoginRequest {
   final String loginId;
   final String loginPassword;
+  final String appId;
+  final bool isNewInstall;
 
-  LoginRequest({required this.loginId, required this.loginPassword});
+  LoginRequest({
+    required this.loginId,
+    required this.loginPassword,
+    required this.appId,
+    required this.isNewInstall,
+  });
 
   Map<String, dynamic> toJson() {
-    return {'login_id': loginId, 'password': loginPassword};
+    return {
+      'login_id': loginId,
+      'password': loginPassword,
+      'app_id': appId,
+      'is_new_install': isNewInstall,
+    };
   }
 }
 
