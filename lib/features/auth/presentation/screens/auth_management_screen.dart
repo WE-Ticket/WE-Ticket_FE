@@ -264,8 +264,17 @@ class _AuthManagementScreenState extends State<AuthManagementScreen> {
         await authLevelProvider.loadUserAuthLevel(userId);
       }
 
-      // 2. DID 생성 플로우 시작
-      await _startDidCreationFlow(didProvider, userId!);
+      // 2. 현재 인증 레벨 확인
+      final currentLevel = authLevelProvider.currentLevel;
+      
+      // 3. 일반 인증(general) 후에만 DID 생성 플로우 시작
+      if (currentLevel == AuthLevel.general) {
+        AppLogger.info('일반 인증 완료 - DID 생성 플로우 시작', 'AUTH');
+        await _startDidCreationFlow(didProvider, userId!);
+      } else if (currentLevel == AuthLevel.mobileId) {
+        AppLogger.info('안전 인증 완료 - DID 생성 건너뜀', 'AUTH');
+        _showSuccess('안전 인증이 완료되었습니다.');
+      }
     } catch (e) {
       AppLogger.error('인증 성공 처리 오류', e, null, 'AUTH');
       _showError('인증 처리 중 오류가 발생했습니다.');
