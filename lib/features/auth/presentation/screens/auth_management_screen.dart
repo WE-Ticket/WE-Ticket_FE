@@ -175,6 +175,10 @@ class _AuthManagementScreenState extends State<AuthManagementScreen> {
     final userId = authProvider.currentUserId;
     if (userId != null) {
       await authLevelProvider.loadUserAuthLevel(userId);
+      
+      // AuthLevelProvider에서 업데이트된 인증 레벨을 AuthProvider와 SharedPreferences에 동기화
+      final currentLevel = authLevelProvider.currentLevel;
+      await authProvider.updateAuthLevel(currentLevel.value);
     }
   }
 
@@ -262,6 +266,10 @@ class _AuthManagementScreenState extends State<AuthManagementScreen> {
       final userId = authProvider.currentUserId;
       if (userId != null) {
         await authLevelProvider.loadUserAuthLevel(userId);
+        
+        // AuthLevelProvider에서 업데이트된 인증 레벨을 AuthProvider와 SharedPreferences에 동기화
+        final currentLevel = authLevelProvider.currentLevel;
+        await authProvider.updateAuthLevel(currentLevel.value);
       }
 
       // 2. 현재 인증 레벨 확인

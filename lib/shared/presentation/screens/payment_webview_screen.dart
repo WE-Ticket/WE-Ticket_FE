@@ -121,8 +121,38 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen>
 
             return NavigationDecision.navigate;
           },
+          onUrlChange: (UrlChange change) {
+            if (change.url != null) {
+              AppLogger.info('URL changed to: ${change.url}', 'PAYMENT');
+              
+              // URL 변경 시에도 외부 스킴 체크
+              if (_isExternalScheme(change.url!)) {
+                AppLogger.info(
+                  'External scheme detected in URL change: ${change.url}',
+                  'PAYMENT',
+                );
+                _launchExternalApp(change.url!);
+              }
+            }
+          },
           onWebResourceError: (WebResourceError error) {
             AppLogger.error('WebView 에러', error.description, null, 'PAYMENT');
+            AppLogger.error('WebView 에러 URL', error.url ?? 'URL 정보 없음', null, 'PAYMENT');
+            
+            // ERR_UNKNOWN_URL_SCHEME 에러는 외부 앱 스킴 때문일 수 있으므로 무시
+            if (error.description.contains('ERR_UNKNOWN_URL_SCHEME')) {
+              AppLogger.info(
+                'ERR_UNKNOWN_URL_SCHEME 에러 무시 - 외부 앱 스킴 처리 중',
+                'PAYMENT',
+              );
+              AppLogger.info(
+                'ERR_UNKNOWN_URL_SCHEME 에러 발생 URL: ${error.url ?? 'URL 정보 없음'}',
+                'PAYMENT',
+              );
+              return;
+            }
+            
+            // 기타 심각한 에러만 에러 상태로 설정
             if (!mounted) return;
             setState(() {
               _hasError = true;
@@ -691,8 +721,9 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen>
       return false;
     }
 
-    // 결제 관련 외부 앱 스킴들
+    // 결제 관련 외부 앱 스킴들 (AndroidManifest.xml 기반으로 확장)
     final externalSchemes = [
+      // 기존 스킴들
       'kakaotalk://',
       'kakaopay://',
       'intent://',
@@ -709,6 +740,7 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen>
       'payco://',
       'tswansimclick://',
       'shinhan-sr-ansimclick://',
+      'shinhan-sr-asnimclick://',
       'hanabank://',
       'wooribank://',
       'citimobileapp://',
@@ -716,6 +748,65 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen>
       'lguthepay://',
       'newsmartpib://',
       'wooripay://',
+      
+      // AndroidManifest.xml의 PG사 스킴들 추가
+      // 페이먼트 앱들
+      'bankpay://',           // 뱅크페이
+      'payco://',             // 페이코
+      'lottepay://',          // LPAY
+      'ssgpay://',            // SSGPAY
+      'kpay://',              // KPAY
+      'tmoneypay://',         // 티머니페이
+      'tosspay://',           // 토스페이
+      'samsungpay://',        // 삼성페이
+      'kakaopay://',          // 카카오페이
+      'kakaotalk://',         // 카카오톡 (카카오페이 연동)
+      'kakaolink://',         // 카카오링크
+      'naverpay://',          // 네이버
+      'mysmilepay://',        // 스마일페이
+      
+      // 카드 앱들
+      'ispmobile://',         // ISP페이북
+      'kbpay://',             // KBPay
+      'liiv://',              // liiv
+      'lgpay://',             // 엘지페이
+      'hanaskcard://',        // 하나
+      'hanamembers://',       // 하나멤버스
+      'hanabank://',          // 하나공인인증
+      'citimobile://',        // 씨티모바일
+      'lottecard://',         // 롯데
+      'samsungcard://',       // 삼성
+      'shinhancard://',       // 신한
+      'smartshinhan://',      // 신한(ARS/일반/smart)
+      'smartcare://',         // 신한 SOL
+      'hyundaicard://',       // 현대
+      'nhcard://',            // 농협
+      'smcard://',            // 삼성 모니모
+      'wooricard://',         // 우리WON카드
+      'wooribank://',         // 우리WON뱅킹
+      
+      // 백신 앱들
+      'touchenmvaccine://',   // TouchEn
+      'v3mobile://',          // V3
+      'vguard://',            // vguard
+      
+      // 계좌이체 앱들
+      'kftcbank://',          // 뱅크페이
+      'mgbank://',            // MG 새마을금고
+      'nhbank://',            // 뱅크페이
+      'bnkbank://',           // BNK경남은행
+      'paynow://',            // 페이나우
+      'kbank://',             // 케이뱅크
+      
+      // 해외결제
+      'alipay://',            // 알리페이
+      
+      // 기타
+      'sktpass://',           // PASS
+      'lgpass://',            // PASS
+      'ktpass://',            // PASS
+      'danal://',             // 다날 다모음
+      'shinhanbank://',       // 신한 SOL뱅크
     ];
 
     // 특정 스킴들 확인
@@ -774,21 +865,59 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen>
   // Intent URL 처리
   Future<void> _handleIntentUrl(String intentUrl) async {
     try {
-      // Intent URL에서 패키지명 추출
-      final uri = Uri.parse(intentUrl);
-      final packageName = uri.queryParameters['package'];
+      AppLogger.info('Handling Intent URL: $intentUrl', 'PAYMENT');
+      
+      // Intent URL 파싱: intent://...#Intent;scheme=...;package=...;end
+      final regex = RegExp(r'#Intent;(?:.*?;)?scheme=([^;]+)(?:.*?;)?package=([^;]+)', 
+          caseSensitive: false);
+      final match = regex.firstMatch(intentUrl);
+      
+      if (match != null) {
+        final scheme = match.group(1);
+        final packageName = match.group(2);
+        
+        AppLogger.info(
+          'Parsed Intent - scheme: $scheme, package: $packageName', 
+          'PAYMENT'
+        );
+        
+        if (scheme != null && packageName != null) {
+          // 먼저 스킴으로 앱 실행 시도
+          final schemeUrl = '$scheme://';
+          final schemeUri = Uri.parse(schemeUrl);
+          
+          if (await canLaunchUrl(schemeUri)) {
+            AppLogger.info('Launching app with scheme: $schemeUrl', 'PAYMENT');
+            await launchUrl(schemeUri, mode: LaunchMode.externalApplication);
+            return;
+          }
+          
+          // 스킴 실행 실패 시 Play Store로 리다이렉트
+          final playStoreUrl = 'https://play.google.com/store/apps/details?id=$packageName';
+          final playStoreUri = Uri.parse(playStoreUrl);
+          
+          if (await canLaunchUrl(playStoreUri)) {
+            AppLogger.info('Redirecting to Play Store for: $packageName', 'PAYMENT');
+            await launchUrl(playStoreUri, mode: LaunchMode.externalApplication);
+          }
+        }
+      } else {
+        // 기존 방식으로 패키지명만 추출
+        final uri = Uri.parse(intentUrl);
+        final packageName = uri.queryParameters['package'];
 
-      if (packageName != null) {
-        final playStoreUrl =
-            'https://play.google.com/store/apps/details?id=$packageName';
-        final playStoreUri = Uri.parse(playStoreUrl);
+        if (packageName != null) {
+          final playStoreUrl =
+              'https://play.google.com/store/apps/details?id=$packageName';
+          final playStoreUri = Uri.parse(playStoreUrl);
 
-        if (await canLaunchUrl(playStoreUri)) {
-          await launchUrl(playStoreUri, mode: LaunchMode.externalApplication);
-          AppLogger.info(
-            'Redirected to Play Store for package: $packageName',
-            'PAYMENT',
-          );
+          if (await canLaunchUrl(playStoreUri)) {
+            await launchUrl(playStoreUri, mode: LaunchMode.externalApplication);
+            AppLogger.info(
+              'Redirected to Play Store for package: $packageName',
+              'PAYMENT',
+            );
+          }
         }
       }
     } catch (e) {

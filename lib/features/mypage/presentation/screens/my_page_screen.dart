@@ -12,14 +12,21 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../shared/presentation/widgets/app_snackbar.dart';
 import '../../../../shared/presentation/widgets/app_dialog.dart';
 
-class MyPageScreen extends StatelessWidget {
+class MyPageScreen extends StatefulWidget {
   const MyPageScreen({Key? key}) : super(key: key);
 
+  @override
+  State<MyPageScreen> createState() => _MyPageScreenState();
+}
+
+class _MyPageScreenState extends State<MyPageScreen> {
   Future<void> _logout(BuildContext context) async {
     final authProvider = context.read<AuthProvider>();
     await authProvider.logout();
 
-    AppSnackBar.showSuccess(context, '로그아웃이 완료되었습니다.');
+    if (mounted) {
+      AppSnackBar.showSuccess(context, '로그아웃이 완료되었습니다.');
+    }
   }
 
   @override
@@ -74,6 +81,19 @@ class MyPageScreen extends StatelessWidget {
         },
       ),
     );
+  }
+
+  Future<void> _navigateToAuthManagement(BuildContext context) async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (context) => AuthManagementScreen()),
+    );
+    
+    // Auth management 화면에서 돌아온 후 상태 업데이트
+    if (result == true && mounted) {
+      // AuthProvider의 상태가 이미 업데이트되어 있으므로 UI 자동 갱신됨
+      setState(() {});
+    }
   }
 
   // 사용자 프로필 영역
@@ -139,12 +159,7 @@ class MyPageScreen extends StatelessWidget {
 
           // 인증 상태 배지
           GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => AuthManagementScreen()),
-              );
-            },
+            onTap: () => _navigateToAuthManagement(context),
             child: Container(
               padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
@@ -207,14 +222,7 @@ class MyPageScreen extends StatelessWidget {
                 icon: Icons.account_circle_outlined,
                 title: '본인 인증 관리',
                 color: AppColors.primary,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => AuthManagementScreen(),
-                    ),
-                  );
-                },
+                onTap: () => _navigateToAuthManagement(context),
               ),
             ),
             SizedBox(width: 12),
@@ -456,7 +464,7 @@ class MyPageScreen extends StatelessWidget {
       confirmText: '로그아웃',
       cancelText: '취소',
     ).then((confirmed) {
-      if (confirmed == true) {
+      if (confirmed == true && mounted) {
         _logout(context);
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => DashboardScreen()),
