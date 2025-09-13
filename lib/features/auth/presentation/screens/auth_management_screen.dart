@@ -175,7 +175,7 @@ class _AuthManagementScreenState extends State<AuthManagementScreen> {
     final userId = authProvider.currentUserId;
     if (userId != null) {
       await authLevelProvider.loadUserAuthLevel(userId);
-      
+
       // AuthLevelProvider에서 업데이트된 인증 레벨을 AuthProvider와 SharedPreferences에 동기화
       final currentLevel = authLevelProvider.currentLevel;
       await authProvider.updateAuthLevel(currentLevel.value);
@@ -266,7 +266,7 @@ class _AuthManagementScreenState extends State<AuthManagementScreen> {
       final userId = authProvider.currentUserId;
       if (userId != null) {
         await authLevelProvider.loadUserAuthLevel(userId);
-        
+
         // AuthLevelProvider에서 업데이트된 인증 레벨을 AuthProvider와 SharedPreferences에 동기화
         final currentLevel = authLevelProvider.currentLevel;
         await authProvider.updateAuthLevel(currentLevel.value);
@@ -274,7 +274,7 @@ class _AuthManagementScreenState extends State<AuthManagementScreen> {
 
       // 2. 현재 인증 레벨 확인
       final currentLevel = authLevelProvider.currentLevel;
-      
+
       // 3. 일반 인증(general) 후에만 DID 생성 플로우 시작
       if (currentLevel == AuthLevel.general) {
         AppLogger.info('일반 인증 완료 - DID 생성 플로우 시작', 'AUTH');
@@ -320,7 +320,8 @@ class _AuthManagementScreenState extends State<AuthManagementScreen> {
           barrierDismissible: false,
           builder: (context) => const AuthSuccessDialog(
             title: '보안 인증서 발급 완료',
-            message: '보안 인증서가 성공적으로 발급되었습니다.\n이제 안전한 티켓 거래 서비스를 이용하실 수 있습니다.',
+            message:
+                '보안 인증서가 성공적으로 \n발급되었습니다.\n이제 안전한 티켓 거래 서비스를 \n이용하실 수 있습니다.',
           ),
         );
       } else if (didProvider.errorMessage != null) {

@@ -769,7 +769,7 @@ class _OmniOneCXAuthScreenState extends State<OmniOneCXAuthScreen> {
 
   String _getSuccessMessage(String? authType) {
     if (authType == 'simple') {
-      return '일반 인증 회원이 되었습니다!\n이제 공연 예매 서비스를 이용하실 수 있습니다.';
+      return '일반 인증 회원이 되었습니다!\n이제 공연 예매 서비스를 이용하실\n수 있습니다.';
     } else {
       return '모바일 신분증 인증 회원이 되었습니다!\n이제 3초 간편입장 서비스를 이용하실 수 있습니다.';
     }

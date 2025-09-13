@@ -12,10 +12,12 @@ class AdditionalAuthExplanationDialog extends StatefulWidget {
   const AdditionalAuthExplanationDialog({super.key});
 
   @override
-  State<AdditionalAuthExplanationDialog> createState() => _AdditionalAuthExplanationDialogState();
+  State<AdditionalAuthExplanationDialog> createState() =>
+      _AdditionalAuthExplanationDialogState();
 }
 
-class _AdditionalAuthExplanationDialogState extends State<AdditionalAuthExplanationDialog> {
+class _AdditionalAuthExplanationDialogState
+    extends State<AdditionalAuthExplanationDialog> {
   bool _isSubmitting = false;
 
   /// 사용자 약관 동의 API 호출
@@ -29,7 +31,7 @@ class _AdditionalAuthExplanationDialogState extends State<AdditionalAuthExplanat
     try {
       final authProvider = context.read<AuthProvider>();
       final apiProvider = context.read<ApiProvider>();
-      
+
       final userId = authProvider.currentUserId;
       if (userId == null) {
         AppSnackBar.showError(context, '사용자 정보를 찾을 수 없습니다.');
@@ -48,7 +50,10 @@ class _AdditionalAuthExplanationDialogState extends State<AdditionalAuthExplanat
         }
       } else {
         if (mounted) {
-          AppSnackBar.showError(context, result.errorMessage ?? '약관 동의 처리에 실패했습니다.');
+          AppSnackBar.showError(
+            context,
+            result.errorMessage ?? '약관 동의 처리에 실패했습니다.',
+          );
         }
       }
     } catch (e) {
@@ -171,7 +176,7 @@ class _AdditionalAuthExplanationDialogState extends State<AdditionalAuthExplanat
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '안전한 양도 거래를 위해 모바일신분증으로 본인 인증을 진행하고 있습니다, \n 모바일 신분증 본인인증으로 추가 신원 정보 (생년월일, 주소) 를 수집합니다.\n 동의를 하셔야 해당 서비스 이용이 가능하며, 언제든 동의를 거부하실 수 있습니다.\n 수집된 정보는 안전하게 보관됩니다.',
+                          '안전한 양도 거래를 위해 모바일신분증으로 본인 인증을 진행하고 있습니다. \n모바일 신분증 본인인증으로 \n추가 신원 정보 (생년월일, 주소) 를\n수집합니다.\n동의를 하셔야 해당 서비스 이용이 \n가능하며, 언제든 동의를 거부하실 \n수 있습니다.\n 수집된 정보는 안전하게 보관됩니다.',
                           style: TextStyle(
                             fontSize: 12,
                             color: AppColors.textSecondary,
@@ -237,7 +242,7 @@ class _AdditionalAuthExplanationDialogState extends State<AdditionalAuthExplanat
                             ],
                           )
                         : Text(
-                            '동의하고 인증하기',
+                            '동의 후 인증',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,

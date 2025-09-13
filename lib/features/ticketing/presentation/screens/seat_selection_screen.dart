@@ -159,7 +159,6 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
     }
   }
 
-
   /// 구역 정보 가져오기 (API 데이터 + 고정 구역)
   SeatPricingInfo? _getZoneInfo(String zone) {
     if (_sessionSeatInfo == null) return null;
@@ -281,16 +280,16 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '좌석 등급별 가격 안내',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          SizedBox(height: 12),
-          Text('추후 안내'),
+          // Text(
+          //   '좌석 등급별 가격 안내',
+          //   style: TextStyle(
+          //     fontSize: 16,
+          //     fontWeight: FontWeight.bold,
+          //     color: AppColors.textPrimary,
+          //   ),
+          // ),
+          // SizedBox(height: 12),
+          // Text('추후 안내'),
           // Wrap(
           //   spacing: 16,
           //   runSpacing: 8,
@@ -306,7 +305,6 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
       ),
     );
   }
-
 
   Widget _buildZoneLayout() {
     return Container(
@@ -755,8 +753,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
   }
 
   Widget _buildNextButton() {
-    final canProceed =
-        _selectedSeatId != null && _currentSeatLayout != null;
+    final canProceed = _selectedSeatId != null && _currentSeatLayout != null;
 
     return Container(
       padding: EdgeInsets.all(16),
@@ -804,7 +801,6 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
     if (_selectedZone == null) {
       return '구역을 선택해주세요';
     }
-
 
     if (_selectedSeatNumber == null) {
       return '좌석을 선택해주세요';
@@ -893,8 +889,10 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
       (seat) => seat.seatId == _selectedSeatId,
     );
 
-    print('💳 결제 데이터 생성: performanceId=$_performanceId, sessionId=$_sessionId, seatId=${selectedSeat.seatId}');
-    
+    print(
+      '💳 결제 데이터 생성: performanceId=$_performanceId, sessionId=$_sessionId, seatId=${selectedSeat.seatId}',
+    );
+
     // 새로운 PaymentData 모델 사용
     final paymentData = TicketingPaymentData(
       merchantUid: 'TKT_${DateTime.now().millisecondsSinceEpoch}',
