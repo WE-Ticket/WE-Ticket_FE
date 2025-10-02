@@ -80,7 +80,7 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       final prefs = await SharedPreferences.getInstance();
       final isLoggedIn = prefs.getBool('is_logged_in') ?? false;
-      
+
       if (!isLoggedIn) {
         return const Right(null);
       }
@@ -90,7 +90,10 @@ class AuthRepositoryImpl implements AuthRepository {
       final userName = prefs.getString('user_name');
       final userAuthLevel = prefs.getString('user_auth_level');
 
-      if (userId != null && loginId != null && userName != null && userAuthLevel != null) {
+      if (userId != null &&
+          loginId != null &&
+          userName != null &&
+          userAuthLevel != null) {
         final user = User(
           id: userId,
           loginId: loginId,
@@ -124,7 +127,7 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       final prefs = await SharedPreferences.getInstance();
       final refreshToken = prefs.getString('refresh_token');
-      
+
       if (refreshToken == null || refreshToken.isEmpty) {
         return Left(AuthenticationFailure(message: 'Refresh 토큰이 없습니다'));
       }
@@ -137,25 +140,27 @@ class AuthRepositoryImpl implements AuthRepository {
 
       if (response.statusCode == 200) {
         final responseData = response.data as Map<String, dynamic>;
-        final newAccessToken = responseData['access_token'] ?? responseData['access'];
-        final newRefreshToken = responseData['refresh_token'] ?? responseData['refresh'];
-        
+        final newAccessToken =
+            responseData['access_token'] ?? responseData['access'];
+        final newRefreshToken =
+            responseData['refresh_token'] ?? responseData['refresh'];
+
         if (newAccessToken != null) {
           // 새 토큰들 저장
           await prefs.setString('access_token', newAccessToken);
           if (newRefreshToken != null) {
             await prefs.setString('refresh_token', newRefreshToken);
           }
-          
+
           final tokens = AuthTokens(
             accessToken: newAccessToken,
             refreshToken: newRefreshToken ?? refreshToken,
           );
-          
+
           return Right(tokens);
         }
       }
-      
+
       return Left(AuthenticationFailure(message: '토큰 갱신에 실패했습니다'));
     } catch (e) {
       AppLogger.error('토큰 갱신 오류', e, null, 'AUTH');
@@ -177,7 +182,9 @@ class AuthRepositoryImpl implements AuthRepository {
 
       if (result.isSuccess && result.data != null) {
         final response = result.data!;
-        return Right(UserAuthLevel.fromString(response.newVerificationLevel ?? 'general'));
+        return Right(
+          UserAuthLevel.fromString(response.newVerificationLevel ?? 'general'),
+        );
       } else {
         return Left(ValidationFailure(message: result.errorMessage!));
       }
@@ -192,7 +199,7 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       final prefs = await SharedPreferences.getInstance();
       final accessToken = prefs.getString('access_token');
-      
+
       if (accessToken == null) {
         await _clearAuthData();
         return const Right(null);
@@ -217,10 +224,12 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Either<Failure, Map<String, dynamic>>> loadUserAuthLevel(int userId) async {
+  Future<Either<Failure, Map<String, dynamic>>> loadUserAuthLevel(
+    int userId,
+  ) async {
     try {
       final result = await _authService.loadUserAuthLevel(userId);
-      
+
       if (result.isSuccess && result.data != null) {
         return Right(result.data!);
       } else {
@@ -238,5 +247,4 @@ class AuthRepositoryImpl implements AuthRepository {
     await prefs.clear();
     AppLogger.info('모든 인증 데이터 삭제 완료', 'AUTH');
   }
-
 }

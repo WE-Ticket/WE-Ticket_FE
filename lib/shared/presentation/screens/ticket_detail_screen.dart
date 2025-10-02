@@ -632,23 +632,26 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton.icon(
-                    onPressed: isEntryAvailable
-                        ? () => _handleNFCEntry()
-                        : null,
+                    // onPressed: isEntryAvailable
+                    //     ? () => _handleNFCEntry()
+                    //     : null,
+                    onPressed: () => _handleDebugEntry(),
                     icon: Icon(Icons.nfc, size: 24),
                     label: Text(
-                      isEntryAvailable
-                          ? 'NFC 간편 입장'
-                          : 'NFC 간편 입장 (${timeUntilEntry} 후 활성화)',
+                      'NFC 간편 입장',
+                      // isEntryAvailable
+                      //     ? 'NFC 간편 입장'
+                      //     : 'NFC 간편 입장 (${timeUntilEntry} 후 활성화)',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: isEntryAvailable
-                          ? AppColors.success
-                          : AppColors.gray400,
+                      backgroundColor: AppColors.success,
+                      //  isEntryAvailable
+                      //     ? AppColors.success
+                      //     : AppColors.gray400,
                       foregroundColor: AppColors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -661,42 +664,40 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
             SizedBox(height: 8),
 
             // 안내 문구
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text(
-                '• 입장 버튼은 공연 시작 2시간 전부터 활성화 됩니다.\n• 기능 테스트가 필요하다면 디버깅 버튼을 눌러주세요.',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                  height: 1.4,
-                ),
-                textAlign: TextAlign.left,
-              ),
-            ),
-
+            // Container(
+            //   padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            //   child: Text(
+            //     '• 입장 버튼은 공연 시작 2시간 전부터 활성화 됩니다.\n• 기능 테스트가 필요하다면 디버깅 버튼을 눌러주세요.',
+            //     style: TextStyle(
+            //       fontSize: 12,
+            //       color: AppColors.textSecondary,
+            //       height: 1.4,
+            //     ),
+            //     textAlign: TextAlign.left,
+            //   ),
+            // ),
             SizedBox(height: 12),
 
             // 디버깅 버튼 (기능 테스트용)
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: OutlinedButton.icon(
-                onPressed: () => _handleDebugEntry(),
-                icon: Icon(Icons.bug_report, size: 20),
-                label: Text(
-                  '디버깅용 입장 버튼',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                ),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.gray600,
-                  side: BorderSide(color: AppColors.gray400),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-            ),
-
+            // SizedBox(
+            //   width: double.infinity,
+            //   height: 48,
+            //   child: OutlinedButton.icon(
+            //     onPressed: () => _handleDebugEntry(),
+            //     icon: Icon(Icons.bug_report, size: 20),
+            //     label: Text(
+            //       '디버깅용 입장 버튼',
+            //       style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            //     ),
+            //     style: OutlinedButton.styleFrom(
+            //       foregroundColor: AppColors.gray600,
+            //       side: BorderSide(color: AppColors.gray400),
+            //       shape: RoundedRectangleBorder(
+            //         borderRadius: BorderRadius.circular(8),
+            //       ),
+            //     ),
+            //   ),
+            // ),
             SizedBox(height: 12),
 
             // 양도하기 버튼

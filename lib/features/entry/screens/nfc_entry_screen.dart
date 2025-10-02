@@ -247,21 +247,21 @@ class _NFCEntryScreenState extends State<NFCEntryScreen>
 
       print('[입장시스템] nonce로 auth DID 생성');
       DebugLogManager.instance.info('[입장시스템] nonce로 auth DID 생성');
-      
+
       // 생체 인증 실행
       print('[입장시스템] 생체 인증 시작');
       DebugLogManager.instance.info('[입장시스템] 생체 인증 시작');
       final biometricAuth = await BiometricService.authenticateWithBiometrics();
-      
+
       if (!biometricAuth) {
         print('[입장시스템] 생체 인증 실패');
         DebugLogManager.instance.error('[입장시스템] 생체 인증 실패');
         throw Exception('생체 인증이 필요합니다');
       }
-      
+
       print('[입장시스템] 생체 인증 성공');
       DebugLogManager.instance.success('[입장시스템] 생체 인증 성공');
-      
+
       final response = await platform.invokeMethod('didAuth', {'nonce': nonce});
       final result = _safeMapConversion(response);
 
@@ -576,7 +576,7 @@ class _NFCEntryScreenState extends State<NFCEntryScreen>
                         ),
                         SizedBox(height: 8),
                         Text(
-                          'ZKP 인증 및 NFT 소유권 확인 중입니다',
+                          'NFT 티켓 소유권 확인 중입니다',
                           style: TextStyle(
                             fontSize: 14,
                             color: AppColors.textSecondary,
@@ -593,13 +593,13 @@ class _NFCEntryScreenState extends State<NFCEntryScreen>
                           ),
                         ),
                         SizedBox(height: 8),
-                        Text(
-                          '3초 내 간편 입장이 완료됩니다',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
+                        // Text(
+                        //   '3초 내 간편 입장이 완료됩니다',
+                        //   style: TextStyle(
+                        //     fontSize: 14,
+                        //     color: AppColors.textSecondary,
+                        //   ),
+                        // ),
                       ],
                     ] else if (_entryResult == true) ...[
                       // 성공 상태
@@ -658,7 +658,17 @@ class _NFCEntryScreenState extends State<NFCEntryScreen>
                           width: double.infinity,
                           height: 56,
                           child: ElevatedButton.icon(
-                            onPressed: _startNFCScanning,
+                            // onPressed: _startNFCScanning,
+                            onPressed: () {
+                              final authProvider = context.read<AuthProvider>();
+                              final userId =
+                                  authProvider.currentUserId; // 현재 로그인한 사용자 ID
+                              _entryAccess(
+                                userId!,
+                                widget.ticketId,
+                                'GATE_001',
+                              );
+                            },
                             icon: Icon(Icons.nfc, size: 24),
                             label: Text(
                               'NFC 스캔 시작',
@@ -713,15 +723,15 @@ class _NFCEntryScreenState extends State<NFCEntryScreen>
 
             SizedBox(height: 5),
 
-            TextButton(
-              onPressed: () {
-                _showDebugLogDialog();
-                final authProvider = context.read<AuthProvider>();
-                final userId = authProvider.currentUserId; // 현재 로그인한 사용자 ID
-                _entryAccess(userId!, widget.ticketId, 'GATE_001');
-              },
-              child: Text('디버깅용 입장 시작'),
-            ),
+            // TextButton(
+            //   onPressed: () {
+            //     _showDebugLogDialog();
+            //     final authProvider = context.read<AuthProvider>();
+            //     final userId = authProvider.currentUserId; // 현재 로그인한 사용자 ID
+            //     _entryAccess(userId!, widget.ticketId, 'GATE_001');
+            //   },
+            //   child: Text('디버깅용 입장 시작'),
+            // ),
 
             // 수동 검표 버튼
             SizedBox(

@@ -99,7 +99,7 @@ class AuthUpgradeOption {
           targetLevel: AuthLevel.general,
           title: '본인 인증하러 가기',
           description: '간편인증 또는 모바일 신분증으로 안전하게 인증하세요',
-          benefits: ['공연 예매', '3초 간편입장'],
+          benefits: ['공연 예매', '1초 간편입장'],
           isAvailable: true,
         );
       case AuthLevel.general:
@@ -135,7 +135,7 @@ class UserPrivilege {
         requiredLevel: AuthLevel.general,
       ),
       UserPrivilege(
-        name: '3초 간편입장',
+        name: '1초 간편입장',
         isAvailable: userLevel.isAtLeast(AuthLevel.general),
         requiredLevel: AuthLevel.general,
       ),

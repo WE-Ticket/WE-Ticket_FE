@@ -5,7 +5,6 @@ import 'package:we_ticket/features/transfer/presentation/screens/my_transfer_man
 import 'package:we_ticket/shared/presentation/screens/ticket_detail_screen.dart';
 import 'package:we_ticket/shared/presentation/providers/api_provider.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../shared/presentation/widgets/app_snackbar.dart';
 
 class MyTicketsScreen extends StatefulWidget {
   const MyTicketsScreen({Key? key}) : super(key: key);

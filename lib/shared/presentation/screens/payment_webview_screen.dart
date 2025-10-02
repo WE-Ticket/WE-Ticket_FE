@@ -124,7 +124,7 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen>
           onUrlChange: (UrlChange change) {
             if (change.url != null) {
               AppLogger.info('URL changed to: ${change.url}', 'PAYMENT');
-              
+
               // URL 변경 시에도 외부 스킴 체크
               if (_isExternalScheme(change.url!)) {
                 AppLogger.info(
@@ -137,8 +137,13 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen>
           },
           onWebResourceError: (WebResourceError error) {
             AppLogger.error('WebView 에러', error.description, null, 'PAYMENT');
-            AppLogger.error('WebView 에러 URL', error.url ?? 'URL 정보 없음', null, 'PAYMENT');
-            
+            AppLogger.error(
+              'WebView 에러 URL',
+              error.url ?? 'URL 정보 없음',
+              null,
+              'PAYMENT',
+            );
+
             // ERR_UNKNOWN_URL_SCHEME 에러는 외부 앱 스킴 때문일 수 있으므로 무시
             if (error.description.contains('ERR_UNKNOWN_URL_SCHEME')) {
               AppLogger.info(
@@ -151,7 +156,7 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen>
               );
               return;
             }
-            
+
             // 기타 심각한 에러만 에러 상태로 설정
             if (!mounted) return;
             setState(() {
@@ -280,21 +285,23 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen>
           null,
           'PAYMENT',
         );
-        
+
         // 서버 에러 메시지 파싱
-        String errorMessage = 'Payment target API failed: ${response.statusCode}';
+        String errorMessage =
+            'Payment target API failed: ${response.statusCode}';
         try {
           final errorData = jsonDecode(response.body);
           if (errorData is Map<String, dynamic>) {
-            errorMessage = errorData['error'] ?? 
-                          errorData['message'] ?? 
-                          errorData['detail'] ?? 
-                          errorMessage;
+            errorMessage =
+                errorData['error'] ??
+                errorData['message'] ??
+                errorData['detail'] ??
+                errorMessage;
           }
         } catch (_) {
           // JSON 파싱 실패 시 기본 에러 메시지 사용
         }
-        
+
         // 에러 상태로 설정하고 결제 중단
         if (mounted) {
           setState(() {
@@ -307,12 +314,12 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen>
       }
     } catch (e) {
       AppLogger.error('Payment target loading error', e, null, 'PAYMENT');
-      
+
       // 에러 상태로 설정하고 결제 중단
       if (mounted) {
         setState(() {
           _hasError = true;
-          _errorMessage = e.toString().contains('Payment target API failed') 
+          _errorMessage = e.toString().contains('Payment target API failed')
               ? e.toString().replaceAll('Exception: ', '')
               : 'Payment target loading error: $e';
           _isLoading = false;
@@ -483,7 +490,7 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen>
             
             PortOne.requestPayment({
               storeId: 'store-1f64a474-19e0-4390-ae06-058509cd01c5',
-              channelKey: 'channel-key-0e75745a-6c0f-4099-9b55-0d54f62fec0d',
+              channelKey: 'channel-key-a82043c8-d3f4-465e-a8d5-7a100ea15293',
               paymentId: data.payment_number,
               orderName: data.name,
               totalAmount: data.price,
@@ -594,17 +601,20 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen>
 
     Future.delayed(const Duration(seconds: 1), () {
       if (!mounted) return;
-      
+
       // API 응답이 있으면 PaymentData에 추가
       PaymentData paymentDataWithResponse = widget.paymentData;
       if (_apiResponse != null) {
-        paymentDataWithResponse = widget.paymentData.copyWithApiResponse(_apiResponse!);
+        paymentDataWithResponse = widget.paymentData.copyWithApiResponse(
+          _apiResponse!,
+        );
       }
-      
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => NFTIssuanceScreen(paymentData: paymentDataWithResponse),
+          builder: (_) =>
+              NFTIssuanceScreen(paymentData: paymentDataWithResponse),
         ),
       );
     });
@@ -748,65 +758,60 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen>
       'lguthepay://',
       'newsmartpib://',
       'wooripay://',
-      
+
       // AndroidManifest.xml의 PG사 스킴들 추가
       // 페이먼트 앱들
-      'bankpay://',           // 뱅크페이
-      'payco://',             // 페이코
-      'lottepay://',          // LPAY
-      'ssgpay://',            // SSGPAY
-      'kpay://',              // KPAY
-      'tmoneypay://',         // 티머니페이
-      'tosspay://',           // 토스페이
-      'samsungpay://',        // 삼성페이
-      'kakaopay://',          // 카카오페이
-      'kakaotalk://',         // 카카오톡 (카카오페이 연동)
-      'kakaolink://',         // 카카오링크
-      'naverpay://',          // 네이버
-      'mysmilepay://',        // 스마일페이
-      
+      'bankpay://', // 뱅크페이
+      'payco://', // 페이코
+      'lottepay://', // LPAY
+      'ssgpay://', // SSGPAY
+      'kpay://', // KPAY
+      'tmoneypay://', // 티머니페이
+      'tosspay://', // 토스페이
+      'samsungpay://', // 삼성페이
+      'kakaopay://', // 카카오페이
+      'kakaotalk://', // 카카오톡 (카카오페이 연동)
+      'kakaolink://', // 카카오링크
+      'naverpay://', // 네이버
+      'mysmilepay://', // 스마일페이
       // 카드 앱들
-      'ispmobile://',         // ISP페이북
-      'kbpay://',             // KBPay
-      'liiv://',              // liiv
-      'lgpay://',             // 엘지페이
-      'hanaskcard://',        // 하나
-      'hanamembers://',       // 하나멤버스
-      'hanabank://',          // 하나공인인증
-      'citimobile://',        // 씨티모바일
-      'lottecard://',         // 롯데
-      'samsungcard://',       // 삼성
-      'shinhancard://',       // 신한
-      'smartshinhan://',      // 신한(ARS/일반/smart)
-      'smartcare://',         // 신한 SOL
-      'hyundaicard://',       // 현대
-      'nhcard://',            // 농협
-      'smcard://',            // 삼성 모니모
-      'wooricard://',         // 우리WON카드
-      'wooribank://',         // 우리WON뱅킹
-      
+      'ispmobile://', // ISP페이북
+      'kbpay://', // KBPay
+      'liiv://', // liiv
+      'lgpay://', // 엘지페이
+      'hanaskcard://', // 하나
+      'hanamembers://', // 하나멤버스
+      'hanabank://', // 하나공인인증
+      'citimobile://', // 씨티모바일
+      'lottecard://', // 롯데
+      'samsungcard://', // 삼성
+      'shinhancard://', // 신한
+      'smartshinhan://', // 신한(ARS/일반/smart)
+      'smartcare://', // 신한 SOL
+      'hyundaicard://', // 현대
+      'nhcard://', // 농협
+      'smcard://', // 삼성 모니모
+      'wooricard://', // 우리WON카드
+      'wooribank://', // 우리WON뱅킹
       // 백신 앱들
-      'touchenmvaccine://',   // TouchEn
-      'v3mobile://',          // V3
-      'vguard://',            // vguard
-      
+      'touchenmvaccine://', // TouchEn
+      'v3mobile://', // V3
+      'vguard://', // vguard
       // 계좌이체 앱들
-      'kftcbank://',          // 뱅크페이
-      'mgbank://',            // MG 새마을금고
-      'nhbank://',            // 뱅크페이
-      'bnkbank://',           // BNK경남은행
-      'paynow://',            // 페이나우
-      'kbank://',             // 케이뱅크
-      
+      'kftcbank://', // 뱅크페이
+      'mgbank://', // MG 새마을금고
+      'nhbank://', // 뱅크페이
+      'bnkbank://', // BNK경남은행
+      'paynow://', // 페이나우
+      'kbank://', // 케이뱅크
       // 해외결제
-      'alipay://',            // 알리페이
-      
+      'alipay://', // 알리페이
       // 기타
-      'sktpass://',           // PASS
-      'lgpass://',            // PASS
-      'ktpass://',            // PASS
-      'danal://',             // 다날 다모음
-      'shinhanbank://',       // 신한 SOL뱅크
+      'sktpass://', // PASS
+      'lgpass://', // PASS
+      'ktpass://', // PASS
+      'danal://', // 다날 다모음
+      'shinhanbank://', // 신한 SOL뱅크
     ];
 
     // 특정 스킴들 확인
@@ -866,38 +871,44 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen>
   Future<void> _handleIntentUrl(String intentUrl) async {
     try {
       AppLogger.info('Handling Intent URL: $intentUrl', 'PAYMENT');
-      
+
       // Intent URL 파싱: intent://...#Intent;scheme=...;package=...;end
-      final regex = RegExp(r'#Intent;(?:.*?;)?scheme=([^;]+)(?:.*?;)?package=([^;]+)', 
-          caseSensitive: false);
+      final regex = RegExp(
+        r'#Intent;(?:.*?;)?scheme=([^;]+)(?:.*?;)?package=([^;]+)',
+        caseSensitive: false,
+      );
       final match = regex.firstMatch(intentUrl);
-      
+
       if (match != null) {
         final scheme = match.group(1);
         final packageName = match.group(2);
-        
+
         AppLogger.info(
-          'Parsed Intent - scheme: $scheme, package: $packageName', 
-          'PAYMENT'
+          'Parsed Intent - scheme: $scheme, package: $packageName',
+          'PAYMENT',
         );
-        
+
         if (scheme != null && packageName != null) {
           // 먼저 스킴으로 앱 실행 시도
           final schemeUrl = '$scheme://';
           final schemeUri = Uri.parse(schemeUrl);
-          
+
           if (await canLaunchUrl(schemeUri)) {
             AppLogger.info('Launching app with scheme: $schemeUrl', 'PAYMENT');
             await launchUrl(schemeUri, mode: LaunchMode.externalApplication);
             return;
           }
-          
+
           // 스킴 실행 실패 시 Play Store로 리다이렉트
-          final playStoreUrl = 'https://play.google.com/store/apps/details?id=$packageName';
+          final playStoreUrl =
+              'https://play.google.com/store/apps/details?id=$packageName';
           final playStoreUri = Uri.parse(playStoreUrl);
-          
+
           if (await canLaunchUrl(playStoreUri)) {
-            AppLogger.info('Redirecting to Play Store for: $packageName', 'PAYMENT');
+            AppLogger.info(
+              'Redirecting to Play Store for: $packageName',
+              'PAYMENT',
+            );
             await launchUrl(playStoreUri, mode: LaunchMode.externalApplication);
           }
         }

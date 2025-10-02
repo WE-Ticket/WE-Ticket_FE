@@ -483,7 +483,7 @@ class _AuthManagementScreenState extends State<AuthManagementScreen> {
           ),
           const SizedBox(height: 16),
           _buildBenefit(Icons.shopping_cart, '안전한 티켓 예매', '일반 인증+'),
-          _buildBenefit(Icons.nfc, '3초 간편 입장', '일반 인증+'),
+          _buildBenefit(Icons.nfc, '1초 간편 입장', '일반 인증+'),
           _buildBenefit(Icons.swap_horiz, '자유로운 양도 거래', '안전 인증+'),
           _buildBenefit(Icons.shield, '법적 분쟁 보호', '안전 인증+'),
         ],
