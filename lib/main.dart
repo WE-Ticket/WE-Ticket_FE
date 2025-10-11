@@ -21,9 +21,30 @@ import 'package:we_ticket/shared/presentation/providers/api_provider.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // ⭐ 디버그 빨간 에러 화면 대체 (전역 설정)
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    // 완전 숨기기
+    // return const SizedBox.shrink();
+
+    // 필요하면 깔끔한 대체 UI
+    return const Material(child: Center(child: Text('로딩 중')));
+  };
+
+  // ⭐ 프레임워크 에러: 콘솔에만 기록(원하면 Sentry 등 연동)
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.dumpErrorToConsole(details);
+  };
+
+  // ⭐ 비동기/존재하지 않는 Zone 에러도 잡기 (빨간화면 방지)
+  PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
+    // 원하는 로깅으로 교체 가능
+    // ignore: avoid_print
+    print('Uncaught async error: $error\n$stack');
+    return true; // 에러 전파 막음(빨간 화면 X)
+  };
+
   if (defaultTargetPlatform == TargetPlatform.android) {
     try {
-      // Android WebView 플랫폼 최적화 설정
       final androidPlatform = AndroidWebViewPlatform();
       WebViewPlatform.instance = androidPlatform;
       AppLogger.success(
@@ -35,7 +56,6 @@ void main() async {
     }
   }
 
-  // Initialize dependencies
   try {
     await initializeDependencies();
     AppLogger.success('🚀 App starting with Clean Architecture setup', 'MAIN');
