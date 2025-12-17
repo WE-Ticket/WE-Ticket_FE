@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
@@ -20,30 +22,100 @@
 	<string>$(FLUTTER_BUILD_NAME)</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>weticket.payment</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>weticket</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>kbbank</string>
+		<string>ispmobile</string>
+		<string>nhallonepayansimclick</string>
+		<string>nhallonepayansimpasscode</string>
+		<string>lguthepay</string>
+		<string>lottesmartpay</string>
+		<string>lotteappcard</string>
+		<string>cloudpay</string>
+		<string>smshinhanansimclick</string>
+		<string>shinhan-sr-ansimclick</string>
+		<string>smshinhanansimpasscode</string>
+		<string>shinsegaeeasypayment</string>
+		<string>citispay</string>
+		<string>citicardappkr</string>
+		<string>citimobileapp</string>
+		<string>payco</string>
+		<string>kakaotalk</string>
+		<string>toss</string>
+		<string>kbmobileapp</string>
+		<string>newsmartpib</string>
+		<string>smartkb</string>
+		<string>wooribank</string>
+		<string>ubmobile</string>
+		<string>shinhanmobile</string>
+		<string>shnmobile</string>
+		<string>hanabankmobile</string>
+		<string>citibankkorea</string>
+		<string>scmobile</string>
+		<string>ibkmobile</string>
+		<string>nonghyupmobile</string>
+		<string>mg</string>
+		<string>smartbusan</string>
+		<string>smartkyongnam</string>
+		<string>kbank</string>
+		<string>tossbank</string>
+	</array>
 	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>service.iamport.kr</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSExceptionMinimumTLSVersion</key>
+				<string>TLSv1.0</string>
+			</dict>
+		</dict>
+	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>신분증 인증을 위해 카메라 접근이 필요합니다.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>생체인증으로 지갑 키를 보호하고 서명에 사용합니다.</string>
+	<key>NSFingerTouchIDUsageDescription</key>
+	<string>생체인증으로 지갑 키를 보호하고 서명에 사용합니다.</string>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
+	<key>UIStatusBarHidden</key>
+	<false/>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
-		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
+		<string>UIInterfaceOrientationPortrait</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 	</array>
-	<key>CADisableMinimumFrameDurationOnPhone</key>
-	<true/>
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
 </dict>
 </plist>

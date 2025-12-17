@@ -23,3 +23,6 @@ plugins {
 }
 
 include(":app")
+
+include(":didclientsdk")
+project(":didclientsdk").projectDir = file("../../did-client-sdk-aos/source/did-wallet-sdk-aos")
