@@ -15,7 +15,6 @@
 - [How to Install](#-how-to-install)
 - [How to Build](#-how-to-build)
 - [How to Test](#-how-to-test)
-- [주요 기능](#-주요-기능)
 - [기술 스택](#-기술-스택)
 - [소스코드 구조](#-소스코드-구조)
 - [주요 라이브러리](#-주요-라이브러리)
